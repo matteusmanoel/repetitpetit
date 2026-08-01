@@ -1,6 +1,15 @@
-export { getAvailableBrands, getAvailableProducts } from "./data";
+export { getAvailableBrands, getAvailableProducts, getProductBySlug, getRelatedProducts } from "./data";
 export { formatPrice } from "./format-price";
-export type { CatalogProduct, ProductRow } from "./types";
+export { conditionLabel, genderLabel } from "./labels";
+export { getProductReservationView } from "./reservation";
+export { minutesRemaining } from "./reservation-time";
+export type {
+  CatalogProduct,
+  ProductDetail,
+  ProductImage,
+  ProductRow,
+  ReservationView,
+} from "./types";
 export {
   EMPTY_CATALOG_FILTERS,
   parseCatalogFilters,
@@ -14,3 +23,8 @@ export { CatalogEmptyState } from "./components/CatalogEmptyState";
 export { ProductGrid } from "./components/ProductGrid";
 export { CatalogFilters as CatalogFiltersBar } from "./components/CatalogFilters";
 export { ActiveFilterChips } from "./components/ActiveFilterChips";
+export { ProductGallery } from "./components/ProductGallery";
+export { ProductAttributes } from "./components/ProductAttributes";
+export { AddToCartButton } from "./components/AddToCartButton";
+export { ReservationIndicator } from "./components/ReservationIndicator";
+export { UniquePieceNotice } from "./components/UniquePieceNotice";

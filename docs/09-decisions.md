@@ -331,3 +331,48 @@ admin válida" (inclui checar `admins.is_active`), em vez de duas implementaçõ
 request (matcher exclui apenas assets estáticos), mas isso já é o padrão
 recomendado pela Supabase para manter a sessão fresca em qualquer app Next.js
 com `@supabase/ssr`.
+
+---
+
+## D22 — WhatsApp FAB: número recebido via prop do server layout, não lido de `process.env` no client
+
+**Data**: 2026-08-01
+**Contexto**: A ticket T05 pede um `WhatsAppFAB` client component (precisa de
+`usePathname` e de um `setTimeout` para o delay de 1.5s) que usa
+`NEXT_PUBLIC_STORE_WHATSAPP`. `lib/env.ts` (D16) exporta um único singleton `env`
+que roda `loadEnv(process.env)` no import do módulo e valida também as variáveis
+sempre-obrigatórias (`SUPABASE_SERVICE_ROLE_KEY`, etc.). Importar `lib/env` direto
+de um Client Component faria o Next.js incluir esse módulo no bundle do browser;
+como `SUPABASE_SERVICE_ROLE_KEY` não tem o prefixo `NEXT_PUBLIC_`, o bundler não a
+inlina, e a leitura de `process.env` inteiro dentro de `loadEnv` se comportaria de
+forma inconsistente no browser — na melhor hipótese lançando o erro de variável
+obrigatória ausente, na pior tentando acessar um `process` que não existe no
+runtime do cliente.
+**Decisão**: `app/(public)/layout.tsx` (Server Component) importa `env` e passa
+`env.NEXT_PUBLIC_STORE_WHATSAPP` como prop `whatsappNumber` para
+`<WhatsAppFab />`. O componente client nunca importa `lib/env` nem acessa
+`process.env` diretamente — respeita a regra "nunca acessar `process.env` fora de
+`lib/env.ts`" sem vazar nenhuma variável server-only para o bundle do cliente. Se
+`whatsappNumber` vier `undefined` (variável opcional não configurada), o FAB não
+renderiza nada.
+**Consequência**: Padrão a repetir em outras próximas tickets client-side que
+precisem de env vars públicas (ex.: link de suporte em `/pedido/[codigo]`): ler
+`env` num Server Component (layout/page) e passar como prop, nunca importar
+`lib/env` num arquivo com `"use client"`.
+
+---
+
+## D23 — Footer: só linka Instagram (2 contas); Facebook e grupo VIP do WhatsApp ficam como texto/fora do MVP por falta de URL
+
+**Data**: 2026-08-01
+**Contexto**: `docs/00-brief.md` cita "Facebook" e "grupo VIP no WhatsApp" como
+redes sociais da loja, mas só fornece URLs completas para as duas contas do
+Instagram (`@repetipetit` e `@repetipetit_`). O FAB de WhatsApp já cobre contato
+direto via `wa.me`.
+**Decisão**: O footer do shell público (`components/public/site-footer.tsx`) linka
+apenas as duas contas de Instagram, que têm URL confirmada na documentação. Não
+foi inventado nenhum link de Facebook ou de grupo do WhatsApp.
+**Consequência**: Nenhuma URL fabricada/quebrada no footer. Ação de
+acompanhamento: quando a lojista fornecer o link real do Facebook e/ou do convite
+do grupo VIP, adicionar como mais um item da lista `SOCIAL_LINKS` em
+`site-footer.tsx`.

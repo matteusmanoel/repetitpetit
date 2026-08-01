@@ -249,3 +249,27 @@ function mapProductDetail(row: ProductDetailRow): ProductDetail {
     images,
   };
 }
+
+/**
+ * Últimas novidades para a home — mesmo critério do catálogo, com limite.
+ */
+export async function getLatestAvailableProducts(
+  limit = 8,
+): Promise<CatalogProduct[]> {
+  const supabase = await createServerSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      "id, name, slug, price, compare_at_price, cover_image_url, quantity, brand, size_label, created_at",
+    )
+    .eq("status", "available")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Falha ao carregar novidades: ${error.message}`);
+  }
+
+  return data ?? [];
+}

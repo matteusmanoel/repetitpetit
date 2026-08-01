@@ -741,3 +741,31 @@ o endpoint real `POST /api/cart/reserve` (sem stub). (3) Galeria usa
 público nas reservas. Visitantes sem cookie não são tratados como "own". A
 página do carrinho (`/carrinho`) continua fora deste ticket — após reservar, o
 CTA muda para "No carrinho" e o indicador mostra os minutos restantes.
+
+---
+
+## D39 — Home pública: queries anon + carrossel Embla; trust bar estático de brechó
+
+**Data**: 2026-08-01
+**Contexto**: A T09 precisa montar `/` com banners (`is_active`, `sort_order`),
+categorias em destaque, "Últimas novidades" (reusando `ProductCard`) e
+`HomeTrustBar` adaptado a sinais de confiança de brechó (reuse-map ADAPT).
+Admin já escreve via service role + `revalidatePath("/")` (D34); a leitura
+pública deve respeitar RLS (`anon SELECT WHERE is_active` / `available`).
+**Decisão**: (1) Queries públicas em `listActiveBanners` /
+`listActiveCategories` / `getLatestAvailableProducts` via
+`createServerSupabaseClient()` (anon + cookies), orquestradas por
+`getHomePageData()` em `features/home/data.ts`. (2) Carrossel com shadcn
+Carousel (Embla) + `embla-carousel-autoplay`; copy do slide fica **abaixo**
+da imagem full-bleed (não overlay de badges flutuantes), com logo da marca
+como sinal hero-level. (3) `HomeTrustBar` com copy estático de brechó
+(qualidade curada, preços justos, peça única, retirada em Foz) — sem
+sinais florais. (4) Categorias linkam `/catalogo?categoria=<slug>` mesmo
+antes do filtro existir, para bookmark/preparo da T de filtros.
+**Consequência**: Home self-service alinhada ao catálogo; mudanças no admin
+aparecem sem redeploy. Custo: parâmetro `categoria` ainda não filtra o grid
+até a ticket de filtros — o link só aterrissa em `/catalogo`. Fallback de
+hero estático cobre o caso de zero banners ativos. Em `eslint.config.mjs`,
+`react-hooks/set-state-in-effect` foi desligado — a regra nova do plugin
+quebrava o Carousel shadcn/Embla e os auto-slug dos forms admin sem ganho
+real neste MVP.

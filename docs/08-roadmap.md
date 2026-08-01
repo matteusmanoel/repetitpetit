@@ -9,10 +9,10 @@
 - [x] Documentação de agentes completa
 - [x] `.env.example`, `AGENTS.md`, `README.md`
 - [x] mattpocock/skills instalado globalmente
-- [ ] Next.js app scaffolded (`create-next-app`)
-- [ ] Tailwind v4 + shadcn/ui configurados
-- [ ] `lib/env.ts` com validação Zod
-- [ ] `lib/supabase/{browser,server,server-service}.ts`
+- [x] Next.js app scaffolded (`create-next-app`)
+- [x] Tailwind v4 + shadcn/ui configurados
+- [x] `lib/env.ts` com validação Zod
+- [x] `lib/supabase/{browser,server,server-service}.ts` (tipos ainda soltos — ticket 02)
 - [ ] Migrations base aplicadas (enums + tabelas)
 - [ ] Tipos Supabase gerados
 - [ ] Seed de desenvolvimento aplicado

@@ -12,7 +12,7 @@ export type OrderPaymentStatus = {
 
 /**
  * Leitura privilegiada do status do pedido para a página `/checkout/sucesso`
- * (polling leve — confirmação real fica no webhook T18 / ticket #18).
+ * (polling leve — confirmação real fica no webhook T17 / ticket #18).
  */
 export async function getOrderPaymentStatus(
   publicCode: string,

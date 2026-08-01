@@ -4,6 +4,7 @@ import { HomeBannerCarousel } from "@/components/public/home-banner-carousel";
 import { HomeFeaturedCategories } from "@/components/public/home-featured-categories";
 import { HomeLatestProducts } from "@/components/public/home-latest-products";
 import { HomeTrustBar } from "@/components/public/home-trust-bar";
+import { LeadCapturePopup } from "@/components/public/lead-capture-popup";
 import { getHomePageData } from "@/features/home/data";
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default async function HomePage() {
       <HomeTrustBar />
       <HomeFeaturedCategories categories={categories} />
       <HomeLatestProducts products={latestProducts} />
+      <LeadCapturePopup />
     </div>
   );
 }

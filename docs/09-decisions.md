@@ -791,3 +791,22 @@ de disponíveis/vendidas linkam para `/admin/produtos?status=…`.
 **Consequência**: O lojista vê a forma do dia sem depender da fila realtime
 (T22+). Pedidos zerados são esperados até checkout/webhook. Contagem head-only
 (`count: exact, head: true`) evita puxar linhas.
+
+---
+
+## D41 — Lead popup T23: Sheet/Dialog responsivo + INSERT anon via server action
+
+**Data**: 2026-08-01
+**Contexto**: A T23 pede capture soft na home (~30% scroll, uma vez por device)
+com copy de 5% PIX, sem motor de cupom (D10). `leads` já tem RLS `anon INSERT`
+e índice único em `email`.
+**Decisão**: (1) `LeadCapturePopup` só em `/` (`app/(public)/page.tsx`), com
+flag `localStorage` `rp_lead_popup_seen`. (2) UI: Sheet `side="bottom"` abaixo
+de `sm`, Dialog modal em `sm+` (shadcn Dialog novo). (3) Persistência via
+server action `submitLeadAction` + `createServerSupabaseClient()` (anon),
+`source = popup_first_scroll` fixo; conflito `23505` trata como sucesso.
+(4) X / fechar marca visto e **não** grava; submit bem-sucedido também marca
+visto. Sem geração/aplicação de cupom.
+**Consequência**: Lead capture alinhado ao schema/RLS sem service role nem
+engine de promoções. Custo: desconto PIX continua manual/comunicado (D10);
+popup não aparece em outras rotas.

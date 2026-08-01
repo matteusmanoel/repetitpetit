@@ -132,15 +132,15 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-    [*] --> active : POST /api/cart/reserve (atômico)
-    active --> active : timer renovado no checkout (30min)
+    [*] --> active : POST /api/cart/reserve (atômico, TTL 20min)
     active --> converted : pagamento confirmado
     active --> released : POST /api/cart/release (usuário remove do carrinho)
-    active --> expired : pg_cron sweep a cada 5min
+    active --> expired : TTL 20min / pg_cron sweep a cada 5min
     converted --> [*]
     released --> [*]
     expired --> [*]
 ```
+
 
 ## Fila de fulfillment (Realtime)
 

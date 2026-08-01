@@ -516,3 +516,50 @@ sem sessão admin. Custo: duas rotas de upload em vez de uma — aceitável porq
 os contratos de auth são diferentes. Ação de acompanhamento: se abuso/spam de
 upload virar problema, adicionar rate-limit (ex.: Vercel Firewall / Upstash)
 nessa rota sem tocar no fluxo admin.
+
+---
+
+## D29 — TTL único de reserva: 20 minutos (carrinho e checkout)
+
+**Data**: 2026-08-01
+**Contexto**: Havia contradição entre fontes. PRD B3 e o DEFAULT de
+`cart_reservations.expires_at` dizem **20 minutos**. O diagrama de ciclo de vida
+em `docs/03-architecture.md` e a D06 falavam em renovar o timer para **30 minutos**
+ao entrar no checkout. O `orders.expires_at` DEFAULT de 30 minutos é TTL de
+*pagamento do pedido*, não da reserva de carrinho — são relógios distintos.
+**Decisão**: Um único TTL de **20 minutos** para a reserva de carrinho, do
+`POST /api/cart/reserve` até expirar ou converter em pedido pago. Não há renovação
+no checkout. A D06 fica como registro histórico da intenção inicial; este D28 é a
+fonte de verdade daqui pra frente. O TTL de 30 minutos de `orders.expires_at`
+(pedido aguardando pagamento MP) permanece inalterado — não é reserva de peça.
+**Consequência**: Um só timer no carrinho/UI; menos estados para explicar ao
+comprador. Quem chega ao checkout já tem urgência natural. Constante
+`RESERVATION_TTL_MINUTES = 20` em `features/cart/constants.ts` alinha código e
+docs; o DEFAULT da coluna no banco continua `now() + interval '20 minutes'`.
+
+---
+
+## D30 — Reserva atômica via RPC `reserve_cart_product` (+ fallback service-role)
+
+**Data**: 2026-08-01
+**Contexto**: A query atômica de `docs/04-data-model.md` (`INSERT ... SELECT ...
+WHERE NOT EXISTS`) não é expressável no PostgREST/supabase-js sem uma função
+Postgres. D14 exige ainda apagar a linha expirada da mesma peça na mesma
+statement/transação (ou antes) do INSERT — o UNIQUE plain bloqueia re-reserva
+enquanto o `pg_cron` (5 min) não varrer. O sandbox deste agente tem
+`SUPABASE_SERVICE_ROLE_KEY` mas não MCP Supabase autenticado para
+`apply_migration`, então a RPC precisa existir como migration versionada e o
+app precisa funcionar mesmo antes dela ser aplicada no projeto live.
+**Decisão**: (1) Migration `20260801230000_reserve_cart_product_rpc.sql` cria
+`public.reserve_cart_product(uuid, text)` (`SECURITY DEFINER`, execute só para
+`service_role`): idempotência da mesma sessão → DELETE expirada → INSERT atômico,
+tratando `unique_violation` como "unavailable". (2) `features/cart/reserve.ts`
+chama `rpc('reserve_cart_product')` e, se a função ainda não existir
+(`PGRST202`), usa fallback service-role: DELETE expirada → checagens → INSERT,
+mapeando `23505` para unavailable. (3) `POST /api/cart/release` é DELETE
+simples filtrado por `product_id` + `session_id` da cookie `rp_cart_session`.
+**Consequência**: Concorrência garantida pelo UNIQUE + limpeza D14 mesmo no
+fallback. Quando a migration for aplicada no live (MCP `apply_migration` ou
+`supabase db push`), o caminho RPC passa a ser o canônico — single-statement
+transaction. Tipos em `lib/supabase/types.ts` incluem a Function; regenerar via
+`generate_typescript_types` após apply live se o schema divergir.

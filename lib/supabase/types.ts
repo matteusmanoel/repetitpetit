@@ -831,7 +831,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reserve_cart_product: {
+        Args: {
+          p_product_id: string
+          p_session_id: string
+        }
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          product_id: string
+          session_id: string
+        }[]
+      }
     }
     Enums: {
       fulfillment_type: "pickup" | "delivery" | "correios"

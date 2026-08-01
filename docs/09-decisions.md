@@ -563,3 +563,24 @@ fallback. Quando a migration for aplicada no live (MCP `apply_migration` ou
 `supabase db push`), o caminho RPC passa a ser o canônico — single-statement
 transaction. Tipos em `lib/supabase/types.ts` incluem a Function; regenerar via
 `generate_typescript_types` após apply live se o schema divergir.
+
+---
+
+## D31 — Catálogo `/catalogo`: query no Server Component + Suspense para skeleton
+
+**Data**: 2026-08-01
+**Contexto**: A T06 pede grid de produtos disponíveis com `ProductCardSkeleton`
+durante o load. Em App Router, um `page.tsx` async sozinho não mostra fallback de
+loading se não houver boundary — o request fica pendente até a query terminar.
+**Decisão**: Separar a lista em `CatalogProductList` (async Server Component) e
+envolver com `<Suspense fallback={<ProductCardSkeletonGrid />}>` na page. A query
+vive em `features/catalog/data.ts` via `createServerSupabaseClient()` (anon + RLS),
+filtrando `status = 'available'` e ordenando `created_at DESC`. `next.config.ts`
+libera `images.remotePatterns` para `placehold.co` (seed) e o hostname do projeto
+Supabase (Storage) — o hostname é lido de `process.env.NEXT_PUBLIC_SUPABASE_URL`
+direto no config (exceção análoga a D25: `next.config.ts` roda no boot do Next,
+fora do bundle `app/`/`lib/env.ts`). Filtros por query param ficam para tickets
+seguintes — este ticket entrega só o grid base.
+**Consequência**: Skeleton aparece em navegações client-side / streaming; a page
+permanece server-rendered e tipada. PDP (`/produto/[slug]`) ainda não existe — o
+card já linka o slug para o ticket de PDP construir em cima.

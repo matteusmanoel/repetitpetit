@@ -15,7 +15,13 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "placehold.co" },
       // Storage público do projeto Supabase (product-images / intake-photos)
       ...(supabaseHostname
-        ? [{ protocol: "https" as const, hostname: supabaseHostname }]
+        ? [
+            {
+              protocol: "https" as const,
+              hostname: supabaseHostname,
+              pathname: "/storage/v1/object/public/**",
+            },
+          ]
         : []),
     ],
   },

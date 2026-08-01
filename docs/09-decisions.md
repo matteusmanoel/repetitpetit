@@ -584,3 +584,29 @@ seguintes — este ticket entrega só o grid base.
 **Consequência**: Skeleton aparece em navegações client-side / streaming; a page
 permanece server-rendered e tipada. PDP (`/produto/[slug]`) ainda não existe — o
 card já linka o slug para o ticket de PDP construir em cima.
+
+---
+
+## D32 — Admin product CRUD: FormData + Zod + replace-set de imagens; capa = 1ª foto
+
+**Data**: 2026-08-01
+**Contexto**: A T10 pede CRUD admin de `products`/`product_images` adaptando o
+padrão `product-actions` do mapa de reaproveitamento (campos novos: `size_group`,
+`gender`, `condition`, `tags`, etc.). `docs/03-architecture.md` cita React Hook
+Form + Zod na stack, mas o login admin (T03) já usa FormData + `useActionState` +
+Zod sem RHF. Imagens sobem via `POST /api/upload` (T04) no client antes do submit.
+**Decisão**: (1) Validar o formulário com Zod em `features/admin/product-schemas.ts`
+e persistir via server actions em `features/admin/product-actions.ts`, sempre
+chamando `requireAdminSession()` e gravando com `createServiceSupabaseClient()`
+(RLS de `products` só permite SELECT público de `available`). (2) Manter FormData +
+estado client para selects/imagens — sem adicionar RHF nesta ticket — alinhado ao
+padrão T03. (3) Em cada create/update, substituir o conjunto de `product_images`
+(delete + insert ordenado por `sort_order`) e derivar `products.cover_image_url`
+da primeira imagem da lista. (4) "Desativar" = `status = 'inactive'` (sem DELETE),
+o que remove a peça do catálogo público pela policy de RLS.
+**Consequência**: Um único caminho de escrita admin; reordenação de fotos é só
+UI/estado até o save. Custo: replace-set apaga ids antigos de `product_images` a
+cada save (aceitável no MVP; se no futuro precisar de URLs estáveis por id de
+imagem, migrar para upsert por id). `category_id` entra no form como opcional
+mesmo não estando na lista parentética da AC, porque é FK do data-model e as
+categorias seedadas já existem.

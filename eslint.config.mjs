@@ -20,6 +20,13 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  {
+    // shadcn Carousel + slug auto-fill forms sync Embla/derived state in effects.
+    // The React Compiler rule flags these legitimate subscribe-then-sync patterns.
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ];
 
 export default eslintConfig;

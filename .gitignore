@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+
+# env (never commit real credentials)
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+
+# Supabase local state
+supabase/.temp/
+
+# Vercel
+.vercel/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Editor
+.vscode/

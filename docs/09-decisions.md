@@ -769,3 +769,25 @@ hero estático cobre o caso de zero banners ativos. Em `eslint.config.mjs`,
 `react-hooks/set-state-in-effect` foi desligado — a regra nova do plugin
 quebrava o Carousel shadcn/Embla e os auto-slug dos forms admin sem ganho
 real neste MVP.
+
+---
+
+## D40 — Dashboard admin: KPIs via service role; reservadas = `cart_reservations` ativas
+
+**Data**: 2026-08-01
+**Contexto**: A T21 substitui o placeholder de `/admin` por um painel de KPIs
+(peças disponíveis/reservadas/vendidas + pedidos paid/confirmed/shipped). O
+reuse-map aponta `features/admin/dashboard/` (ADAPT). A reserva atual
+(T13/D14) grava em `cart_reservations` sem mudar `products.status` para
+`reserved` — contar `status = reserved` subestimaria o acervo em hold.
+**Decisão**: (1) Queries em `features/admin/dashboard/queries.ts` com
+`createServiceSupabaseClient()` (mesmo padrão dos CRUDs admin; o layout
+`(protected)` já chama `requireAdminSession()`). (2) KPI "Disponíveis" /
+"Vendidas" = `count` em `products` por `status`. (3) KPI "Reservadas" =
+`count` em `cart_reservations` com `expires_at > now()`. (4) Pedidos =
+`count` em `orders` por `status` (`paid` / `confirmed` / `shipped`). (5)
+Atalhos para produtos/categorias/banners permanecem abaixo dos KPIs; tiles
+de disponíveis/vendidas linkam para `/admin/produtos?status=…`.
+**Consequência**: O lojista vê a forma do dia sem depender da fila realtime
+(T22+). Pedidos zerados são esperados até checkout/webhook. Contagem head-only
+(`count: exact, head: true`) evita puxar linhas.

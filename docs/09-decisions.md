@@ -376,3 +376,119 @@ foi inventado nenhum link de Facebook ou de grupo do WhatsApp.
 acompanhamento: quando a lojista fornecer o link real do Facebook e/ou do convite
 do grupo VIP, adicionar como mais um item da lista `SOCIAL_LINKS` em
 `site-footer.tsx`.
+
+---
+
+## D24 — Buckets de Storage: público para leitura, escrita restrita por ausência de policy (sem SQL manual)
+
+**Data**: 2026-08-01
+**Contexto**: A T04 exige buckets para `product_images`/`intake_photos` "com
+policies restringindo escrita a service role / admin autenticado". O sandbox do
+agente não tem acesso ao Supabase CLI nem ao MCP Supabase autenticado (só
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e
+`SUPABASE_SERVICE_ROLE_KEY` como env vars) — logo não há como rodar uma
+migration `apply_migration`/SQL bruto para criar `CREATE POLICY` explícita em
+`storage.objects` como as demais tabelas do projeto fazem (ver D13, D19).
+**Decisão**: Criar os buckets `product-images` e `intake-photos` via
+`supabase.storage.createBucket()` (pacote `@supabase/supabase-js`, mesma lib já
+usada pelo app) autenticado com a service role key, com `public: true` (permite
+GET público via `/storage/v1/object/public/...` sem policy de RLS — recurso do
+próprio Storage, independente de `storage.objects`) e `fileSizeLimit`/
+`allowedMimeTypes` restritos a imagens (JPEG/PNG/WEBP/AVIF, até 8MB). Nenhuma
+policy de INSERT/UPDATE/DELETE foi criada para `anon`/`authenticated` em
+`storage.objects` — o Postgres nega por padrão qualquer escrita sem policy
+explícita (RLS vem habilitado por padrão nessa tabela do schema `storage`), e
+apenas a service role (usada em `lib/supabase/upload.ts` via
+`createServiceSupabaseClient()`) contorna RLS. Verificado end-to-end contra o
+projeto real: uma tentativa de `upload()` com a `anon key` para
+`product-images` retornou `403 — "new row violates row-level security
+policy"`, confirmando que a escrita já está bloqueada sem precisar de SQL
+manual.
+**Consequência**: Mesmo padrão de "postura de RLS por ausência de policy" já
+usado em `admins` (D19). Se um futuro ambiente Supabase precisar de policies
+explícitas documentadas em `storage.objects` (ex.: para auditoria, ou porque um
+fluxo futuro precisa de upload direto do browser com `authenticated`), isso
+exige acesso a SQL/migrations (Supabase CLI ou MCP autenticado) — não é
+possível só com `storage-js` + service role key. Ação de acompanhamento: se/quando
+o MCP Supabase estiver disponível numa sessão futura, considerar formalizar as
+policies em uma migration (`supabase/migrations/`) para que fiquem versionadas
+junto do resto do schema, em vez de depender apenas do estado do bucket criado
+via script.
+
+---
+
+## D25 — `scripts/setup-storage-buckets.mjs`: script standalone lê `process.env` diretamente
+
+**Data**: 2026-08-01
+**Contexto**: `docs/06-agent-playbook.md` proíbe acessar `process.env` fora de
+`lib/env.ts`, mas esse módulo é `"server-only"` e faz parte do bundle do
+Next.js — não é importável a partir de um script Node standalone (`.mjs`) sem
+um runtime TypeScript adicional (`tsx`/`ts-node`, não presentes nas
+dependências do projeto) e sem depender de `next/navigation` transitivamente.
+`scripts/setup-storage-buckets.mjs` roda uma única vez por ambiente Supabase
+(fora do build/runtime do app), para criar os buckets de Storage.
+**Decisão**: O script lê `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`
+direto de `process.env`, com uma checagem explícita e mensagem de erro
+descritiva quando ausentes — tratado como exceção documentada, escopo limitado
+a scripts de operação/infra fora da árvore `app/`/`features/`/`lib/` que roda
+via `node scripts/*.mjs` (nunca importado pelo app).
+**Consequência**: Qualquer script futuro de manutenção one-off (ex.: seed de
+Storage para outro ambiente, rotação de bucket) pode seguir o mesmo padrão. Se
+o projeto migrar para ter múltiplos scripts assim, vale revisitar e extrair um
+pequeno loader de env compartilhado em `scripts/` (não em `lib/env.ts`, que
+continua exclusivo do app Next.js).
+
+---
+
+## D26 — `POST /api/upload` usa `requireAdminSession()` como está (redirect), não uma variante 401 JSON
+
+**Data**: 2026-08-01
+**Contexto**: A AC da T04 pede literalmente que a rota "checks
+`requireAdminSession()`". Esse helper (`features/admin/session.ts`, D20/D21)
+foi desenhado para Server Components/Server Actions e usa `redirect()` do
+`next/navigation` quando não há sessão válida — em uma Route Handler isso vira
+uma resposta HTTP `307` para `/admin/login` em vez de um `401` JSON, o que é
+incomum para uma API chamada via `fetch()`.
+**Decisão**: Usar `requireAdminSession()` sem modificação em
+`app/api/upload/route.ts`, mesma função usada em todo o resto do admin — em vez
+de criar uma segunda função "guard" que devolve JSON. Verificado end-to-end
+contra o projeto real: uma requisição `POST /api/upload` sem cookie de sessão
+retorna `307` com `Location: /admin/login`; com cookie de admin válido, retorna
+`200` normalmente.
+**Consequência**: Uma única fonte de verdade para "o que conta como sessão de
+admin válida" (D21), sem duplicar a lógica de checagem de `admins.is_active`
+numa segunda função só para rotas de API. Custo: um client-side `fetch()` que
+chame `/api/upload` sem sessão recebe um redirect (que o `fetch` do browser
+segue automaticamente, retornando o HTML de `/admin/login` em vez de um erro
+estruturado) em vez de um `401` com corpo JSON — aceitável porque, na prática,
+todo formulário admin que vai chamar essa rota já está renderizado dentro de
+`app/admin/(protected)/`, que por si só já bloqueia o acesso sem sessão antes
+do upload ser sequer tentado. Ação de acompanhamento: se um ticket futuro
+precisar de uma resposta de erro estruturada para sessão expirada em pleno uso
+(ex.: upload assíncrono numa página já carregada), avaliar uma variante que
+capture o redirect e devolva `401` JSON em vez de deixar o `fetch` seguir o
+redirect.
+
+---
+
+## D27 — Storage RLS de D24 formalizada em migration versionada
+
+**Data**: 2026-08-01
+**Contexto**: D24 documentou que `product-images`/`intake-photos` já ficam seguros
+por comportamento padrão implícito (bucket `public = true` permite leitura anônima
+via API de Storage; ausência de policy em `storage.objects` bloqueia
+INSERT/UPDATE/DELETE para `anon`/`authenticated`, já que RLS nega tudo por padrão e
+`service_role` ignora RLS). Isso funciona, mas não é auditável — um leitor do schema
+não vê a intenção de segurança sem saber essa regra implícita do Postgres/Supabase.
+**Decisão**: Aplicada `supabase/migrations/20260801220000_storage_objects_policies.sql`
+via Supabase MCP (`apply_migration`, com acesso real ao projeto `wcgpamsvnhpgonxzbzlg`,
+disponível no ambiente do agente orquestrador mas não no sandbox do agente que
+implementou a T04): `SELECT` explícito para `anon`/`authenticated` restrito a cada
+bucket, e `ALL` explícito para `service_role` restrito a cada bucket. O comportamento
+efetivo não muda — apenas passa de implícito para explícito e versionado.
+**Consequência**: Qualquer pessoa lendo as migrations enxerga a postura de segurança
+de Storage sem precisar saber a regra implícita de "bucket público + zero policy =
+leitura liberada, escrita bloqueada". Confirmado ao vivo: `SELECT id, name, public,
+file_size_limit, allowed_mime_types FROM storage.buckets` mostra os dois buckets
+criados pelo script da T04 (`public: true`, limite 8MB, mimes de imagem); a migration
+não recriou nem alterou os buckets, só adicionou as policies em `storage.objects`.

@@ -492,3 +492,27 @@ leitura liberada, escrita bloqueada". Confirmado ao vivo: `SELECT id, name, publ
 file_size_limit, allowed_mime_types FROM storage.buckets` mostra os dois buckets
 criados pelo script da T04 (`public: true`, limite 8MB, mimes de imagem); a migration
 não recriou nem alterou os buckets, só adicionou as policies em `storage.objects`.
+
+---
+
+## D28 — Upload público de desapego: rota separada `POST /api/intake/upload`
+
+**Data**: 2026-08-01
+**Contexto**: A T22 (`/desapegue`) precisa aceitar até 5 fotos de um visitante
+anônimo. `POST /api/upload` (T04/D26) exige `requireAdminSession()` e aceita
+qualquer chave de `UPLOAD_BUCKETS` — liberar essa rota sem auth abriria escrita
+no bucket `product-images` (catálogo) para qualquer um na internet. Adaptar a
+rota admin com um flag "público se bucket=intakePhotos" misturaria dois modelos
+de autorização no mesmo endpoint e enfraqueceria a garantia de D26.
+**Decisão**: Criar `app/api/intake/upload/route.ts` — rota pública sem sessão,
+hardcoded para `UPLOAD_BUCKETS.intakePhotos`, um arquivo por request, reutilizando
+`uploadImage()` (service role + validação MIME/tamanho 8MB). O client limita o
+total a 5 fotos; a persistência do lead (`intake_requests` + `intake_photos`)
+fica em `submitIntakeAction` via service role. `POST /api/upload` permanece
+admin-only e continua cobrindo o CRUD de produtos.
+**Consequência**: Superfície de ataque do upload anônimo fica restrita a
+`intake-photos/public/*`. Não há path para o browser escrever em `product-images`
+sem sessão admin. Custo: duas rotas de upload em vez de uma — aceitável porque
+os contratos de auth são diferentes. Ação de acompanhamento: se abuso/spam de
+upload virar problema, adicionar rate-limit (ex.: Vercel Firewall / Upstash)
+nessa rota sem tocar no fluxo admin.

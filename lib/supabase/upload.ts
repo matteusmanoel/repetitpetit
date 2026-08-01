@@ -65,8 +65,9 @@ function assertValidImage(file: File): void {
  * URL pública do arquivo.
  *
  * Usa `createServiceSupabaseClient()` (service role, bypassa RLS) — nunca
- * expor esta função a código client-side; ela só deve ser chamada a partir
- * de rotas/actions que já checaram `requireAdminSession()`.
+ * expor esta função a código client-side. Callers autorizados:
+ * - `POST /api/upload` (admin, qualquer bucket de `UPLOAD_BUCKETS`)
+ * - `POST /api/intake/upload` (público, somente `intake-photos` — D28)
  */
 export async function uploadImage({
   bucket,

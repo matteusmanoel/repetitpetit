@@ -144,3 +144,55 @@ reais e cumpríveis.
 Correios 1 dia útil de postagem após confirmação. Suporte em até 1h em horário comercial.
 **Consequência**: Prazos honestos e diferenciados por tipo. Exibidos em `/pedido/[codigo]`
 e no checkout.
+
+---
+
+## D13 — RLS de orders/order_items/payments: sem anon INSERT, escrita só via service-role
+
+**Data**: 2026-08-01
+**Contexto**: A tabela de postura de RLS em `docs/04-data-model.md` concede `anon INSERT`
+em `orders`, `order_items` e `payments`. Já o fluxo de checkout em `docs/03-architecture.md`
+mostra todo o caminho `[Checkout form] → POST /api/cart/reserve → Create MP preference →
+webhook` passando por rotas/server actions com `SUPABASE_SERVICE_ROLE_KEY`, sem nenhuma
+escrita direta do client nessas três tabelas. As duas fontes se contradizem.
+**Decisão**: Remover `anon INSERT` das três tabelas na migration da T02. `orders`,
+`order_items` e `payments` só recebem `CREATE POLICY ... FOR ALL TO service_role`; `anon`
+não tem nenhuma policy nelas (RLS nega tudo por padrão). Toda criação de pedido, item e
+pagamento passa por server action com `createServiceSupabaseClient()`.
+**Consequência**: Nenhum valor sensível (preço, quantidade, status de pagamento) chega ao
+banco vindo direto do browser — o server action recalcula subtotal/total a partir do
+`products.price` atual, confere `cart_reservations` e só então grava. Isso fecha o
+principal vetor de fraude de e-commerce self-service (cliente forjando `total_amount` ou
+criando `payments.status = 'paid'` manualmente via REST). Custo: nenhum — o fluxo da
+arquitetura já não dependia de `anon INSERT` nessas tabelas; a permissão no data-model
+doc nunca chegou a ser usada por nenhuma feature. Ação de acompanhamento: ao implementar
+os tickets de checkout/webhook, usar exclusivamente `createServiceSupabaseClient()` para
+INSERT/UPDATE em `orders`, `order_items` e `payments`.
+
+---
+
+## D14 — `uq_reservation_product`: índice único simples, sem predicado de tempo
+
+**Data**: 2026-08-01
+**Contexto**: `cart_reservations` tem `CONSTRAINT uq_reservation_product UNIQUE (product_id)`
+sem predicado de tempo, então uma reserva expirada e ainda não varrida pelo `pg_cron`
+bloqueia uma nova reserva legítima da mesma peça. Duas soluções foram avaliadas: (a) um
+índice único parcial restrito a linhas não-expiradas, ou (b) manter o índice simples e
+empurrar a responsabilidade de limpar a linha expirada para a mesma statement do INSERT
+na rota de reserva (ticket #13).
+**Decisão**: Opção (b). A opção (a) foi testada localmente (`CREATE UNIQUE INDEX ...
+ON cart_reservations(product_id) WHERE expires_at > now()`) e o Postgres rejeita com
+`ERROR: functions in index predicate must be marked IMMUTABLE` — `now()` é `STABLE`, não
+`IMMUTABLE`, e por isso não pode aparecer no predicado de um índice parcial. Não existe
+uma forma direta de expressar "não expirado" nesse predicado sem trocar para uma coluna
+booleana derivada (ex.: `is_active`) mantida por trigger, o que alteraria o schema do
+data-model doc além do que esta ticket pede. Mesmo que o Postgres aceitasse a sintaxe, o
+efeito não seria o esperado: um índice parcial só reavalia o predicado quando a linha é
+escrita — uma linha que "expirou" só pelo relógio andar continua fisicamente no índice até
+ser deletada ou atualizada, então o mesmo bloqueio ocorreria de qualquer forma.
+**Consequência**: A migration da T02 mantém `uq_reservation_product` como índice único
+plain. A rota atômica de reserva (`INSERT INTO cart_reservations ...` em
+`docs/04-data-model.md`, a ser implementada no ticket #13) deve apagar explicitamente a
+reserva expirada da mesma peça (`DELETE FROM cart_reservations WHERE product_id = $1 AND
+expires_at <= now()`) antes ou na mesma transação do `INSERT`, e não pode depender apenas
+do sweep `pg_cron` (que roda a cada 5min) para liberar a peça a tempo.

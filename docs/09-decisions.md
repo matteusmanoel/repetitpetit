@@ -702,3 +702,20 @@ linha. (5) Dependência `xlsx` (SheetJS community) — alinhada ao reuse-map;
 ruins vão para o relatório). Imagens no XLSX são só `imagem_capa_url` (URL);
 galeria multi-foto continua no CRUD T10. Template documentado em
 `docs/admin-xlsx-import-template.md`.
+
+---
+
+## D37 — `next/image`: `dangerouslyAllowSVG` para capas do seed (placehold.co)
+
+**Data**: 2026-08-01
+**Contexto**: O seed do catálogo usa `placehold.co`, que responde `image/svg+xml`.
+Sem `dangerouslyAllowSVG`, o optimizer do Next (`/_next/image`) devolve 400 e as
+capas do `ProductCard` aparecem quebradas no `/catalogo` (verificado na T06).
+**Decisão**: Habilitar `dangerouslyAllowSVG` + `contentDispositionType: "attachment"`
++ CSP restritiva (`script-src 'none'; sandbox`) em `next.config.ts`. Fotos reais
+continuam vindo do Storage como JPEG/PNG/WEBP — o SVG fica limitado ao seed/CDN
+de placeholder.
+**Consequência**: Capas do seed renderizam no grid. Custo aceitável: SVG só entra
+via `remotePatterns` já listados (`placehold.co` + hostname Supabase); a CSP do
+optimizer impede execução de script embutido.
+

@@ -468,3 +468,27 @@ precisar de uma resposta de erro estruturada para sessão expirada em pleno uso
 (ex.: upload assíncrono numa página já carregada), avaliar uma variante que
 capture o redirect e devolva `401` JSON em vez de deixar o `fetch` seguir o
 redirect.
+
+---
+
+## D27 — Storage RLS de D24 formalizada em migration versionada
+
+**Data**: 2026-08-01
+**Contexto**: D24 documentou que `product-images`/`intake-photos` já ficam seguros
+por comportamento padrão implícito (bucket `public = true` permite leitura anônima
+via API de Storage; ausência de policy em `storage.objects` bloqueia
+INSERT/UPDATE/DELETE para `anon`/`authenticated`, já que RLS nega tudo por padrão e
+`service_role` ignora RLS). Isso funciona, mas não é auditável — um leitor do schema
+não vê a intenção de segurança sem saber essa regra implícita do Postgres/Supabase.
+**Decisão**: Aplicada `supabase/migrations/20260801220000_storage_objects_policies.sql`
+via Supabase MCP (`apply_migration`, com acesso real ao projeto `wcgpamsvnhpgonxzbzlg`,
+disponível no ambiente do agente orquestrador mas não no sandbox do agente que
+implementou a T04): `SELECT` explícito para `anon`/`authenticated` restrito a cada
+bucket, e `ALL` explícito para `service_role` restrito a cada bucket. O comportamento
+efetivo não muda — apenas passa de implícito para explícito e versionado.
+**Consequência**: Qualquer pessoa lendo as migrations enxerga a postura de segurança
+de Storage sem precisar saber a regra implícita de "bucket público + zero policy =
+leitura liberada, escrita bloqueada". Confirmado ao vivo: `SELECT id, name, public,
+file_size_limit, allowed_mime_types FROM storage.buckets` mostra os dois buckets
+criados pelo script da T04 (`public: true`, limite 8MB, mimes de imagem); a migration
+não recriou nem alterou os buckets, só adicionou as policies em `storage.objects`.

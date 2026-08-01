@@ -71,12 +71,12 @@
 
 ## Pós-MVP
 
-| Feature | Descrição |
-|---|---|
-| Sacolinha | Pedido de assinatura mensal (`order_type = 'sacolinha'`) |
-| WhatsApp AI | Agente conversacional para suporte e vendas |
-| Motor de cupons | Cupons reais vinculados a `leads` |
-| Área do cliente | Login, histórico de pedidos |
-| Notificações e-mail | Confirmação de pedido, atualização de status |
-| Avaliações | Review de produtos pós-compra |
-| Analytics | Funil de conversão, produtos mais vistos |
+| Feature             | Descrição                                                |
+| ------------------- | -------------------------------------------------------- |
+| Sacolinha           | Pedido de assinatura mensal (`order_type = 'sacolinha'`) |
+| WhatsApp AI         | Agente conversacional para suporte e vendas              |
+| Motor de cupons     | Cupons reais vinculados a `leads`                        |
+| Área do cliente     | Login, histórico de pedidos                              |
+| Notificações e-mail | Confirmação de pedido, atualização de status             |
+| Avaliações          | Review de produtos pós-compra                            |
+| Analytics           | Funil de conversão, produtos mais vistos                 |

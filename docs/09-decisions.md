@@ -258,3 +258,76 @@ para ser testável sem depender do ambiente do processo.
 status, etc.) nas próximas tickets. Componentes React ainda não têm test runner de
 UI — avaliar Testing Library/Playwright quando houver fluxo de UI crítico o
 suficiente para justificar o custo.
+
+---
+
+## D19 — Leitura de `admins` em `getAdminSession()`/`signInAction()`: sempre via `createServiceSupabaseClient()`
+
+**Data**: 2026-08-01
+**Contexto**: Ao implementar a T03 (`requireAdminSession()`), a primeira versão usava
+`createServerSupabaseClient()` (cliente ligado a cookies, respeita RLS) para ler
+`public.admins` depois de `auth.getUser()`/`signInWithPassword()`. Testado
+end-to-end contra o projeto Supabase real: o login autenticava no Supabase Auth,
+mas a consulta a `admins` sempre voltava vazia — a policy de RLS da tabela
+(docs/04-data-model.md, "Postura de RLS": `admins` | anon: nenhum) só concede
+`FOR ALL TO service_role`; não existe nenhuma policy para `authenticated`. Isso
+faria todo login válido cair no branch de "não é admin" e encerrar a sessão.
+**Decisão**: `getAdminSession()` (`features/admin/session.ts`) e `signInAction()`
+(`features/admin/actions.ts`) usam `createServerSupabaseClient()` apenas para
+`auth.getUser()`/`auth.signInWithPassword()`/`auth.signOut()` (operações que
+precisam ler/escrever o cookie de sessão), e usam `createServiceSupabaseClient()`
+exclusivamente para o `SELECT` em `admins`. A lógica pura de decisão (usuário +
+linha de `admins` → sessão válida ou `null`) foi extraída para
+`features/admin/resolve-admin-session.ts`, sem I/O, testada por unit test.
+**Consequência**: Todo ticket futuro que precisar ler `admins` (ex.: gestão de
+outros admins em `configuracoes/`) deve seguir o mesmo padrão — nunca assumir que
+o cliente de cookies vê essa tabela. Verificado end-to-end (Playwright contra
+`pnpm start`, mais um script Node com `@supabase/supabase-js` chamando o projeto
+Supabase real): sem esse ajuste, login com credenciais corretas falhava
+silenciosamente; com o ajuste, `requireAdminSession()` resolve corretamente e o
+sanity-check confirmou que o cliente anon/authenticated de fato não vê a linha.
+
+---
+
+## D20 — `/admin/login` fora do route group protegido `(protected)`
+
+**Data**: 2026-08-01
+**Contexto**: `requireAdminSession()` precisa ser chamado uma única vez para
+proteger todo o admin (não em cada página individualmente), mas um
+`app/admin/layout.tsx` compartilhado por todas as rotas sob `app/admin/**`
+protegeria também `/admin/login` — criando um loop de redirect (usuário sem
+sessão visita `/admin/login`, o layout chama `requireAdminSession()`, redireciona
+de volta para `/admin/login`, repete).
+**Decisão**: Mover o dashboard/shell autenticado para o route group
+`app/admin/(protected)/` (`layout.tsx` chama `requireAdminSession()` uma vez;
+`page.tsx` é o placeholder do dashboard). `app/admin/login/page.tsx` fica como
+rota irmã, fora do grupo, sem guarda — ela mesma verifica `getAdminSession()`
+(sem redirecionar em caso de `null`) só para redirecionar para `/admin` se já
+houver sessão válida.
+**Consequência**: Qualquer página futura do admin (produtos, categorias,
+banners, pedidos, configuracoes) deve nascer dentro de `app/admin/(protected)/`
+para herdar a proteção automaticamente, em vez de chamar
+`requireAdminSession()` de novo em cada `page.tsx`.
+
+---
+
+## D21 — Middleware só renova a sessão; a decisão de redirect é só do `requireAdminSession()`
+
+**Data**: 2026-08-01
+**Contexto**: O guia oficial do `@supabase/ssr` recomenda um middleware que
+chama `supabase.auth.getUser()` a cada request para renovar o cookie de sessão
+— Server Components não conseguem escrever cookies, então sem isso um access
+token perto de expirar nunca seria atualizado no browser entre navegações. O
+middleware poderia também decidir o redirect de `/admin/**`, duplicando a lógica
+que `docs/03-architecture.md` já atribui a `requireAdminSession()`.
+**Decisão**: `middleware.ts` (`lib/supabase/middleware.ts`) só chama
+`getUser()` e propaga os cookies renovados — não lê `/admin/**` nem redireciona.
+Toda decisão de autorização (usuário logado e é admin ativo?) vive em
+`requireAdminSession()`, chamado pelo layout do route group `(protected)`
+(D20) e por toda action/rota admin futura.
+**Consequência**: Uma única fonte de verdade para "o que conta como sessão de
+admin válida" (inclui checar `admins.is_active`), em vez de duas implementações
+(middleware + helper) que podem divergir. Custo: o middleware roda em toda
+request (matcher exclui apenas assets estáticos), mas isso já é o padrão
+recomendado pela Supabase para manter a sessão fresca em qualquer app Next.js
+com `@supabase/ssr`.

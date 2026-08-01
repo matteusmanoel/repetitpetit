@@ -1,19 +1,12 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 
+import { AdminNav } from "@/components/admin/AdminNav";
 import { SignOutButton } from "@/components/admin/SignOutButton";
 import type { AdminRow } from "@/features/admin/session";
 
-const NAV_ITEMS = [
-  { href: "/admin", label: "Painel" },
-  { href: "/admin/produtos", label: "Produtos" },
-  { href: "/admin/categorias", label: "Categorias" },
-  { href: "/admin/banners", label: "Banners" },
-] as const;
-
 /**
  * Shell autenticado do admin — header com identidade + nav + sign-out.
- * Nav cresce conforme tickets de CRUD (docs/03-architecture.md).
+ * Badge de "Pedidos" vive em `AdminNav` (client) via FulfillmentQueueProvider.
  */
 export function AdminShell({
   admin,
@@ -36,20 +29,7 @@ export function AdminShell({
           </div>
           <SignOutButton />
         </div>
-        <nav
-          aria-label="Navegação do admin"
-          className="flex gap-1 overflow-x-auto px-4 pb-2 sm:px-8"
-        >
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <AdminNav />
       </header>
 
       <main className="flex-1 px-4 py-6 sm:px-8">{children}</main>

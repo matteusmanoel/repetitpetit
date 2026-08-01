@@ -950,3 +950,34 @@ interno: `approved→paid`, `authorized→authorized`,
 **Consequência**: Loop de compra fecha sem ação humana; `/checkout/sucesso`
 passa a ver `paid` no poll. Custo: smoke E2E com buyer sandbox fica
 dependente de credenciais de teste reais — sem inventar pagamento aprovado.
+
+---
+
+## D47 — Fila de fulfillment: Realtime em UPDATE→paid + SELECT admin + publication
+
+**Data**: 2026-08-01
+**Contexto**: A T19 exige `/admin/pedidos` com canal Supabase Realtime
+(`postgres_changes` em `orders`), badge no `<title>` e no nav "Pedidos", beep
+Web Audio e card no topo da fila. O snippet de `docs/03-architecture.md` usa
+`INSERT` + `filter: status=eq.paid`, mas o fluxo real (D45/D46) cria o pedido
+como `pending_payment` e só vira `paid` via **UPDATE** no webhook/sync — um
+filtro INSERT nunca dispara. Além disso, D13 deixou `orders` só com policy
+`service_role`: sem SELECT para o JWT do admin, o Realtime não entrega eventos
+ao browser.
+**Decisão**: (1) Carregar a fila inicial de `status = 'paid'` no layout
+`(protected)` via service role (mesmo padrão do dashboard D40) e passar ao
+`FulfillmentQueueProvider`. (2) No client, assinar canal `fulfillment-queue`
+com `UPDATE` (sem filtro SQL — o handler exige `payload.new.status === 'paid'`)
+e `INSERT` opcional com `filter: status=eq.paid`. (3) Migration
+`20260801240000_orders_realtime_admin_select.sql`: função
+`is_active_admin()`, policy `orders_admin_select` (SELECT authenticated),
+`REPLICA IDENTITY FULL` em `orders`, e `ALTER PUBLICATION supabase_realtime
+ADD TABLE orders`. Escrita permanece service_role (D13); itens/cliente do
+card são enriquecidos por server action após o evento. (4) CTA
+"Conferir e separar" fica desabilitado até #21 — sem half-implementar
+transições.
+**Consequência**: O lojista vê pedidos pagos ao vivo sem refresh; badge e
+som cobrem qualquer rota `/admin/*` enquanto a sessão estiver aberta. Custo:
+aplicar a migration no projeto Supabase (MCP/CLI) antes do Realtime funcionar
+em produção; browsers com autoplay restrito podem silenciar o beep até a
+primeira interação — o badge visual permanece.

@@ -97,6 +97,7 @@ export function AdminDashboardKpis({ kpis }: { kpis: AdminDashboardKpis }) {
       label: "Pagos",
       hint: "Aguardando confirmação",
       value: kpis.ordersPaid,
+      href: "/admin/pedidos",
     },
     {
       label: "Em separação",

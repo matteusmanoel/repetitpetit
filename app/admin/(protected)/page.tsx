@@ -10,6 +10,11 @@ export const metadata: Metadata = {
 
 const SHORTCUTS = [
   {
+    href: "/admin/pedidos",
+    title: "Pedidos",
+    description: "Fila de fulfillment em tempo real — pedidos pagos para conferir.",
+  },
+  {
     href: "/admin/produtos",
     title: "Produtos",
     description: "Cadastre, edite, desative ou importe o acervo via XLSX.",

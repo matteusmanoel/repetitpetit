@@ -918,3 +918,35 @@ sync MP). Confirmação real permanece no webhook #18.
 `payments` antes do webhook. Custo: até #18 o status pode ficar
 `pending_payment` mesmo com PIX aprovado; sucesso página só reflete o que já
 está no banco.
+
+---
+
+## D46 — Webhook MP + sync: assinatura fail-closed, apply idempotente, sold + reserva
+
+**Data**: 2026-08-01
+**Contexto**: A T16 (D45) cria a preferência e deixa o pedido em
+`pending_payment`. A confirmação real vem do tópico `payment` do Mercado Pago
+(ou de um sync sob demanda se o webhook falhar). O Flor não está no sandbox —
+reimplementamos `fetch-payment`, validação `X-Signature` e `apply-mp-status`
+para os enums Repeti (`order_status` / `payment_status`), marcando peça
+`sold` e consumindo `cart_reservations` (D40: reserva não muda
+`products.status` até o pagamento).
+**Decisão**: (1) `POST /api/webhooks/mercadopago` exige
+`MERCADOPAGO_WEBHOOK_SECRET` (503 se ausente) e valida HMAC-SHA256 do manifest
+`id:[data.id];request-id:[x-request-id];ts:[ts];` com `data.id` em lowercase
+(docs oficiais MP). Assinatura inválida → 401. (2) Após validar, busca
+`GET /v1/payments/{id}` e `applyMercadoPagoPaymentStatus` (service role, D13):
+`approved` → `orders.status/payment_status = paid`, `paid_at`,
+`products.status = sold`, `DELETE cart_reservations` dos `product_id` do
+pedido, `order_events` com `actor_type = 'system'`. (3) Idempotência:
+`paid→paid` (ou status de fulfillment posterior) retorna sucesso
+`already_paid` sem regravar eventos/produtos; update de
+`pending_payment→paid` usa filtro + `.select()` para corridas entre
+webhooks. (4) `POST /api/payments/sync` reconcilia por `publicCode`/`orderId`
+via `mp_payment_id` ou `payments/search?external_reference=`. (5) Mapa MP →
+interno: `approved→paid`, `authorized→authorized`,
+`pending|in_process|in_mediation→pending`, `rejected→failed`,
+`cancelled→cancelled`, `refunded|charged_back→refunded`.
+**Consequência**: Loop de compra fecha sem ação humana; `/checkout/sucesso`
+passa a ver `paid` no poll. Custo: smoke E2E com buyer sandbox fica
+dependente de credenciais de teste reais — sem inventar pagamento aprovado.

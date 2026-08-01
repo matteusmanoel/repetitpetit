@@ -675,3 +675,30 @@ disponível) via sheet com busca. Chips ativos removíveis ficam acima do grid.
 **Consequência**: Links bookmarkáveis reproduzem o mesmo resultado no server
 render. Sem dependência nova. `13_mais` só entra via chip de tamanho (fora
 das faixas Baby/Criança/Kids+ da UX).
+
+---
+
+## D36 — Importação XLSX: parser puro + `imports_log` + FormData server action
+
+**Data**: 2026-08-01
+**Contexto**: A T12 pede importação em lote do acervo adaptando o padrão
+`products-xlsx` / `product-import-actions` do mapa de reaproveitamento (Flor),
+com campos do brechó (`brand`, `size_group`, `gender`, `condition`) e auditoria
+em `imports_log`. O sandbox não tem o repo Flor — o parser é reimplementado.
+**Decisão**: (1) Parser Zod+`xlsx` em `lib/imports/products-xlsx.ts` (puro,
+testável sem Next), com cabeçalhos PT-BR canônicos e aliases EN do data-model.
+(2) Server action `importProductsXlsxAction` em
+`features/admin/product-import-actions.ts` sempre chama `requireAdminSession()`,
+grava produtos via `createServiceSupabaseClient()`, e cria/atualiza
+`imports_log` (`total_rows` / `imported_rows` / `failed_rows` /
+`error_report_json`). (3) UI em `/admin/produtos/importar` com upload FormData
+e resumo pós-import (sem RHF); template baixado via
+`GET /admin/produtos/importar/template` (server-only, para não embutir `xlsx`
+no bundle do client). (4) `categoria_slug` opcional resolve para `category_id`;
+slug vazio gera a partir do nome; conflito de slug (arquivo ou DB) falha só a
+linha. (5) Dependência `xlsx` (SheetJS community) — alinhada ao reuse-map;
+`serverExternalPackages: ["xlsx"]` no Next.
+**Consequência**: Importação parcial é o modo padrão (linhas boas entram,
+ruins vão para o relatório). Imagens no XLSX são só `imagem_capa_url` (URL);
+galeria multi-foto continua no CRUD T10. Template documentado em
+`docs/admin-xlsx-import-template.md`.

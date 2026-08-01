@@ -58,9 +58,14 @@ export default async function AdminProductsPage({
             Cadastre, edite e desative peças do catálogo.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/produtos/novo">Nova peça</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/admin/produtos/importar">Importar XLSX</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/admin/produtos/novo">Nova peça</Link>
+          </Button>
+        </div>
       </div>
 
       <form

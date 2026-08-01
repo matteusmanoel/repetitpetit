@@ -56,7 +56,7 @@ function FieldError({ messages }: { messages?: string[] }) {
 
 export function AdminProductForm({ mode, product, categories }: Props) {
   const [name, setName] = useState(product?.name ?? "");
-  const [slug, setSlug] = useState(product?.slug ?? "");
+  const [slugManual, setSlugManual] = useState(product?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(mode === "edit");
   const [sizeGroup, setSizeGroup] = useState(product?.size_group ?? "2_3a");
   const [gender, setGender] = useState(product?.gender ?? "unissex");
@@ -71,6 +71,8 @@ export function AdminProductForm({ mode, product, categories }: Props) {
         alt_text: image.alt_text,
       })) ?? [],
   );
+
+  const slug = slugTouched ? slugManual : slugifyProductName(name);
 
   const boundAction = useMemo(() => {
     if (mode === "edit" && product) {
@@ -132,7 +134,7 @@ export function AdminProductForm({ mode, product, categories }: Props) {
             value={slug}
             onChange={(event) => {
               setSlugTouched(true);
-              setSlug(event.target.value);
+              setSlugManual(event.target.value);
             }}
             placeholder="casaco-moletom-gap-azul"
             required

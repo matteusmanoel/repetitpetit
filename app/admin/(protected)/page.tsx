@@ -9,7 +9,7 @@ const SHORTCUTS = [
   {
     href: "/admin/produtos",
     title: "Produtos",
-    description: "Cadastre, edite e desative peças do catálogo.",
+    description: "Cadastre, edite, desative ou importe o acervo via XLSX.",
   },
   {
     href: "/admin/categorias",

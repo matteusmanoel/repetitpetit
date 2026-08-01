@@ -9,6 +9,7 @@ const supabaseHostname = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["xlsx"],
   images: {
     remotePatterns: [
       // Placeholders do seed e CDN futuros

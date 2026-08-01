@@ -30,9 +30,10 @@ export function CategoryForm({ category, action, submitLabel }: CategoryFormProp
     initialCategoryActionState,
   );
   const [name, setName] = useState(category?.name ?? "");
-  const [slug, setSlug] = useState(category?.slug ?? "");
+  const [slugManual, setSlugManual] = useState(category?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(Boolean(category));
   const [isActive, setIsActive] = useState(category?.is_active ?? true);
+  const slug = slugTouched ? slugManual : slugify(name);
 
   return (
     <form action={formAction} className="flex max-w-xl flex-col gap-5">
@@ -42,13 +43,7 @@ export function CategoryForm({ category, action, submitLabel }: CategoryFormProp
           id="name"
           name="name"
           value={name}
-          onChange={(event) => {
-            const nextName = event.target.value;
-            setName(nextName);
-            if (!slugTouched) {
-              setSlug(slugify(nextName));
-            }
-          }}
+          onChange={(event) => setName(event.target.value)}
           required
           maxLength={120}
           aria-invalid={Boolean(state.fieldErrors?.name)}
@@ -66,7 +61,7 @@ export function CategoryForm({ category, action, submitLabel }: CategoryFormProp
           value={slug}
           onChange={(event) => {
             setSlugTouched(true);
-            setSlug(event.target.value);
+            setSlugManual(event.target.value);
           }}
           required
           maxLength={120}

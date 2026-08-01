@@ -144,3 +144,24 @@ reais e cumpríveis.
 Correios 1 dia útil de postagem após confirmação. Suporte em até 1h em horário comercial.
 **Consequência**: Prazos honestos e diferenciados por tipo. Exibidos em `/pedido/[codigo]`
 e no checkout.
+
+---
+
+## D13 — Scaffold M0: Next.js 15 + Tailwind v4, mínimo para validar ambiente
+
+**Data**: 2026-08-01
+**Contexto**: O repo estava docs-only (pré-M0). Para validar o ambiente de
+desenvolvimento (rodar lint/build/dev e provar conectividade), era necessário um
+scaffold executável. Ainda não há acesso DDL ao Supabase hospedado (MCP exige
+autenticação interativa; sem senha de banco/connection string injetada), então as
+migrations/seed não puderam ser aplicadas nesta sessão.
+**Decisão**: Criar um scaffold mínimo alinhado a `docs/03-architecture.md`:
+`app/` na raiz (sem `src/`), `lib/env.ts` (validação Zod), `lib/supabase/{server,browser,server-service}.ts`
+(via `@supabase/ssr`), Tailwind v4 com tokens de marca em `app/globals.css`, e páginas
+`/` (home + status de ambiente ao vivo) e `/catalogo` (grid de produtos com empty state).
+Next.js fixado em `15.5.22` (versão sem a vulnerabilidade CVE-2025-66478). Adicionada
+rota `/api/health` que verifica conectividade Supabase.
+**Consequência**: `pnpm dev/build/lint` funcionam e a home faz um round-trip real ao
+Supabase. Aplicar schema + seed (24 peças) continua pendente e exige acesso DDL
+(autenticar o MCP Supabase ou fornecer credenciais de banco). Componentes shadcn/ui,
+migrations e tipos gerados permanecem como próximos passos do M0/M1.

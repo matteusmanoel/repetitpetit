@@ -719,3 +719,25 @@ de placeholder.
 via `remotePatterns` já listados (`placehold.co` + hostname Supabase); a CSP do
 optimizer impede execução de script embutido.
 
+---
+
+## D38 — PDP: reserva via service role + CTA real `POST /api/cart/reserve`
+
+**Data**: 2026-08-01
+**Contexto**: A T08 (PDP `/produto/[slug]`) precisa do indicador de reserva
+("outro comprador" vs "no seu carrinho — Xmin") e do CTA "Adicionar ao
+carrinho". `anon` tem INSERT/DELETE em `cart_reservations`, mas **não** tem
+SELECT (docs/04-data-model.md). A AC permite stub até a T14, porém a T13 já
+entregou `POST /api/cart/reserve` + RPC no `develop`. Seeds atuais têm
+`cover_image_url` e poucas/nenhuma linha em `product_images`.
+**Decisão**: (1) Ler a reserva ativa com `createServiceSupabaseClient()` em
+`features/catalog/reservation.ts`, comparando `session_id` com
+`peekCartSessionId()` (não cria cookie só por visitar a PDP). (2) O CTA chama
+o endpoint real `POST /api/cart/reserve` (sem stub). (3) Galeria usa
+`product_images` ordenadas por `sort_order`; se vazia, faz fallback para
+`cover_image_url` como slide único. (4) "Você pode gostar" filtra
+`size_group` + `gender`, excluindo o produto atual.
+**Consequência**: Indicador e CTA ficam corretos sem relaxar RLS de SELECT
+público nas reservas. Visitantes sem cookie não são tratados como "own". A
+página do carrinho (`/carrinho`) continua fora deste ticket — após reservar, o
+CTA muda para "No carrinho" e o indicador mostra os minutos restantes.

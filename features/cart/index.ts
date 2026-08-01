@@ -3,6 +3,7 @@ export { cartProductBodySchema, type CartProductBody } from "@/features/cart/sch
 export {
   cartSessionCookieOptions,
   getCartSessionId,
+  peekCartSessionId,
 } from "@/features/cart/session";
 export { reserveProduct } from "@/features/cart/reserve";
 export { releaseProduct } from "@/features/cart/release";

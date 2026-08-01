@@ -196,3 +196,65 @@ plain. A rota atômica de reserva (`INSERT INTO cart_reservations ...` em
 reserva expirada da mesma peça (`DELETE FROM cart_reservations WHERE product_id = $1 AND
 expires_at <= now()`) antes ou na mesma transação do `INSERT`, e não pode depender apenas
 do sweep `pg_cron` (que roda a cada 5min) para liberar a peça a tempo.
+
+---
+
+## D15 — shadcn/ui: preset `radix-nova` (Radix primitives), não `base-nova`
+
+**Data**: 2026-08-01
+**Contexto**: A versão atual do CLI shadcn (`shadcn@4.x`) tem `base-nova` (primitivos
+`@base-ui/react`, biblioteca nova do time Radix/MUI) como preset padrão. `radix-nova`
+usa o pacote `radix-ui` consolidado — a mesma base que sustenta o ecossistema shadcn
+há anos, com mais documentação, exemplos e maturidade em produção.
+**Decisão**: Inicializar com `shadcn init -b radix -p nova` (estilo `radix-nova`).
+**Consequência**: Componentes (`button`, `sheet`, `badge`, `input`) usam `radix-ui` +
+`class-variance-authority`, um caminho mais previsível para as próximas tickets
+(catálogo, carrinho, admin) que vão precisar de `dialog`, `select`, `tabs`, etc.
+
+---
+
+## D16 — `lib/env.ts`: variáveis obrigatórias vs. opcionais por feature
+
+**Data**: 2026-08-01
+**Contexto**: `docs/07-setup.md` já classifica cada env var como "Sempre" (Supabase,
+site URL, nome da loja) ou por feature ("Para pagamentos", "Para suporte" — Mercado
+Pago e WhatsApp). Exigir todas no `pnpm dev`/`pnpm build` bloquearia o scaffold antes
+das tickets de pagamento/suporte existirem.
+**Decisão**: `lib/env.ts` valida com Zod dois grupos — obrigatório sempre
+(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_STORE_NAME`) e
+opcional por feature (`MERCADOPAGO_*`, `NEXT_PUBLIC_STORE_WHATSAPP`). Falha alto e
+com mensagem descritiva se um obrigatório estiver ausente ou inválido; nunca lê
+`process.env` fora deste arquivo.
+**Consequência**: Scaffold builda sem credenciais de Mercado Pago. As tickets de
+pagamento/suporte devem validar a presença das suas próprias vars opcionais antes
+de usá-las (ex.: `features/payments`).
+
+---
+
+## D17 — Sem modo escuro no MVP
+
+**Data**: 2026-08-01
+**Contexto**: `docs/01-brand.md` define só uma paleta clara, extraída do logo sobre
+fundo claro. Não há pedido de dark mode no PRD.
+**Decisão**: `app/globals.css` define apenas os tokens `:root` (claro). Sem bloco
+`.dark` nem `next-themes` no MVP.
+**Consequência**: Menos superfície para manter. Se dark mode for pedido depois, os
+tokens shadcn (`--card`, `--popover`, `--sidebar-*`, etc.) já estão mapeados via
+`@theme inline` e um bloco `.dark` pode ser adicionado sem refatorar componentes.
+
+---
+
+## D18 — Vitest para testes unitários de lib/
+
+**Data**: 2026-08-01
+**Contexto**: Ticket T01 pede TDD para a lógica de validação de `lib/env.ts`. O
+projeto não tinha test runner configurado.
+**Decisão**: Adicionar `vitest` (ambiente `node`, sem plugin React neste momento)
+como dependência de desenvolvimento; `pnpm test` roda `vitest run`. `loadEnv()` é
+exportado como função pura (recebe `raw` em vez de ler `process.env` internamente)
+para ser testável sem depender do ambiente do processo.
+**Consequência**: Base de testes para lógica de domínio (schemas Zod, mappers de
+status, etc.) nas próximas tickets. Componentes React ainda não têm test runner de
+UI — avaliar Testing Library/Playwright quando houver fluxo de UI crítico o
+suficiente para justificar o custo.

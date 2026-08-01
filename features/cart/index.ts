@@ -9,3 +9,7 @@ export { reserveProduct } from "@/features/cart/reserve";
 export { releaseProduct } from "@/features/cart/release";
 export type { CartReservation, ReserveResult } from "@/features/cart/types";
 export type { ReleaseResult } from "@/features/cart/release";
+export { formatCountdown, isReservationExpired } from "@/features/cart/countdown";
+export { useCartStore, type CartItem } from "@/features/cart/store";
+export { CartSheet } from "@/features/cart/components/CartSheet";
+export { CartTrigger } from "@/features/cart/components/CartTrigger";

@@ -810,3 +810,28 @@ visto. Sem geração/aplicação de cupom.
 **Consequência**: Lead capture alinhado ao schema/RLS sem service role nem
 engine de promoções. Custo: desconto PIX continua manual/comunicado (D10);
 popup não aparece em outras rotas.
+
+---
+
+## D42 — Carrinho client: Zustand persist + CartSheet + sonner (sem ThemeProvider)
+
+**Data**: 2026-08-01
+**Contexto**: A T14 precisa de um store de carrinho (reuse-map: portar
+`features/cart/store.tsx` do Flor) com `reservationId` + `expiresAt` por item,
+sheet deslizante com countdown MM:SS alinhado ao TTL de 20 min (D29), e toast
+na expiração. O Flor não está disponível neste sandbox — o store é
+reimplementado. shadcn `sonner` puxa `next-themes`, mas o MVP não tem dark mode
+(D17).
+**Decisão**: (1) Store Zustand em `features/cart/store.tsx` com middleware
+`persist` (`localStorage` key `rp-cart`), itens com
+`reservationId`/`expiresAt`, sem `gift_message`/`preferredFulfillment`.
+(2) `CartSheet` controlado por `isOpen` no store; tick de 1s formata MM:SS e,
+ao expirar, remove o item, toasta `"A reserva da peça X expirou"` e chama
+`POST /api/cart/release`. (3) PDP `AddToCartButton` chama o reserve real (T13),
+faz upsert no store e abre o sheet; falha 409 mostra mensagem clara.
+(4) `Toaster` light-only sem `ThemeProvider`/`useTheme` — `next-themes` fica
+como dependência transitiva do CLI shadcn, sem uso no app.
+**Consequência**: Carrinho funciona offline-UI após refresh (persist) enquanto
+a cookie `rp_cart_session` mantém a reserva no servidor. Página `/carrinho` e
+checkout real ficam para tickets seguintes — o CTA "Finalizar compra" já aponta
+para `/checkout`.

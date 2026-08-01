@@ -4,10 +4,15 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useCartStore } from "@/features/cart/store";
 import type { ReservationView } from "@/features/catalog/types";
 
 type AddToCartButtonProps = {
   productId: string;
+  name: string;
+  slug: string;
+  price: number;
+  coverImageUrl: string | null;
   reservation: ReservationView;
 };
 
@@ -17,10 +22,20 @@ type UiState =
   | { status: "success"; expiresAt: string };
 
 /**
- * CTA full-width que chama `POST /api/cart/reserve` (T13) — sem stub.
+ * CTA full-width que chama `POST /api/cart/reserve` e popula o store do carrinho (T14).
  */
-export function AddToCartButton({ productId, reservation }: AddToCartButtonProps) {
+export function AddToCartButton({
+  productId,
+  name,
+  slug,
+  price,
+  coverImageUrl,
+  reservation,
+}: AddToCartButtonProps) {
   const router = useRouter();
+  const addItem = useCartStore((s) => s.addItem);
+  const hasProduct = useCartStore((s) => s.hasProduct(productId));
+  const openCart = useCartStore((s) => s.openCart);
   const [isPending, startTransition] = useTransition();
   const [ui, setUi] = useState<UiState>({ status: "idle" });
 
@@ -30,7 +45,7 @@ export function AddToCartButton({ productId, reservation }: AddToCartButtonProps
       : reservation;
 
   const reservedByOther = effectiveReservation.kind === "other";
-  const inOwnCart = effectiveReservation.kind === "own";
+  const inOwnCart = effectiveReservation.kind === "own" || hasProduct;
 
   async function handleReserve() {
     setUi({ status: "idle" });
@@ -43,7 +58,11 @@ export function AddToCartButton({ productId, reservation }: AddToCartButtonProps
       });
 
       const payload = (await response.json().catch(() => null)) as {
-        reservation?: { expires_at: string };
+        reservation?: {
+          id: string;
+          expires_at: string;
+          product_id: string;
+        };
         message?: string;
         error?: string;
       } | null;
@@ -51,19 +70,32 @@ export function AddToCartButton({ productId, reservation }: AddToCartButtonProps
       if (response.status === 409) {
         setUi({
           status: "error",
-          message: payload?.message ?? "Esta peça não está mais disponível.",
+          message:
+            payload?.message ??
+            "Esta peça já foi reservada por outro comprador. Tente outra peça.",
         });
         startTransition(() => router.refresh());
         return;
       }
 
-      if (!response.ok || !payload?.reservation?.expires_at) {
+      if (!response.ok || !payload?.reservation?.expires_at || !payload.reservation.id) {
         setUi({
           status: "error",
           message: payload?.message ?? "Não foi possível reservar a peça. Tente de novo.",
         });
         return;
       }
+
+      addItem({
+        productId,
+        name,
+        slug,
+        price,
+        coverImageUrl,
+        quantity: 1,
+        reservationId: payload.reservation.id,
+        expiresAt: payload.reservation.expires_at,
+      });
 
       setUi({ status: "success", expiresAt: payload.reservation.expires_at });
       startTransition(() => router.refresh());
@@ -81,15 +113,19 @@ export function AddToCartButton({ productId, reservation }: AddToCartButtonProps
         type="button"
         size="lg"
         className="h-12 w-full rounded-full text-base font-medium"
-        disabled={reservedByOther || inOwnCart || isPending}
+        disabled={reservedByOther || isPending}
         onClick={() => {
+          if (inOwnCart) {
+            openCart();
+            return;
+          }
           void handleReserve();
         }}
       >
         {isPending
           ? "Reservando…"
           : inOwnCart
-            ? "No carrinho"
+            ? "Ver carrinho"
             : reservedByOther
               ? "Indisponível no momento"
               : "Adicionar ao carrinho"}

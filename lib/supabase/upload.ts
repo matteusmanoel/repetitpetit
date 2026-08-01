@@ -1,22 +1,13 @@
 import "server-only";
 
+import {
+  UPLOAD_BUCKETS,
+  type UploadBucketKey,
+  type UploadBucketName,
+} from "@/lib/supabase/upload-buckets";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
 
-/**
- * Buckets de Storage do app. Nomes reais criados no projeto Supabase via
- * `scripts/setup-storage-buckets.mjs` (ver docs/09-decisions.md). Portados do
- * padrão `lib/supabase/upload.ts` descrito em
- * docs/reference/reuse-map-flordoestudante.md, trocando os nomes de bucket
- * pelos usados por Repeti Petit (`docs/04-data-model.md`: `product_images`,
- * `intake_photos`).
- */
-export const UPLOAD_BUCKETS = {
-  productImages: "product-images",
-  intakePhotos: "intake-photos",
-} as const;
-
-export type UploadBucketKey = keyof typeof UPLOAD_BUCKETS;
-export type UploadBucketName = (typeof UPLOAD_BUCKETS)[UploadBucketKey];
+export { UPLOAD_BUCKETS, type UploadBucketKey, type UploadBucketName };
 
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8MB

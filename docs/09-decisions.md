@@ -610,3 +610,45 @@ cada save (aceitável no MVP; se no futuro precisar de URLs estáveis por id de
 imagem, migrar para upsert por id). `category_id` entra no form como opcional
 mesmo não estando na lista parentética da AC, porque é FK do data-model e as
 categorias seedadas já existem.
+
+---
+
+## D33 — Categorias/banners reutilizam bucket `product-images` com `pathPrefix`
+
+**Data**: 2026-08-01
+**Contexto**: T11 (CRUD de categorias e banners) precisa de upload de imagem via
+a rota `POST /api/upload` da T04. O schema (`docs/04-data-model.md`) guarda só
+`image_url` em texto — não há buckets dedicados para categorias/banners, e a T04
+criou apenas `product-images` e `intake-photos`. Criar buckets novos exigiria
+script + policies RLS de Storage adicionais sem ganho funcional para o MVP.
+**Decisão**: Categorias e banners fazem upload no bucket `product-images`
+(`UPLOAD_BUCKETS.productImages`), organizados por pasta lógica via campo
+opcional `pathPrefix` em `POST /api/upload` (`categories/` e `banners/`). O
+mapa de chaves foi extraído para `lib/supabase/upload-buckets.ts` (sem
+`"server-only"`) para o client do formulário tipar a chave sem puxar o módulo
+de upload privilegiado.
+**Consequência**: A home (T09) só precisa da URL pública em `image_url`; a pasta
+no Storage é convenção de organização. Se o volume de mídia crescer ou o
+isolamento por bucket virar requisito, criar buckets `category-images` /
+`banner-images` e estender `UPLOAD_BUCKETS` + script de setup.
+
+---
+
+## D34 — CRUD admin de categorias/banners via service role + `revalidatePath("/")`
+
+**Data**: 2026-08-01
+**Contexto**: RLS de `categories`/`banners` concede ao `anon` apenas
+`SELECT WHERE is_active = true` (`docs/04-data-model.md`). Writes do admin
+precisam de `createServiceSupabaseClient()` (mesmo padrão do playbook e do
+login T03). A home (T09) ainda não existe, mas a AC pede que mudanças
+apareçam em `/` sem redeploy.
+**Decisão**: Toda server action de create/update/delete em
+`features/categories/actions.ts` e `features/banners/actions.ts` chama
+`requireAdminSession()`, escreve via service role, e invoca
+`revalidatePath("/")` + `revalidatePath` das rotas admin afetadas. Listagens
+admin mostram ativos e inativos ordenados por `sort_order` (mesmo critério
+que a query pública futura `WHERE is_active = true ORDER BY sort_order`).
+**Consequência**: Quando T09 ler categorias/banners com cache do App Router,
+um save no admin invalida `/` sem rebuild. Soft-hide continua sendo
+`is_active = false`; exclusão é hard delete (categorias: `ON DELETE SET NULL`
+em `products.category_id`).

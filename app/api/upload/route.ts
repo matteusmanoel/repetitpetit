@@ -2,15 +2,22 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminSession } from "@/features/admin/session";
-import {
-  UPLOAD_BUCKETS,
-  UploadError,
-  uploadImage,
-  type UploadBucketKey,
-} from "@/lib/supabase/upload";
+import { UPLOAD_BUCKETS, type UploadBucketKey } from "@/lib/supabase/upload-buckets";
+import { UploadError, uploadImage } from "@/lib/supabase/upload";
 
 const bucketKeys = Object.keys(UPLOAD_BUCKETS) as [UploadBucketKey, ...UploadBucketKey[]];
 const bucketKeySchema = z.enum(bucketKeys);
+
+/** Prefixo opcional dentro do bucket — só segmentos alfanuméricos/hífen. */
+const pathPrefixSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/,
+    "pathPrefix inválido.",
+  )
+  .max(120)
+  .optional();
 
 /**
  * `POST /api/upload` — recebe um arquivo via `multipart/form-data` e devolve
@@ -22,6 +29,7 @@ const bucketKeySchema = z.enum(bucketKeys);
  * Campos esperados no `FormData`:
  * - `file`: o arquivo de imagem.
  * - `bucket`: uma das chaves de `UPLOAD_BUCKETS` (ex.: "productImages").
+ * - `pathPrefix` (opcional): pasta lógica dentro do bucket (ex.: "categories").
  */
 export async function POST(request: Request) {
   await requireAdminSession();
@@ -50,10 +58,26 @@ export async function POST(request: Request) {
     );
   }
 
+  const rawPrefix = formData.get("pathPrefix");
+  const parsedPrefix = pathPrefixSchema.safeParse(
+    typeof rawPrefix === "string" && rawPrefix.length > 0 ? rawPrefix : undefined,
+  );
+
+  if (!parsedPrefix.success) {
+    return NextResponse.json(
+      { error: "pathPrefix inválido. Use apenas letras, números, hífens e /." },
+      { status: 400 },
+    );
+  }
+
   const bucket = UPLOAD_BUCKETS[parsedBucket.data];
 
   try {
-    const { publicUrl, path } = await uploadImage({ bucket, file });
+    const { publicUrl, path } = await uploadImage({
+      bucket,
+      file,
+      pathPrefix: parsedPrefix.data,
+    });
 
     return NextResponse.json({ url: publicUrl, path });
   } catch (error) {

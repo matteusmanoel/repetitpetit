@@ -100,14 +100,9 @@ function BannerSlide({
       </div>
 
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-6 sm:gap-4 sm:px-8 sm:py-8">
-        <Image
-          src="/brand/logo.png"
-          alt="Repeti Petit"
-          width={335}
-          height={597}
-          priority={priority}
-          className="h-14 w-auto sm:h-16"
-        />
+        <p className="font-heading text-xs font-bold tracking-[0.18em] text-primary uppercase sm:text-sm">
+          Repeti Petit · Brechó infantil
+        </p>
         <Heading className="font-heading text-2xl font-extrabold tracking-tight text-foreground sm:text-4xl">
           {title}
         </Heading>

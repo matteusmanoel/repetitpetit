@@ -2,8 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getPublicOrderStub } from "@/features/checkout/order-lookup";
 import { formatPrice } from "@/features/catalog/format-price";
+import {
+  getFulfillmentLabel,
+  getOrderStatusLabel,
+  getPublicOrder,
+  isTerminalFailureStatus,
+  OrderItemsList,
+  OrderProgressBar,
+  OrderSupportLink,
+  resolveSlaText,
+} from "@/features/orders";
+import { env } from "@/lib/env";
 
 type PageProps = {
   params: Promise<{ codigo: string }>;
@@ -20,21 +30,26 @@ export async function generateMetadata({
 }
 
 /**
- * Stub mínimo pós-checkout (T15).
- * Página pública completa (progress bar, itens, WhatsApp) fica para T18.
+ * Página pública do pedido (T18) — acesso só por `public_code`, sem login.
+ * Expande o stub da T15 (D43); rota permanece `/pedido/[codigo]`.
  */
 export default async function PedidoPublicoPage({ params }: PageProps) {
   const { codigo } = await params;
-  const order = await getPublicOrderStub(codigo);
+  const order = await getPublicOrder(codigo);
 
   if (!order) {
     notFound();
   }
 
-  const statusLabel =
-    order.status === "pending_payment"
-      ? "Aguardando pagamento"
-      : order.status;
+  const statusLabel = getOrderStatusLabel(order.status);
+  const fulfillmentLabel = getFulfillmentLabel(order.fulfillmentType);
+  const slaText = resolveSlaText(
+    order.estimatedFulfillment,
+    order.fulfillmentType,
+  );
+  const whatsappNumber = env.NEXT_PUBLIC_STORE_WHATSAPP;
+  const isPendingPayment = order.status === "pending_payment";
+  const isFailed = isTerminalFailureStatus(order.status);
 
   return (
     <div className="mx-auto w-full max-w-lg flex-1 px-4 py-8 sm:px-8 sm:py-12">
@@ -42,44 +57,94 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
       <h1 className="font-heading mt-1 text-2xl font-extrabold text-foreground">
         Pedido {order.publicCode}
       </h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Status: <span className="font-medium text-foreground">{statusLabel}</span>
+      </p>
 
-      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-border p-4">
-        <div className="flex justify-between gap-3 text-sm">
-          <span className="text-muted-foreground">Status</span>
-          <span className="font-medium text-foreground">{statusLabel}</span>
+      {!isFailed ? (
+        <div className="mt-6 rounded-2xl border border-border px-2 py-4 sm:px-3">
+          <OrderProgressBar
+            status={order.status}
+            fulfillmentType={order.fulfillmentType}
+          />
         </div>
-        <div className="flex justify-between gap-3 text-sm">
-          <span className="text-muted-foreground">Total</span>
-          <span className="font-heading font-bold text-primary">
-            {formatPrice(order.totalAmount)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-3 text-sm">
-          <span className="text-muted-foreground">Recebimento</span>
-          <span className="font-medium text-foreground">
-            {order.fulfillmentType === "pickup" ? "Retirada" : "Entrega"}
-          </span>
-        </div>
-        {order.estimatedFulfillment ? (
-          <p className="text-sm text-muted-foreground">
-            {order.estimatedFulfillment}
+      ) : (
+        <div
+          role="status"
+          className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground"
+        >
+          <p className="font-medium">{statusLabel}</p>
+          <p className="mt-1 text-muted-foreground">
+            {order.status === "expired"
+              ? "Este pedido expirou sem pagamento. Se ainda quiser as peças, monte um novo carrinho."
+              : "Este pedido foi cancelado. Fale conosco se precisar de ajuda."}
           </p>
-        ) : null}
-      </div>
+        </div>
+      )}
 
-      <div className="mt-6 rounded-2xl bg-muted/60 px-4 py-3 text-sm text-foreground">
-        <p className="font-medium">Pagamento em breve</p>
-        <p className="mt-1 text-muted-foreground">
-          O checkout com Mercado Pago (ticket T17) ainda não está ligado. Seu
-          pedido já foi criado como <strong>aguardando pagamento</strong>.
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Página completa de acompanhamento (T18) será entregue em ticket
-          separado — este é um stub pós-redirect do checkout.
-        </p>
-      </div>
+      {isPendingPayment ? (
+        <div className="mt-4 rounded-2xl bg-muted/60 px-4 py-3 text-sm text-foreground">
+          <p className="font-medium">Aguardando pagamento</p>
+          <p className="mt-1 text-muted-foreground">
+            Seu pedido foi registrado. O pagamento online (Mercado Pago) será
+            ligado em breve — você pode acompanhar o status por este link.
+          </p>
+        </div>
+      ) : null}
+
+      <section className="mt-6 flex flex-col gap-3 rounded-2xl border border-border p-4">
+        <h2 className="font-heading text-base font-bold text-foreground">
+          Prazo estimado
+        </h2>
+        <p className="text-sm text-foreground">{slaText}</p>
+        <div className="flex justify-between gap-3 border-t border-border pt-3 text-sm">
+          <span className="text-muted-foreground">Recebimento</span>
+          <span className="font-medium text-foreground">{fulfillmentLabel}</span>
+        </div>
+        {order.trackingCode ? (
+          <div className="flex justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">Rastreio</span>
+            <span className="font-medium break-all text-foreground">
+              {order.trackingCode}
+            </span>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="mt-6 flex flex-col gap-3 rounded-2xl border border-border p-4">
+        <h2 className="font-heading text-base font-bold text-foreground">
+          Itens
+        </h2>
+        <OrderItemsList items={order.items} />
+        <dl className="flex flex-col gap-2 border-t border-border pt-3 text-sm">
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">Subtotal</dt>
+            <dd className="font-medium">{formatPrice(order.subtotalAmount)}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">Frete</dt>
+            <dd className="font-medium">
+              {order.shippingAmount === 0
+                ? "Grátis"
+                : formatPrice(order.shippingAmount)}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3 border-t border-border pt-2 text-base">
+            <dt className="font-heading font-bold">Total</dt>
+            <dd className="font-heading font-bold text-primary">
+              {formatPrice(order.totalAmount)}
+            </dd>
+          </div>
+        </dl>
+      </section>
 
       <div className="mt-8 flex flex-col gap-2">
+        {whatsappNumber ? (
+          <OrderSupportLink
+            whatsappNumber={whatsappNumber}
+            publicCode={order.publicCode}
+          />
+        ) : null}
         <Link
           href="/catalogo"
           className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground"

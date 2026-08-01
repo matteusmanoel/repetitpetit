@@ -15,6 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { CartTrigger } from "@/features/cart/components/CartTrigger";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -27,7 +28,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur-sm supports-backdrop-filter:bg-card/80">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-8">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-8">
         <Link
           href="/"
           aria-label="Repeti Petit — página inicial"
@@ -58,42 +59,46 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-11 sm:hidden"
-              aria-label="Abrir menu"
-            >
-              <Menu className="size-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="flex flex-col">
-            <SheetHeader>
-              <SheetTitle>Repeti Petit</SheetTitle>
-            </SheetHeader>
-            <nav
-              className="flex flex-col gap-1 px-4"
-              aria-label="Navegação principal"
-            >
-              {NAV_LINKS.map((link) => (
-                <SheetClose asChild key={link.href}>
-                  <Link
-                    href={link.href}
-                    className={cn(
-                      "flex min-h-11 items-center rounded-md px-3 text-base font-medium text-foreground transition-colors hover:bg-muted",
-                      pathname?.startsWith(link.href) &&
-                        "bg-muted text-primary",
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                </SheetClose>
-              ))}
-            </nav>
-          </SheetContent>
-        </Sheet>
+        <div className="flex items-center gap-0.5">
+          <CartTrigger />
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11 sm:hidden"
+                aria-label="Abrir menu"
+              >
+                <Menu className="size-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="flex flex-col">
+              <SheetHeader>
+                <SheetTitle>Repeti Petit</SheetTitle>
+              </SheetHeader>
+              <nav
+                className="flex flex-col gap-1 px-4"
+                aria-label="Navegação principal"
+              >
+                {NAV_LINKS.map((link) => (
+                  <SheetClose asChild key={link.href}>
+                    <Link
+                      href={link.href}
+                      className={cn(
+                        "flex min-h-11 items-center rounded-md px-3 text-base font-medium text-foreground transition-colors hover:bg-muted",
+                        pathname?.startsWith(link.href) &&
+                          "bg-muted text-primary",
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  </SheetClose>
+                ))}
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );

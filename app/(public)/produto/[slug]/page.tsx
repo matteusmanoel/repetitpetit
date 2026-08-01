@@ -118,7 +118,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
           ) : null}
 
-          <AddToCartButton productId={product.id} reservation={reservation} />
+          <AddToCartButton
+            productId={product.id}
+            name={product.name}
+            slug={product.slug}
+            price={product.price}
+            coverImageUrl={product.cover_image_url}
+            reservation={reservation}
+          />
 
           <ReservationIndicator reservation={reservation} />
         </div>

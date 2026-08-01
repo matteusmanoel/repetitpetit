@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { SiteFooter } from "@/components/public/site-footer";
 import { SiteHeader } from "@/components/public/site-header";
 import { WhatsAppFab } from "@/components/public/whatsapp-fab";
+import { Toaster } from "@/components/ui/sonner";
+import { CartSheet } from "@/features/cart/components/CartSheet";
 import { env } from "@/lib/env";
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
@@ -11,6 +13,8 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <SiteHeader />
       <main className="flex flex-1 flex-col">{children}</main>
       <SiteFooter />
+      <CartSheet />
+      <Toaster position="top-center" richColors closeButton />
       <WhatsAppFab whatsappNumber={env.NEXT_PUBLIC_STORE_WHATSAPP} />
     </div>
   );

@@ -652,3 +652,26 @@ que a query pública futura `WHERE is_active = true ORDER BY sort_order`).
 um save no admin invalida `/` sem rebuild. Soft-hide continua sendo
 `is_active = false`; exclusão é hard delete (categorias: `ON DELETE SET NULL`
 em `products.category_id`).
+
+---
+
+## D35 — Filtros do catálogo via query params + soft navigation
+
+**Data**: 2026-08-01
+**Contexto**: T07 exige filtros na ordem de `docs/05-ux-direction.md` com
+estado compartilhável na URL e atualização sem full reload. O grid base (T06 /
+D31) já lê `products` com anon + RLS. Não há `nuqs` no stack; o admin de
+produtos já usa `searchParams` nativos do App Router.
+**Decisão**: (1) Persistir filtros em query params em português —
+`tamanho`, `genero`, `faixa`, `marca`, `conservacao`, `preco` — com parse/
+serialize em `features/catalog/filters.ts` (valores inválidos são ignorados).
+(2) Aplicar filtros na query Supabase em `getAvailableProducts(filters)`;
+`tamanho` e `faixa` resolvem para `size_group` e se intersectam quando ambos
+ativos. Faixas de preço sem overlap: ≤30, (30–60], (60–100], >100.
+(3) UI client (`CatalogFilters`, `ActiveFilterChips`) atualiza a URL com
+`router.replace(..., { scroll: false })` + `useTransition` — soft navigation
+RSC, sem reload. Marcas vêm de `getAvailableBrands()` (distinct no acervo
+disponível) via sheet com busca. Chips ativos removíveis ficam acima do grid.
+**Consequência**: Links bookmarkáveis reproduzem o mesmo resultado no server
+render. Sem dependência nova. `13_mais` só entra via chip de tamanho (fora
+das faixas Baby/Criança/Kids+ da UX).

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 
 import { AdminProductImageManager } from "@/components/admin/AdminProductImageManager";
 import { Button } from "@/components/ui/button";
@@ -84,12 +84,6 @@ export function AdminProductForm({ mode, product, categories }: Props) {
     FormData
   >(boundAction, initialProductActionState);
 
-  useEffect(() => {
-    if (!slugTouched) {
-      setSlug(slugifyProductName(name));
-    }
-  }, [name, slugTouched]);
-
   async function handleDeactivate() {
     if (!product) return;
     const confirmed = window.confirm(
@@ -116,7 +110,13 @@ export function AdminProductForm({ mode, product, categories }: Props) {
             id="name"
             name="name"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              const nextName = event.target.value;
+              setName(nextName);
+              if (!slugTouched) {
+                setSlug(slugifyProductName(nextName));
+              }
+            }}
             placeholder="Ex.: Casaco moletom GAP azul"
             required
             aria-invalid={Boolean(state.fieldErrors?.name)}

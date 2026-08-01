@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { Button } from "@/components/ui/button";
@@ -34,12 +34,6 @@ export function CategoryForm({ category, action, submitLabel }: CategoryFormProp
   const [slugTouched, setSlugTouched] = useState(Boolean(category));
   const [isActive, setIsActive] = useState(category?.is_active ?? true);
 
-  useEffect(() => {
-    if (!slugTouched) {
-      setSlug(slugify(name));
-    }
-  }, [name, slugTouched]);
-
   return (
     <form action={formAction} className="flex max-w-xl flex-col gap-5">
       <div className="flex flex-col gap-1.5">
@@ -48,7 +42,13 @@ export function CategoryForm({ category, action, submitLabel }: CategoryFormProp
           id="name"
           name="name"
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            const nextName = event.target.value;
+            setName(nextName);
+            if (!slugTouched) {
+              setSlug(slugify(nextName));
+            }
+          }}
           required
           maxLength={120}
           aria-invalid={Boolean(state.fieldErrors?.name)}

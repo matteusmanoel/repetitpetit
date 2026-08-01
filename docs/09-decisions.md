@@ -835,3 +835,31 @@ como dependência transitiva do CLI shadcn, sem uso no app.
 a cookie `rp_cart_session` mantém a reserva no servidor. Página `/carrinho` e
 checkout real ficam para tickets seguintes — o CTA "Finalizar compra" já aponta
 para `/checkout`.
+
+---
+
+## D43 — Checkout T15: order `pending_payment` via service role; redirect stub `/pedido/[codigo]` (sem MP)
+
+**Data**: 2026-08-01
+**Contexto**: A T15 pede `/checkout` single-page (contato + fulfillment + ViaCEP +
+resumo) criando `customer`/`address`/`order`/`order_items`. Mercado Pago
+(preferência / Checkout Pro) é a T17 — integrar MP aqui bloquearia o ticket e
+misturaria escopos. D13 exige escrita de `orders`/`order_items` só com
+`createServiceSupabaseClient()`. Anon não tem SELECT em `orders`, então uma
+página pública de pedido precisa de leitura privilegiada ou de uma rota stub.
+O Flor não está no sandbox — ViaCEP + seções de checkout são reimplementados
+a partir dos docs (sem `gift_message`/Stripe).
+**Decisão**: (1) `createOrderAction` valida reservas ativas da cookie
+`rp_cart_session`, recalcula preços de `products`, reusa `customers` por
+`phone`, grava `address` só em entrega, cria `orders` com
+`status = pending_payment` + `order_items` snapshot, e **não** cria preferência
+MP nem linha em `payments`. (2) Após sucesso, redireciona para
+`/pedido/[codigo]` com stub mínimo (código, status, total, aviso de pagamento
+pendente) lido via service role — T18 (progress bar / itens / WhatsApp) fica
+explícitamente deferred. (3) CTA do submit: "Confirmar pedido" (não "Pagar com
+Mercado Pago") até a T17. (4) Frete de entrega vem de `shipping_rules` ativo
+com `metadata_json.cities`; cidade/UF do ViaCEP precisam bater com a regra.
+(5) TTL de reserva permanece 20 min flat (D29) — sem renovação no checkout.
+**Consequência**: Comprador fecha pedido sem login; loja vê `pending_payment`
+pronto para a T17 plugar `init_point`. Custo: sem pagamento online até T17;
+stub de `/pedido/[codigo]` não substitui a página pública completa da T18.

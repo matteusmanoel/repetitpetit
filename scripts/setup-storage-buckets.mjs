@@ -27,7 +27,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
-// Mantido em sincronia manualmente com UPLOAD_BUCKETS em lib/supabase/upload.ts.
+// Mantido em sincronia manualmente com UPLOAD_BUCKETS em lib/supabase/upload-buckets.ts.
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8MB
 

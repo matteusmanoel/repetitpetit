@@ -7,10 +7,13 @@ import type { AdminRow } from "@/features/admin/session";
 const NAV_ITEMS = [
   { href: "/admin", label: "Painel" },
   { href: "/admin/produtos", label: "Produtos" },
+  { href: "/admin/categorias", label: "Categorias" },
+  { href: "/admin/banners", label: "Banners" },
 ] as const;
 
 /**
- * Shell autenticado do admin — header com identidade, nav básica e sign-out.
+ * Shell autenticado do admin — header com identidade + nav + sign-out.
+ * Nav cresce conforme tickets de CRUD (docs/03-architecture.md).
  */
 export function AdminShell({
   admin,
@@ -34,7 +37,7 @@ export function AdminShell({
           <SignOutButton />
         </div>
         <nav
-          aria-label="Admin"
+          aria-label="Navegação do admin"
           className="flex gap-1 overflow-x-auto px-4 pb-2 sm:px-8"
         >
           {NAV_ITEMS.map((item) => (

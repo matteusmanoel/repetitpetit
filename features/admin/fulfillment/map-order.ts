@@ -18,6 +18,7 @@ type OrderWithRelations = Pick<
   | "total_amount"
   | "paid_at"
   | "created_at"
+  | "tracking_code"
 > & {
   customers: Pick<CustomerRow, "full_name" | "phone"> | null;
   order_items: Pick<
@@ -57,6 +58,7 @@ export function mapFulfillmentQueueOrder(
     itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
     paidAt: row.paid_at,
     createdAt: row.created_at,
+    trackingCode: row.tracking_code,
     customerName: row.customers?.full_name ?? null,
     customerPhone: row.customers?.phone ?? null,
     items,

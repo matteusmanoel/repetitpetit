@@ -981,3 +981,29 @@ som cobrem qualquer rota `/admin/*` enquanto a sessão estiver aberta. Custo:
 aplicar a migration no projeto Supabase (MCP/CLI) antes do Realtime funcionar
 em produção; browsers com autoplay restrito podem silenciar o beep até a
 primeira interação — o badge visual permanece.
+
+---
+
+## D48 — Transições de fulfillment: service role + order_events + filas na mesma página
+
+**Data**: 2026-08-01
+**Contexto**: A T20/#21 liga as ações do lojista após a fila Realtime (T19/D47):
+`paid → confirmed`, `confirmed → ready_for_pickup|shipped`,
+`ready_for_pickup|shipped → completed`, e cancelamento de `paid|confirmed`.
+Escrita em `orders` continua restrita a service role (D13); o comprador em
+`/pedido/[codigo]` já lê `status` (T18) e não precisa de trabalho extra.
+**Decisão**: (1) Plano puro `planFulfillmentTransition` + `applyFulfillmentTransition`
+via service role, com `UPDATE … WHERE status = from` (lock otimista) e insert em
+`order_events` (`event_type = status_changed`, `actor_type = admin`,
+`actor_id = admins.id`). (2) Idempotência: se o pedido já está no alvo, retorna
+sucesso sem segundo evento. (3) Server actions tipadas por transição
+(`confirmOrderAction`, `markReadyForPickupAction`, `markShippedAction` com
+`tracking_code` obrigatório, `completeOrderAction`, `cancelOrderAction`) + Zod.
+(4) `/admin/pedidos` com duas seções na mesma página — "Aguardando conferência"
+(`paid`) e "Em separação / envio" (`confirmed|ready_for_pickup|shipped`) —
+alimentadas pelo `FulfillmentQueueProvider` (SSR + Realtime UPDATE + patch local
+pós-action). Timestamps: `confirmed_at` / `cancelled_at` / `completed_at` conforme
+o alvo.
+**Consequência**: O fluxo diário do lojista fecha sem WhatsApp; double-click não
+duplica eventos. Custo: cancelamento não reabre estoque neste ticket (fora de
+escopo); produtos já `sold` no pagamento (D46) permanecem sold.

@@ -7,9 +7,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * Fila de fulfillment (T19) — lista inicial via provider no layout;
+ * Fila de fulfillment (T19 + T20) — listas via provider no layout;
  * Realtime atualiza cards, badge do nav e `<title>` sem refresh.
- * Transições "Conferir e separar" → #21.
+ * Transições: conferir, pronto, enviado, concluído, cancelar.
  */
 export default function AdminPedidosPage() {
   return (
@@ -19,8 +19,8 @@ export default function AdminPedidosPage() {
           Pedidos
         </h1>
         <p className="text-sm text-muted-foreground">
-          Pedidos pagos aguardando conferência. Novos pagamentos entram na fila
-          em tempo real.
+          Conferência e fulfillment. Pedidos pagos entram na fila em tempo real;
+          avance o status conforme separar, enviar ou concluir.
         </p>
       </div>
 

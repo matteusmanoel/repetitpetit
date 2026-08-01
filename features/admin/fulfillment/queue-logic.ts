@@ -1,5 +1,6 @@
 import type { OrderStatus } from "@/features/orders/types";
 
+import { isInProgressStatus } from "@/features/admin/fulfillment/transitions";
 import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
 
 type RealtimeOrderRow = {
@@ -29,6 +30,28 @@ export function shouldRemoveFromPaidQueue(
   return wasPaid && !stillPaid;
 }
 
+/** Entra/atualiza a lista "Em separação / envio". */
+export function isInProgressQueuePayload(
+  newRow: RealtimeOrderRow | null,
+): boolean {
+  return Boolean(newRow?.id && newRow.status && isInProgressStatus(newRow.status));
+}
+
+/** Sai da lista em progresso (concluído, cancelado, etc.). */
+export function shouldRemoveFromInProgressQueue(
+  oldRow: RealtimeOrderRow | null,
+  newRow: RealtimeOrderRow | null,
+): boolean {
+  if (!newRow?.id) return false;
+  const wasInProgress = Boolean(
+    oldRow?.status && isInProgressStatus(oldRow.status),
+  );
+  const stillInProgress = Boolean(
+    newRow.status && isInProgressStatus(newRow.status),
+  );
+  return wasInProgress && !stillInProgress;
+}
+
 /**
  * Insere/atualiza o pedido no topo da fila (mais recente primeiro).
  * Deduplica por `id`. Ordena por `paidAt` desc, depois `createdAt` desc.
@@ -50,6 +73,56 @@ export function removeQueueOrder(
   orderId: string,
 ): FulfillmentQueueOrder[] {
   return current.filter((order) => order.id !== orderId);
+}
+
+/**
+ * Aplica mudança local de status após server action (otimista / sync).
+ * Move entre filas paid ↔ em progresso conforme o novo status.
+ */
+export function applyLocalStatusChange(
+  paid: readonly FulfillmentQueueOrder[],
+  inProgress: readonly FulfillmentQueueOrder[],
+  orderId: string,
+  next: Pick<FulfillmentQueueOrder, "status"> &
+    Partial<Pick<FulfillmentQueueOrder, "trackingCode">>,
+): {
+  paid: FulfillmentQueueOrder[];
+  inProgress: FulfillmentQueueOrder[];
+} {
+  const fromPaid = paid.find((o) => o.id === orderId);
+  const fromInProgress = inProgress.find((o) => o.id === orderId);
+  const base = fromPaid ?? fromInProgress;
+
+  if (!base) {
+    return { paid: [...paid], inProgress: [...inProgress] };
+  }
+
+  const updated: FulfillmentQueueOrder = {
+    ...base,
+    status: next.status,
+    trackingCode:
+      next.trackingCode !== undefined ? next.trackingCode : base.trackingCode,
+  };
+
+  const withoutPaid = removeQueueOrder(paid, orderId);
+  const withoutInProgress = removeQueueOrder(inProgress, orderId);
+
+  if (updated.status === "paid") {
+    return {
+      paid: upsertQueueOrder(withoutPaid, updated),
+      inProgress: withoutInProgress,
+    };
+  }
+
+  if (isInProgressStatus(updated.status)) {
+    return {
+      paid: withoutPaid,
+      inProgress: upsertQueueOrder(withoutInProgress, updated),
+    };
+  }
+
+  // completed / cancelled / outros terminais — some das duas listas
+  return { paid: withoutPaid, inProgress: withoutInProgress };
 }
 
 /** Badge no `<title>` da aba quando há pedidos pagos aguardando. */

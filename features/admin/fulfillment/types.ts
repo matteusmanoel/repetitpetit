@@ -10,8 +10,7 @@ export type FulfillmentQueueItem = {
 };
 
 /**
- * Pedido `paid` na fila do lojista (T19).
- * Transições de status (confirmed/shipped/…) ficam para T20/#21.
+ * Pedido na fila de fulfillment (paid ou em progresso).
  */
 export type FulfillmentQueueOrder = {
   id: string;
@@ -22,6 +21,7 @@ export type FulfillmentQueueOrder = {
   itemCount: number;
   paidAt: string | null;
   createdAt: string;
+  trackingCode: string | null;
   customerName: string | null;
   customerPhone: string | null;
   items: FulfillmentQueueItem[];

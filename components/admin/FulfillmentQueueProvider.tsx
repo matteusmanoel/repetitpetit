@@ -13,25 +13,44 @@ import {
 import { usePathname } from "next/navigation";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
-import { fetchFulfillmentQueueOrderAction } from "@/features/admin/fulfillment/actions";
+import {
+  fetchFulfillmentOrderByIdAction,
+  fetchFulfillmentQueueOrderAction,
+} from "@/features/admin/fulfillment/actions";
 import { playOrderNotificationBeep } from "@/features/admin/fulfillment/notify-beep";
 import {
+  applyLocalStatusChange,
   formatQueueDocumentTitle,
+  isInProgressQueuePayload,
   isPaidQueuePayload,
   removeQueueOrder,
+  shouldRemoveFromInProgressQueue,
   shouldRemoveFromPaidQueue,
   upsertQueueOrder,
 } from "@/features/admin/fulfillment/queue-logic";
 import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
+import type { OrderStatus } from "@/features/orders/types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/types";
 
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 
+type QueueState = {
+  paid: FulfillmentQueueOrder[];
+  inProgress: FulfillmentQueueOrder[];
+};
+
 type FulfillmentQueueContextValue = {
+  /** Pedidos `paid` (fila de conferência) — alias histórico `orders`. */
   orders: FulfillmentQueueOrder[];
+  inProgressOrders: FulfillmentQueueOrder[];
   paidCount: number;
   isRealtimeConnected: boolean;
+  applyLocalTransition: (
+    orderId: string,
+    status: OrderStatus,
+    extras?: { trackingCode?: string | null },
+  ) => void;
 };
 
 const FulfillmentQueueContext =
@@ -48,29 +67,36 @@ export function useFulfillmentQueue(): FulfillmentQueueContextValue {
 }
 
 /**
- * Assina Realtime em todo o admin (badge no nav + title) e mantém a lista
- * da fila. Pedidos iniciais vêm do SSR (service role); eventos novos são
- * enriquecidos via server action.
+ * Assina Realtime em todo o admin (badge no nav + title) e mantém as listas
+ * paid + em progresso. Pedidos iniciais vêm do SSR (service role).
  */
 export function FulfillmentQueueProvider({
   initialOrders,
+  initialInProgressOrders = [],
   children,
 }: {
   initialOrders: FulfillmentQueueOrder[];
+  initialInProgressOrders?: FulfillmentQueueOrder[];
   children: ReactNode;
 }) {
-  const [orders, setOrders] = useState(initialOrders);
+  const [queues, setQueues] = useState<QueueState>({
+    paid: initialOrders,
+    inProgress: initialInProgressOrders,
+  });
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const pathname = usePathname();
-  const knownIdsRef = useRef(new Set(initialOrders.map((o) => o.id)));
+  const knownPaidIdsRef = useRef(new Set(initialOrders.map((o) => o.id)));
   const enrichingRef = useRef(new Set<string>());
 
   useEffect(() => {
-    setOrders(initialOrders);
-    knownIdsRef.current = new Set(initialOrders.map((o) => o.id));
-  }, [initialOrders]);
+    setQueues({
+      paid: initialOrders,
+      inProgress: initialInProgressOrders,
+    });
+    knownPaidIdsRef.current = new Set(initialOrders.map((o) => o.id));
+  }, [initialOrders, initialInProgressOrders]);
 
-  const paidCount = orders.length;
+  const paidCount = queues.paid.length;
 
   useEffect(() => {
     if (paidCount > 0) {
@@ -83,24 +109,65 @@ export function FulfillmentQueueProvider({
     }
   }, [paidCount, pathname]);
 
+  const applyLocalTransition = useCallback(
+    (
+      orderId: string,
+      status: OrderStatus,
+      extras?: { trackingCode?: string | null },
+    ) => {
+      if (status !== "paid") {
+        knownPaidIdsRef.current.delete(orderId);
+      }
+
+      setQueues((prev) =>
+        applyLocalStatusChange(prev.paid, prev.inProgress, orderId, {
+          status,
+          trackingCode: extras?.trackingCode ?? undefined,
+        }),
+      );
+    },
+    [],
+  );
+
   const enqueuePaidOrder = useCallback(async (orderId: string) => {
-    if (enrichingRef.current.has(orderId)) return;
-    enrichingRef.current.add(orderId);
+    if (enrichingRef.current.has(`paid:${orderId}`)) return;
+    enrichingRef.current.add(`paid:${orderId}`);
 
     try {
       const full = await fetchFulfillmentQueueOrderAction(orderId);
       if (!full) return;
 
-      const isNew = !knownIdsRef.current.has(full.id);
-      knownIdsRef.current.add(full.id);
+      const isNew = !knownPaidIdsRef.current.has(full.id);
+      knownPaidIdsRef.current.add(full.id);
 
-      setOrders((prev) => upsertQueueOrder(prev, full));
+      setQueues((prev) => ({
+        paid: upsertQueueOrder(prev.paid, full),
+        inProgress: removeQueueOrder(prev.inProgress, full.id),
+      }));
 
       if (isNew) {
         playOrderNotificationBeep();
       }
     } finally {
-      enrichingRef.current.delete(orderId);
+      enrichingRef.current.delete(`paid:${orderId}`);
+    }
+  }, []);
+
+  const enqueueInProgressOrder = useCallback(async (orderId: string) => {
+    if (enrichingRef.current.has(`progress:${orderId}`)) return;
+    enrichingRef.current.add(`progress:${orderId}`);
+
+    try {
+      const full = await fetchFulfillmentOrderByIdAction(orderId);
+      if (!full || !isInProgressQueuePayload(full)) return;
+
+      knownPaidIdsRef.current.delete(full.id);
+      setQueues((prev) => ({
+        paid: removeQueueOrder(prev.paid, full.id),
+        inProgress: upsertQueueOrder(prev.inProgress, full),
+      }));
+    } finally {
+      enrichingRef.current.delete(`progress:${orderId}`);
     }
   }, []);
 
@@ -120,16 +187,33 @@ export function FulfillmentQueueProvider({
         : null;
 
       if (shouldRemoveFromPaidQueue(oldStatus, newStatus) && newStatus?.id) {
-        knownIdsRef.current.delete(newStatus.id);
-        setOrders((prev) => removeQueueOrder(prev, newStatus.id));
-        return;
+        knownPaidIdsRef.current.delete(newStatus.id);
+        setQueues((prev) => ({
+          ...prev,
+          paid: removeQueueOrder(prev.paid, newStatus.id),
+        }));
+      }
+
+      if (
+        shouldRemoveFromInProgressQueue(oldStatus, newStatus) &&
+        newStatus?.id
+      ) {
+        setQueues((prev) => ({
+          ...prev,
+          inProgress: removeQueueOrder(prev.inProgress, newStatus.id),
+        }));
       }
 
       if (isPaidQueuePayload(newStatus) && newStatus?.id) {
         void enqueuePaidOrder(newStatus.id);
+        return;
+      }
+
+      if (isInProgressQueuePayload(newStatus) && newStatus?.id) {
+        void enqueueInProgressOrder(newStatus.id);
       }
     },
-    [enqueuePaidOrder],
+    [enqueuePaidOrder, enqueueInProgressOrder],
   );
 
   useEffect(() => {
@@ -137,7 +221,6 @@ export function FulfillmentQueueProvider({
 
     // UPDATE é o caminho real (webhook: pending_payment → paid).
     // INSERT + filter status=eq.paid cobre o caso raro de insert já pago.
-    // Sem filter no UPDATE: o NEW row é filtrado no handler (isPaidQueuePayload).
     const channel = supabase
       .channel("fulfillment-queue")
       .on(
@@ -170,11 +253,13 @@ export function FulfillmentQueueProvider({
 
   const value = useMemo(
     () => ({
-      orders,
+      orders: queues.paid,
+      inProgressOrders: queues.inProgress,
       paidCount,
       isRealtimeConnected,
+      applyLocalTransition,
     }),
-    [orders, paidCount, isRealtimeConnected],
+    [queues, paidCount, isRealtimeConnected, applyLocalTransition],
   );
 
   return (

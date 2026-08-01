@@ -1,7 +1,26 @@
-import { formatPrice } from "@/features/catalog/format-price";
-import { getFulfillmentLabel } from "@/features/orders/status";
-import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
+"use client";
+
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+
+import { useFulfillmentQueue } from "@/components/admin/FulfillmentQueueProvider";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  cancelOrderAction,
+  completeOrderAction,
+  confirmOrderAction,
+  markReadyForPickupAction,
+  markShippedAction,
+} from "@/features/admin/fulfillment/actions";
+import type { FulfillmentTransitionResult } from "@/features/admin/fulfillment/apply-transition";
+import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
+import { formatPrice } from "@/features/catalog/format-price";
+import {
+  getFulfillmentLabel,
+  getOrderStatusLabel,
+} from "@/features/orders/status";
 
 function formatPaidAt(iso: string | null): string {
   if (!iso) return "Pago agora";
@@ -17,18 +36,49 @@ function formatPaidAt(iso: string | null): string {
 }
 
 /**
- * Card da fila — resumo do pedido pago.
- * CTA "Conferir e separar" fica desabilitado até T20/#21 (transições).
+ * Card da fila — ações de transição T20 conforme status atual.
  */
 export function FulfillmentOrderCard({
   order,
 }: {
   order: FulfillmentQueueOrder;
 }) {
+  const { applyLocalTransition } = useFulfillmentQueue();
+  const [isPending, startTransition] = useTransition();
+  const [trackingCode, setTrackingCode] = useState(order.trackingCode ?? "");
+  const [showShipForm, setShowShipForm] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
   const itemSummary =
-    order.itemCount === 1
-      ? "1 peça"
-      : `${order.itemCount} peças`;
+    order.itemCount === 1 ? "1 peça" : `${order.itemCount} peças`;
+
+  const canCancel = order.status === "paid" || order.status === "confirmed";
+  const showReadyForPickup =
+    order.status === "confirmed" &&
+    (order.fulfillmentType === "pickup" ||
+      order.fulfillmentType === "delivery");
+
+  const run = (
+    action: () => Promise<FulfillmentTransitionResult>,
+    successMessage: string,
+    extras?: { trackingCode?: string | null },
+  ) => {
+    startTransition(async () => {
+      const result = await action();
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      if (result.outcome === "idempotent") {
+        toast.message("Status já atualizado.");
+      } else {
+        toast.success(successMessage);
+      }
+      applyLocalTransition(order.id, result.status, extras);
+      setConfirmCancel(false);
+      setShowShipForm(false);
+    });
+  };
 
   return (
     <article
@@ -41,8 +91,14 @@ export function FulfillmentOrderCard({
             {order.publicCode}
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {formatPaidAt(order.paidAt)} · {getFulfillmentLabel(order.fulfillmentType)}
+            {formatPaidAt(order.paidAt)} ·{" "}
+            {getFulfillmentLabel(order.fulfillmentType)}
           </p>
+          {order.status !== "paid" ? (
+            <p className="mt-1 text-xs font-medium text-foreground">
+              {getOrderStatusLabel(order.status)}
+            </p>
+          ) : null}
         </div>
         <p className="shrink-0 font-heading text-base font-extrabold tabular-nums text-primary">
           {formatPrice(order.totalAmount)}
@@ -70,12 +126,164 @@ export function FulfillmentOrderCard({
             ))}
           </ul>
         ) : null}
+        {order.trackingCode ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Rastreio:{" "}
+            <span className="font-medium text-foreground">
+              {order.trackingCode}
+            </span>
+          </p>
+        ) : null}
       </div>
 
-      {/* T20/#21: ligar transição paid → confirmed */}
-      <Button type="button" className="w-full sm:w-auto" disabled>
-        Conferir e separar
-      </Button>
+      <div className="flex flex-col gap-2">
+        {order.status === "paid" ? (
+          <Button
+            type="button"
+            size="lg"
+            className="min-h-11 w-full"
+            disabled={isPending}
+            onClick={() =>
+              run(() => confirmOrderAction(order.id), "Pedido em separação.")
+            }
+          >
+            Conferir e separar
+          </Button>
+        ) : null}
+
+        {showReadyForPickup ? (
+          <Button
+            type="button"
+            size="lg"
+            className="min-h-11 w-full"
+            disabled={isPending}
+            onClick={() =>
+              run(
+                () => markReadyForPickupAction(order.id),
+                "Pedido pronto para retirada.",
+              )
+            }
+          >
+            Pronto para retirada
+          </Button>
+        ) : null}
+
+        {order.status === "confirmed" && !showShipForm ? (
+          <Button
+            type="button"
+            size="lg"
+            variant={
+              order.fulfillmentType === "correios" ? "default" : "outline"
+            }
+            className="min-h-11 w-full"
+            disabled={isPending}
+            onClick={() => setShowShipForm(true)}
+          >
+            Marcar como enviado
+          </Button>
+        ) : null}
+
+        {order.status === "confirmed" && showShipForm ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+            <Label htmlFor={`tracking-${order.id}`}>Código de rastreio</Label>
+            <Input
+              id={`tracking-${order.id}`}
+              value={trackingCode}
+              onChange={(e) => setTrackingCode(e.target.value)}
+              placeholder="Ex.: AA123456789BR"
+              disabled={isPending}
+              className="min-h-11"
+              autoComplete="off"
+            />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                size="lg"
+                className="min-h-11 w-full"
+                disabled={isPending || !trackingCode.trim()}
+                onClick={() =>
+                  run(
+                    () => markShippedAction(order.id, trackingCode.trim()),
+                    "Pedido marcado como enviado.",
+                    { trackingCode: trackingCode.trim() },
+                  )
+                }
+              >
+                Confirmar envio
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                className="min-h-11 w-full"
+                disabled={isPending}
+                onClick={() => setShowShipForm(false)}
+              >
+                Voltar
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {order.status === "ready_for_pickup" || order.status === "shipped" ? (
+          <Button
+            type="button"
+            size="lg"
+            className="min-h-11 w-full"
+            disabled={isPending}
+            onClick={() =>
+              run(() => completeOrderAction(order.id), "Pedido concluído.")
+            }
+          >
+            Marcar como concluído
+          </Button>
+        ) : null}
+
+        {canCancel && !confirmCancel ? (
+          <Button
+            type="button"
+            size="lg"
+            variant="ghost"
+            className="min-h-11 w-full text-destructive hover:text-destructive"
+            disabled={isPending}
+            onClick={() => setConfirmCancel(true)}
+          >
+            Cancelar pedido
+          </Button>
+        ) : null}
+
+        {confirmCancel ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            <p className="text-sm text-foreground">
+              Cancelar o pedido {order.publicCode}?
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                size="lg"
+                variant="destructive"
+                className="min-h-11 w-full"
+                disabled={isPending}
+                onClick={() =>
+                  run(() => cancelOrderAction(order.id), "Pedido cancelado.")
+                }
+              >
+                Confirmar cancelamento
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                className="min-h-11 w-full"
+                disabled={isPending}
+                onClick={() => setConfirmCancel(false)}
+              >
+                Manter pedido
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </article>
   );
 }

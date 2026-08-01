@@ -1,6 +1,7 @@
 import "server-only";
 
 import { mapFulfillmentQueueOrder } from "@/features/admin/fulfillment/map-order";
+import { IN_PROGRESS_STATUSES } from "@/features/admin/fulfillment/transitions";
 import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
 
@@ -12,6 +13,7 @@ const QUEUE_SELECT = `
   total_amount,
   paid_at,
   created_at,
+  tracking_code,
   customers (
     full_name,
     phone
@@ -51,8 +53,31 @@ export async function getPaidFulfillmentQueue(): Promise<
 }
 
 /**
- * Um pedido pago por id — usado para enriquecer eventos Realtime (só a row
- * de `orders` chega pelo canal; itens/cliente vêm daqui).
+ * Pedidos em separação / envio (confirmed, ready_for_pickup, shipped).
+ */
+export async function getInProgressFulfillmentQueue(): Promise<
+  FulfillmentQueueOrder[]
+> {
+  const supabase = createServiceSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select(QUEUE_SELECT)
+    .in("status", [...IN_PROGRESS_STATUSES])
+    .order("updated_at", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(
+      `Falha ao carregar pedidos em andamento: ${error.message}`,
+    );
+  }
+
+  return (data ?? []).map(mapFulfillmentQueueOrder);
+}
+
+/**
+ * Um pedido pago por id — usado para enriquecer eventos Realtime da fila paid.
  */
 export async function getPaidFulfillmentQueueOrderById(
   orderId: string,
@@ -70,6 +95,30 @@ export async function getPaidFulfillmentQueueOrderById(
     throw new Error(
       `Falha ao carregar pedido da fila: ${error.message}`,
     );
+  }
+
+  if (!data) return null;
+
+  return mapFulfillmentQueueOrder(data);
+}
+
+/**
+ * Pedido por id em qualquer status de fila (paid ou em progresso).
+ * Usado após transição / Realtime para atualizar cards.
+ */
+export async function getFulfillmentQueueOrderById(
+  orderId: string,
+): Promise<FulfillmentQueueOrder | null> {
+  const supabase = createServiceSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select(QUEUE_SELECT)
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Falha ao carregar pedido: ${error.message}`);
   }
 
   if (!data) return null;

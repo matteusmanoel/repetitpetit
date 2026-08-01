@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyLocalStatusChange,
   formatQueueDocumentTitle,
+  isInProgressQueuePayload,
   isPaidQueuePayload,
   removeQueueOrder,
+  shouldRemoveFromInProgressQueue,
   shouldRemoveFromPaidQueue,
   upsertQueueOrder,
 } from "@/features/admin/fulfillment/queue-logic";
@@ -20,6 +23,7 @@ function fakeOrder(
     itemCount: 1,
     paidAt: "2026-08-01T12:00:00.000Z",
     createdAt: "2026-08-01T11:50:00.000Z",
+    trackingCode: null,
     customerName: "Ana",
     customerPhone: "554599999999",
     items: [],
@@ -103,5 +107,60 @@ describe("formatQueueDocumentTitle", () => {
 
   it("omits badge when empty", () => {
     expect(formatQueueDocumentTitle(0)).toBe("Pedidos · Repeti Petit");
+  });
+});
+
+describe("in-progress queue helpers", () => {
+  it("accepts confirmed / ready / shipped payloads", () => {
+    expect(isInProgressQueuePayload({ id: "o1", status: "confirmed" })).toBe(
+      true,
+    );
+    expect(
+      isInProgressQueuePayload({ id: "o1", status: "ready_for_pickup" }),
+    ).toBe(true);
+    expect(isInProgressQueuePayload({ id: "o1", status: "paid" })).toBe(false);
+  });
+
+  it("removes when leaving in-progress", () => {
+    expect(
+      shouldRemoveFromInProgressQueue(
+        { id: "o1", status: "confirmed" },
+        { id: "o1", status: "completed" },
+      ),
+    ).toBe(true);
+    expect(
+      shouldRemoveFromInProgressQueue(
+        { id: "o1", status: "confirmed" },
+        { id: "o1", status: "shipped" },
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("applyLocalStatusChange", () => {
+  it("moves paid → confirmed into in-progress", () => {
+    const paid = [fakeOrder({ id: "a" })];
+    const result = applyLocalStatusChange(paid, [], "a", {
+      status: "confirmed",
+    });
+    expect(result.paid).toHaveLength(0);
+    expect(result.inProgress[0]?.status).toBe("confirmed");
+  });
+
+  it("removes completed from in-progress", () => {
+    const inProgress = [fakeOrder({ id: "a", status: "shipped" })];
+    const result = applyLocalStatusChange([], inProgress, "a", {
+      status: "completed",
+    });
+    expect(result.inProgress).toHaveLength(0);
+  });
+
+  it("sets tracking_code on ship", () => {
+    const inProgress = [fakeOrder({ id: "a", status: "confirmed" })];
+    const result = applyLocalStatusChange([], inProgress, "a", {
+      status: "shipped",
+      trackingCode: "BR123",
+    });
+    expect(result.inProgress[0]?.trackingCode).toBe("BR123");
   });
 });

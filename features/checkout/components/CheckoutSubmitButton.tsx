@@ -10,7 +10,7 @@ type CheckoutSubmitButtonProps = {
 };
 
 /**
- * CTA do checkout (T15). Copy sem Mercado Pago — preferência MP é T17.
+ * CTA do checkout — redireciona ao Checkout Pro (T16 / D08).
  */
 export function CheckoutSubmitButton({
   disabled,
@@ -26,10 +26,10 @@ export function CheckoutSubmitButton({
       {pending ? (
         <>
           <Loader2 className="size-4 animate-spin" />
-          Criando pedido…
+          Redirecionando…
         </>
       ) : (
-        "Confirmar pedido"
+        "Pagar com Mercado Pago"
       )}
     </Button>
   );

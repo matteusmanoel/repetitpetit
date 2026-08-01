@@ -172,9 +172,9 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
 
     setPending(true);
     const result = await createOrderAction(parsed.data);
-    setPending(false);
 
     if (!result.success) {
+      setPending(false);
       setSubmitError(result.error);
       if (result.code === "reservation_expired") {
         // Força o usuário a revisar o carrinho — itens podem ter expirado.
@@ -182,11 +182,21 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
       return;
     }
 
-    // Limpa o carrinho local após pedido criado.
+    // Limpa o carrinho local após pedido criado (antes do redirect MP).
     for (const item of [...items]) {
       removeItem(item.productId);
     }
 
+    if (result.initPoint) {
+      window.location.assign(result.initPoint);
+      return;
+    }
+
+    setPending(false);
+    setSubmitError(
+      result.paymentError ??
+        "Pedido criado, mas o pagamento não pôde ser iniciado. Abra o pedido para tentar de novo.",
+    );
     router.push(`/pedido/${result.publicCode}`);
   }
 
@@ -311,7 +321,8 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
           <div className="mt-4 flex flex-col gap-2">
             <CheckoutSubmitButton pending={pending} disabled={items.length === 0} />
             <p className="text-center text-xs text-muted-foreground">
-              Pagamento via Mercado Pago na próxima etapa (em breve).
+              Você será redirecionado ao Mercado Pago para pagar com PIX ou
+              cartão.
             </p>
           </div>
         </div>

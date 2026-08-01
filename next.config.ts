@@ -11,6 +11,10 @@ const supabaseHostname = (() => {
 const nextConfig: NextConfig = {
   serverExternalPackages: ["xlsx"],
   images: {
+    // Seed usa placehold.co (SVG). Fotos reais do Storage serão JPEG/PNG/WEBP.
+    dangerouslyAllowSVG: true,
+    contentDispositionType: "attachment",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       // Placeholders do seed e CDN futuros
       { protocol: "https", hostname: "placehold.co" },

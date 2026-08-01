@@ -888,3 +888,33 @@ checkout passa a delegar a `getPublicOrder`.
 **Consequência**: Um único link pós-checkout serve stub→página completa; anon
 continua sem SELECT direto em `orders`. Mercado Pago / webhook (T17) e fila
 admin ficam fora do escopo.
+
+---
+
+## D45 — Checkout Pro T16: preferência REST + `init_point`; sucesso faz poll local (webhook #18)
+
+**Data**: 2026-08-01
+**Contexto**: A T16 liga o pedido `pending_payment` (D43) ao Mercado Pago Checkout
+Pro (D08). O Flor não está no sandbox — `lib/mercado-pago/*` é reimplementado
+via Preference API REST (`POST /checkout/preferences`), sem SDK e sem
+`gift_message`. Credenciais `MERCADOPAGO_*` seguem D16 (opcionais no bootstrap;
+validadas em `getMercadoPagoConfig()` no uso). O webhook com assinatura e a
+marcação `paid`/`sold` são a T17/#18 — a página de retorno precisa de um estado
+intermediário sem inventar confirmação falsa.
+**Decisão**: (1) `createMercadoPagoPreference` monta items a partir de
+`order_items` (+ item "Frete" se `shipping_amount > 0`), `external_reference =
+public_code`, `back_urls`/`auto_return` → `/checkout/sucesso?codigo=…`,
+`notification_url` → `/api/webhooks/mercadopago` (handler deferred). PIX +
+cartão ficam no host MP (sem `excluded_payment_types`). (2) Após criar o pedido,
+`createOrderAction` chama `createCheckoutPreferenceForOrder` (service role,
+D13): grava `orders.mp_preference_id` e upserta `payments` pending; retorna
+`initPoint` (usa `sandbox_init_point` se token `TEST-`). CTA checkout =
+"Pagar com Mercado Pago"; client faz `window.location.assign(initPoint)`.
+(3) Pedidos pending sem redirect (falha MP ou retorno) recriam preferência via
+`startMercadoPagoPaymentAction`. (4) `/checkout/sucesso` mostra
+"processando" e faz poll em `GET /api/payments/status` (só lê `orders` — sem
+sync MP). Confirmação real permanece no webhook #18.
+**Consequência**: Comprador paga no host MP; loja recebe preferência + linha
+`payments` antes do webhook. Custo: até #18 o status pode ficar
+`pending_payment` mesmo com PIX aprovado; sucesso página só reflete o que já
+está no banco.

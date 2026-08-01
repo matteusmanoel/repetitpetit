@@ -4,6 +4,7 @@ import { peekCartSessionId } from "@/features/cart/session";
 import { nextPublicCode } from "@/features/checkout/public-code";
 import { createOrderSchema } from "@/features/checkout/schemas";
 import type { CreateOrderResult } from "@/features/checkout/types";
+import { createCheckoutPreferenceForOrder } from "@/features/payments/create-checkout-preference";
 import type { Json } from "@/lib/supabase/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
 
@@ -16,12 +17,13 @@ function normalizeCity(city: string): string {
 }
 
 /**
- * Cria pedido `pending_payment` a partir do carrinho reservado (T15 / D13).
+ * Cria pedido `pending_payment` a partir do carrinho reservado (T15 / D13)
+ * e inicia Checkout Pro (T16 / D08) com preferência a partir de `order_items`.
  *
  * - Recalcula preços a partir de `products` (nunca confia no client).
  * - Valida reservas ativas da sessão (`cart_reservations`).
  * - Reusa `customers` por telefone.
- * - NÃO cria preferência Mercado Pago (ticket #17).
+ * - Cria preferência MP, grava `mp_preference_id` e retorna `initPoint`.
  */
 export async function createOrderAction(
   raw: unknown,
@@ -404,9 +406,22 @@ export async function createOrderAction(
     };
   }
 
+  const payment = await createCheckoutPreferenceForOrder(orderId);
+
+  if (!payment.success) {
+    return {
+      success: true,
+      publicCode,
+      orderId,
+      initPoint: null,
+      paymentError: payment.error,
+    };
+  }
+
   return {
     success: true,
     publicCode,
     orderId,
+    initPoint: payment.initPoint,
   };
 }

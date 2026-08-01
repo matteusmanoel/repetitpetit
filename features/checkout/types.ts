@@ -43,13 +43,21 @@ export type CreateOrderSuccess = {
   success: true;
   publicCode: string;
   orderId: string;
+  /** URL Checkout Pro (`init_point` / sandbox). Null se MP falhou após criar o pedido. */
+  initPoint: string | null;
+  paymentError?: string;
 };
 
 export type CreateOrderFailure = {
   success: false;
   error: string;
   /** Reserva expirada / peça indisponível — cliente deve limpar o carrinho. */
-  code?: "reservation_expired" | "empty_cart" | "validation" | "shipping";
+  code?:
+    | "reservation_expired"
+    | "empty_cart"
+    | "validation"
+    | "shipping"
+    | "payment";
 };
 
 export type CreateOrderResult = CreateOrderSuccess | CreateOrderFailure;

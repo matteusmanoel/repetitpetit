@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PayWithMercadoPagoButton } from "@/features/checkout/components/PayWithMercadoPagoButton";
 import { formatPrice } from "@/features/catalog/format-price";
 import {
   getFulfillmentLabel,
@@ -32,6 +33,7 @@ export async function generateMetadata({
 /**
  * Página pública do pedido (T18) — acesso só por `public_code`, sem login.
  * Expande o stub da T15 (D43); rota permanece `/pedido/[codigo]`.
+ * CTA Checkout Pro (T16) quando ainda pending_payment.
  */
 export default async function PedidoPublicoPage({ params }: PageProps) {
   const { codigo } = await params;
@@ -48,7 +50,8 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
     order.fulfillmentType,
   );
   const whatsappNumber = env.NEXT_PUBLIC_STORE_WHATSAPP;
-  const isPendingPayment = order.status === "pending_payment";
+  const awaitingPayment =
+    order.status === "pending_payment" && order.paymentStatus === "pending";
   const isFailed = isTerminalFailureStatus(order.status);
 
   return (
@@ -82,13 +85,16 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
         </div>
       )}
 
-      {isPendingPayment ? (
-        <div className="mt-4 rounded-2xl bg-muted/60 px-4 py-3 text-sm text-foreground">
-          <p className="font-medium">Aguardando pagamento</p>
+      {awaitingPayment ? (
+        <div className="mt-4 rounded-2xl bg-muted/60 px-4 py-4 text-sm text-foreground">
+          <p className="font-medium">Finalize o pagamento</p>
           <p className="mt-1 text-muted-foreground">
-            Seu pedido foi registrado. O pagamento online (Mercado Pago) será
-            ligado em breve — você pode acompanhar o status por este link.
+            Pague com PIX ou cartão no Checkout Pro do Mercado Pago. Após o
+            pagamento, a confirmação pode levar alguns segundos.
           </p>
+          <div className="mt-4">
+            <PayWithMercadoPagoButton publicCode={order.publicCode} />
+          </div>
         </div>
       ) : null}
 

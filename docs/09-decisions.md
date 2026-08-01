@@ -863,3 +863,28 @@ com `metadata_json.cities`; cidade/UF do ViaCEP precisam bater com a regra.
 **Consequência**: Comprador fecha pedido sem login; loja vê `pending_payment`
 pronto para a T17 plugar `init_point`. Custo: sem pagamento online até T17;
 stub de `/pedido/[codigo]` não substitui a página pública completa da T18.
+
+---
+
+## D44 — Pedido público T18: expandir stub `/pedido/[codigo]` (não nova rota)
+
+**Data**: 2026-08-01
+**Contexto**: A T15 (D43) deixou um stub em `/pedido/[codigo]` com leitura via
+service role. A T18 (issue #19) pede a página completa (progresso, itens, SLA,
+WhatsApp) sem login, só com `public_code`. O reuse-map aponta
+`OrderProgressBar` / `OrderItemsList` ADAPT (confirmed/shipped; sem
+`gift_message`), e o Flor não está no sandbox. Inventar outra rota quebraria o
+redirect do checkout.
+**Decisão**: (1) Manter a rota `/pedido/[codigo]`; 404 via `notFound()` quando
+`public_code` não existe ou formato inválido. (2) Módulo `features/orders/` com
+`getPublicOrder` (service role + `order_items` snapshot), `OrderProgressBar`
+(passos Pedido → Pago → Separando → Pronto|Enviado → Concluído),
+`OrderItemsList` (sem gift_message) e CTA WhatsApp com mensagem contendo o
+código — número via prop do Server Component (D22) / `lib/whatsapp.ts`.
+(3) SLA: preferir `orders.estimated_fulfillment`; fallback textual D12/PRD por
+`fulfillment_type`. (4) Compatível com `pending_payment` do checkout (banner de
+pagamento pendente; progresso no passo Pedido). (5) `getPublicOrderStub` do
+checkout passa a delegar a `getPublicOrder`.
+**Consequência**: Um único link pós-checkout serve stub→página completa; anon
+continua sem SELECT direto em `orders`. Mercado Pago / webhook (T17) e fila
+admin ficam fora do escopo.

@@ -1,7 +1,12 @@
 import "server-only";
 
-import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
+import { getPublicOrder } from "@/features/orders/order-lookup";
+import type { PublicOrder } from "@/features/orders/types";
 
+/**
+ * @deprecated Prefer `getPublicOrder` de `@/features/orders` (T18).
+ * Mantido para compatibilidade com o redirect pós-checkout (T15 / D43).
+ */
 export type PublicOrderStub = {
   publicCode: string;
   status: string;
@@ -13,38 +18,24 @@ export type PublicOrderStub = {
 };
 
 /**
- * Stub mínimo para `/pedido/[codigo]` (T15 redirect).
- * Leitura via service role — anon não tem SELECT em `orders` (D13).
- * T18 (página pública completa) é ticket separado.
+ * Stub mínimo pós-checkout — delega à leitura completa por `public_code`.
  */
 export async function getPublicOrderStub(
   publicCode: string,
 ): Promise<PublicOrderStub | null> {
-  const code = publicCode.trim().toUpperCase();
-  if (!/^RP-\d{4}-\d{4}$/.test(code)) {
-    return null;
-  }
+  const order = await getPublicOrder(publicCode);
+  if (!order) return null;
+  return toStub(order);
+}
 
-  const supabase = createServiceSupabaseClient();
-  const { data, error } = await supabase
-    .from("orders")
-    .select(
-      "public_code, status, payment_status, fulfillment_type, total_amount, estimated_fulfillment, created_at",
-    )
-    .eq("public_code", code)
-    .maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
+function toStub(order: PublicOrder): PublicOrderStub {
   return {
-    publicCode: data.public_code,
-    status: data.status,
-    paymentStatus: data.payment_status,
-    fulfillmentType: data.fulfillment_type,
-    totalAmount: Number(data.total_amount),
-    estimatedFulfillment: data.estimated_fulfillment,
-    createdAt: data.created_at,
+    publicCode: order.publicCode,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    fulfillmentType: order.fulfillmentType,
+    totalAmount: order.totalAmount,
+    estimatedFulfillment: order.estimatedFulfillment,
+    createdAt: order.createdAt,
   };
 }

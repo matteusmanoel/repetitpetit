@@ -113,11 +113,7 @@ export function AdminProductForm({ mode, product, categories }: Props) {
             name="name"
             value={name}
             onChange={(event) => {
-              const nextName = event.target.value;
-              setName(nextName);
-              if (!slugTouched) {
-                setSlug(slugifyProductName(nextName));
-              }
+              setName(event.target.value);
             }}
             placeholder="Ex.: Casaco moletom GAP azul"
             required

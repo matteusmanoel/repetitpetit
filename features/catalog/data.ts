@@ -191,7 +191,7 @@ export async function getRelatedProducts(options: {
 
   const { data, error } = await supabase
     .from("products")
-    .select(CATALOG_PRODUCT_COLUMNS)
+    .select(CATALOG_SELECT)
     .eq("status", "available")
     .eq("size_group", sizeGroup)
     .eq("gender", gender)

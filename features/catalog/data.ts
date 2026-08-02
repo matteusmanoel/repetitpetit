@@ -14,7 +14,7 @@ type SizeGroup = Database["public"]["Enums"]["size_group"];
 type ProductGender = Database["public"]["Enums"]["product_gender"];
 
 const CATALOG_SELECT =
-  "id, name, slug, price, compare_at_price, cover_image_url, quantity, brand, size_label, created_at";
+  "id, name, slug, price, compare_at_price, cover_image_url, quantity, brand, size_label, created_at, gender, condition";
 
 /**
  * Produtos disponíveis para o catálogo público, mais recentes primeiro.
@@ -260,9 +260,7 @@ export async function getLatestAvailableProducts(
 
   const { data, error } = await supabase
     .from("products")
-    .select(
-      "id, name, slug, price, compare_at_price, cover_image_url, quantity, brand, size_label, created_at",
-    )
+    .select(CATALOG_SELECT)
     .eq("status", "available")
     .order("created_at", { ascending: false })
     .limit(limit);

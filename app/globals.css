@@ -82,6 +82,17 @@
   }
 }
 
+/**
+ * Admin (T8): identidade de ferramenta, não de loja. `.admin-shell` (raiz em
+ * `AdminShell.tsx`) troca os títulos de Nunito para Inter 600 — sem lima/coral
+ * lúdicos, sem pulso, sem spring. `.font-heading` já cobre `h1`–`h6` (base
+ * layer) e componentes como `CardTitle`; o seletor de classe cobre o resto.
+ */
+.admin-shell :is(h1, h2, h3, h4, h5, h6, .font-heading) {
+  font-family: var(--font-inter);
+  font-weight: 600;
+}
+
 /*
  * Tokens da marca Repeti Petit — docs/01-brand.md
  * Extraídos do logo: azul #165DA4, lima #8EB038, coral #EB5E5C.

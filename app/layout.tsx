@@ -4,7 +4,8 @@ import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500"],
+  // 600 é usado pelos títulos do /admin (T8) — o resto da loja usa 400/500.
+  weight: ["400", "500", "600"],
   variable: "--font-inter",
   display: "swap",
 });

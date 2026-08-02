@@ -7,7 +7,10 @@
 
 ### O que foi feito
 
-- [x] `mattpocock/skills` instalado globalmente em `~/.agents/skills` (41 skills)
+- [x] `mattpocock/skills` instalado globalmente em `~/.agents/skills` (41 skills) — **orquestração local**
+- [x] `.cursor/environment.json` — boot Cloud Agent (`pnpm install`)
+- [x] `.cursor/skills/` — `implement`, `code-review`, `orchestrate` (repo; cloud + local)
+- [x] `docs/agents/cloud-dispatch.md`, `docs/agents/issue-tracker.md`
 - [x] Repo `/Users/matteusmanoel/Projects/Personal/repetitpetit` scaffolded
 - [x] `public/brand/logo.png` — logo real da marca
 - [x] `.cursor/mcp.json` — Supabase MCP configurado para projeto `wcgpamsvnhpgonxzbzlg`
@@ -78,7 +81,8 @@ Após o primeiro push, o próximo agente ou você precisa:
 2. **Configurar env vars** na Vercel com os valores reais de `.env.local`.
 3. **Verificar Supabase MCP**: abrir um chat na workspace `repetitpetit` e confirmar que
    a ferramenta Supabase aparece disponível.
-4. **Executar migrations** (quando criadas): via `supabase db push` ou MCP `apply_migration`.
+4. **Cloud Agents**: configurar Secrets + MCP no dashboard; testar um issue com `ready-for-agent` — ver `docs/agents/cloud-dispatch.md`.
+5. **Executar migrations** (quando criadas): via `supabase db push` ou MCP `apply_migration`.
 
 ## Links úteis
 

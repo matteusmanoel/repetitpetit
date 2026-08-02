@@ -65,11 +65,67 @@ Ver `.env.example` para a lista completa com comentários.
 | `NEXT_PUBLIC_STORE_WHATSAPP` | Para suporte | FAB, links de pedido |
 | `NEXT_PUBLIC_STORE_NAME` | Sempre | UI, templates |
 
-## MCP Supabase no Cursor
+## Cloud Agents (execução remota)
 
-O arquivo `.cursor/mcp.json` já está configurado com o projeto `wcgpamsvnhpgonxzbzlg`.
-Para que o MCP autentique, o Supabase MCP usa o token armazenado pelo Cursor —
-**não é necessário configurar tokens manualmente**.
+Config as code: **`.cursor/environment.json`** — `pnpm install` idempotente em cada boot da VM.
+
+Resolução de environment (Cursor): `.cursor/environment.json` no repo → environment pessoal → team.
+
+### Checklist do operador (dashboard)
+
+Antes de dispatch paralelo ([guia](agents/cloud-dispatch.md), [env matrix](agents/env-matrix.md)):
+
+1. [Environments](https://cursor.com/dashboard/cloud-agents#environments) — repo `repetitpetit` linkado; snapshot após primeiro guided setup (opcional, acelera boot).
+2. [Secrets](https://cursor.com/dashboard/cloud-agents) — copiar nomes de `.env.example` (Supabase service role, MP, `NEXT_PUBLIC_*`). Não commitar valores.
+3. **MCP cloud** — custom MCP em Cloud Agents está **instável ou indisponível** para muitos planos (UI em [Integrations](https://cursor.com/dashboard/integrations) pode não persistir ou não existir). **Não depender de MCP na VM**; usar Secrets + Supabase remoto compartilhado + migrations no PR. MCP continua no **Cursor local**. Ver `docs/agents/env-matrix.md`.
+4. Issues com label `ready-for-agent`, AC testáveis, blockers corretos.
+5. Base branch **`develop`** para feature PRs.
+
+Se `flordoestudante` estiver no GitHub: adicionar ao **mesmo environment** para agents lerem patterns sem Filesystem MCP do Mac.
+
+### O que não esperar na VM
+
+- `~/.agents/skills/` do Mac
+- Paths locais `/Users/.../flordoestudante` (salvo multi-repo)
+- MCP stdio do laptop não registrados no dashboard
+
+---
+
+## MCP no Cursor (IDE local)
+
+### No repositório (`.cursor/mcp.json`)
+
+- **Supabase** — projeto `wcgpamsvnhpgonxzbzlg` (migrations, SQL, docs Supabase via plugin).
+- **shadcn** — registry de componentes.
+
+Autenticação Supabase: token gerenciado pelo Cursor / login MCP — não commitar tokens no repo.
+
+### No Cursor global (operador)
+
+Estes MCPs ficam habilitados na config global do Cursor e aparecem nas sessões de agente
+com namespace `user-*` ou `plugin-*`:
+
+| MCP | Variável / nota |
+|---|---|
+| Context7 | `npx @upstash/context7-mcp` — docs de bibliotecas |
+| Filesystem | raiz `~/Projects` — leitura cross-repo |
+| TestSprite | `TESTSPRITE_API_KEY` no ambiente |
+| GitHub | `GITHUB_PERSONAL_ACCESS_TOKEN` |
+| Playwright | browser MCP para smoke |
+| Mercado Pago | URL MCP + token de app (sandbox/prod) |
+| Vercel, Azure DevOps, Terraform | outros projetos Loumar — ignorar se não forem a tarefa |
+
+**Orientação de uso para agentes**: `docs/06-agent-playbook.md` (seção MCP).
+
+### TestSprite (local)
+
+```bash
+cd /Users/matteusmanoel/Projects/Personal/repetitpetit
+pnpm build && pnpm start   # porta 3000 — preferido antes de E2E TestSprite
+# ou pnpm dev (modo dev — menos testes automáticos)
+```
+
+Garantir `TESTSPRITE_API_KEY` definida nas env vars do Cursor antes de invocar o MCP.
 
 ## Vercel
 

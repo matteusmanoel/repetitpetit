@@ -1071,3 +1071,46 @@ que exige `SUPABASE_SERVICE_ROLE_KEY`. No browser essa chave nunca existe
 (3) `browser.ts` e middleware usam `publicEnv`.
 **Consequência**: Bundle client deixa de exigir secrets; falha de import
 acidental de `@/lib/env` no client vira erro de build (`server-only`).
+
+---
+
+## D52 — Mapa MCP para agentes (Context7, Filesystem, TestSprite)
+
+**Data**: 2026-08-02
+**Contexto**: Vários MCPs estão ativos no Cursor global; só Supabase e shadcn
+estavam no `.cursor/mcp.json` do repo. Agentes precisavam de ordem de preferência
+e fluxos explícitos para não duplicar ferramentas nativas ou pular docs internas.
+**Decisão**: Documentar em `docs/06-agent-playbook.md` (seção MCP + ordem de
+preferência) e índice em `AGENTS.md`. Context7 após docs internas; Filesystem
+só para leitura cross-repo (ex. Flor); TestSprite para E2E local na porta 3000,
+sem `bootstrap` se `.testsprite/config.json` existir.
+**Consequência**: MCPs permanecem todos habilitados; uso fica previsível e
+auditável por milestone (`docs/08-roadmap.md`).
+
+---
+
+## D53 — Operação híbrida: orquestrador local + executores cloud
+
+**Data**: 2026-08-02
+**Contexto**: M1 8 GB limita paralelismo local; Cloud Agents já entregaram waves via
+PRs para `develop`, mas skills globais e MCP do Mac não existiam na VM. Cursor
+documenta `.cursor/environment.json`, skills no repo e Secrets no dashboard.
+**Decisão**: (1) Modelo fixo: **local** = planning, dispatch, review, HITL;
+**cloud** = um GitHub issue por agente → PR `develop`. (2) Commitar
+`.cursor/environment.json`, `.cursor/skills/{implement,code-review,orchestrate}`,
+`docs/agents/cloud-dispatch.md`, `docs/agents/issue-tracker.md`. (3) `AGENTS.md`
+com seção **Cursor Cloud** e tabela local vs repo skills. (4) Playbook e setup
+documentam MCP local vs cloud e checklist do operador.
+**Consequência**: Executores cloud não dependem de chat prévio; operador ainda
+deve configurar Secrets no dashboard Cursor (manual, fora do git).
+
+---
+
+## D54 — Cloud MCP indisponível; matriz de env
+
+**Data**: 2026-08-02
+**Contexto**: Operador não encontrou UI confiável de MCP em Cloud Agents; fórum Cursor
+reporta Integrations/MCP instável e `.cursor/mcp.json` não lido na VM.
+**Decisão**: Documentar cloud **sem depender de MCP**; adicionar `docs/agents/env-matrix.md`
+com mínimo de Secrets (5 vars) + Vercel/local; ajustar dispatch e playbook.
+**Consequência**: Paridade cloud = Secrets + git + skills no repo, não MCP parity.

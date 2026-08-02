@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { ActiveFilterChips } from "@/features/catalog/components/ActiveFilterChips";
 import { CatalogFiltersPanel } from "@/features/catalog/components/catalog-filters-panel";
 import { CatalogProductList } from "@/features/catalog/components/catalog-product-list";
 import { ProductCardSkeletonGrid } from "@/features/catalog/components/ProductCardSkeleton";
@@ -38,12 +39,18 @@ export default async function CatalogoPage({
         </p>
       </header>
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[260px_1fr] lg:items-start lg:gap-8">
         <CatalogFiltersPanel />
 
-        <Suspense key={listKey} fallback={<ProductCardSkeletonGrid />}>
-          <CatalogProductList filters={filters} />
-        </Suspense>
+        <div className="flex flex-col gap-4">
+          <Suspense fallback={null}>
+            <ActiveFilterChips />
+          </Suspense>
+
+          <Suspense key={listKey} fallback={<ProductCardSkeletonGrid />}>
+            <CatalogProductList filters={filters} />
+          </Suspense>
+        </div>
       </div>
     </div>
   );

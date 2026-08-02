@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { BrandMultiSelect } from "@/features/catalog/components/BrandMultiSelect";
 import {
   AGE_BANDS,
@@ -29,6 +30,7 @@ import {
   type ProductGender,
   type SizeGroup,
 } from "@/features/catalog/filters";
+import { CONDITION_PILL_CLASS, GENDER_TOGGLE_ACTIVE_CLASS } from "@/features/catalog/ui-tokens";
 import { useCatalogFilters } from "@/features/catalog/use-catalog-filters";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +92,42 @@ function ChipButton({
   );
 }
 
+/**
+ * Pill de conservação sempre colorida (mesmos tokens do `ProductCard`) — o
+ * estado ativo é sinalizado por um ring, não por trocar a cor de fundo, para
+ * a pill continuar comunicando a condição mesmo antes de ser tocada.
+ */
+function ConditionChip({
+  condition,
+  pressed,
+  onClick,
+}: {
+  condition: ProductCondition;
+  pressed: boolean;
+  onClick: () => void;
+}) {
+  const Icon = CONDITION_ICONS[condition];
+
+  return (
+    <button
+      type="button"
+      title={PRODUCT_CONDITION_DESCRIPTIONS[condition]}
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-11 min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        CONDITION_PILL_CLASS[condition],
+        pressed
+          ? "ring-2 ring-current ring-offset-2 ring-offset-background"
+          : "opacity-70 hover:opacity-100 active:opacity-90",
+      )}
+    >
+      <Icon className="size-3.5 shrink-0" aria-hidden />
+      {PRODUCT_CONDITION_LABELS[condition]}
+    </button>
+  );
+}
+
 export function CatalogFilters({ brands }: CatalogFiltersProps) {
   const { filters, replaceFilters, isPending } = useCatalogFilters();
 
@@ -100,10 +138,10 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
     });
   }
 
-  function setGenero(gender: ProductGender) {
+  function setGenero(gender: ProductGender | null) {
     replaceFilters({
       ...filters,
-      genero: filters.genero === gender ? null : gender,
+      genero: gender,
     });
   }
 
@@ -131,7 +169,7 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-5 rounded-xl border border-border bg-card/60 p-4 sm:p-5",
+        "flex flex-col gap-5 rounded-2xl border border-border bg-card/60 p-4 sm:p-5",
         isPending && "opacity-90",
       )}
       aria-busy={isPending || undefined}
@@ -156,32 +194,28 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
       </FilterSection>
 
       <FilterSection title="Gênero">
-        <div
-          className="flex gap-1 rounded-full bg-muted p-1"
-          role="tablist"
+        <ToggleGroup
+          type="single"
+          value={filters.genero ?? ""}
+          onValueChange={(value) =>
+            setGenero((value || null) as ProductGender | null)
+          }
+          className="w-full gap-1 rounded-full bg-muted p-1"
           aria-label="Filtrar por gênero"
         >
-          {PRODUCT_GENDERS.map((gender) => {
-            const selected = filters.genero === gender;
-            return (
-              <button
-                key={gender}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => setGenero(gender)}
-                className={cn(
-                  "h-11 min-h-11 flex-1 rounded-full px-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                  selected
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground active:bg-background/60",
-                )}
-              >
-                {PRODUCT_GENDER_LABELS[gender]}
-              </button>
-            );
-          })}
-        </div>
+          {PRODUCT_GENDERS.map((gender) => (
+            <ToggleGroupItem
+              key={gender}
+              value={gender}
+              className={cn(
+                "h-11 min-h-11 flex-1 rounded-full border-0 text-sm font-semibold text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm",
+                GENDER_TOGGLE_ACTIVE_CLASS[gender],
+              )}
+            >
+              {PRODUCT_GENDER_LABELS[gender]}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </FilterSection>
 
       <FilterSection title="Faixa etária">
@@ -217,22 +251,14 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
           role="group"
           aria-label="Filtrar por conservação"
         >
-          {PRODUCT_CONDITIONS.map((condition) => {
-            const Icon = CONDITION_ICONS[condition];
-            const pressed = filters.conservacao.includes(condition);
-            return (
-              <ChipButton
-                key={condition}
-                pressed={pressed}
-                onClick={() => setConservacao(condition)}
-                title={PRODUCT_CONDITION_DESCRIPTIONS[condition]}
-                className="gap-1.5"
-              >
-                <Icon className="size-3.5 shrink-0 opacity-80" aria-hidden />
-                {PRODUCT_CONDITION_LABELS[condition]}
-              </ChipButton>
-            );
-          })}
+          {PRODUCT_CONDITIONS.map((condition) => (
+            <ConditionChip
+              key={condition}
+              condition={condition}
+              pressed={filters.conservacao.includes(condition)}
+              onClick={() => setConservacao(condition)}
+            />
+          ))}
         </div>
         <p className="text-xs text-muted-foreground sm:text-sm">
           Toque na pill para ver o significado da conservação.

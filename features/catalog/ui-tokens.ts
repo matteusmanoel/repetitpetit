@@ -14,6 +14,17 @@ export const GENDER_BORDER_CLASS: Record<ProductGender, string> = {
   unissex: "border-gender-unissex",
 };
 
+/**
+ * Fundo ativo por gênero na tab de filtro (`data-[state=on]`).
+ * Strings completas e literais — Tailwind v4 escaneia o texto-fonte deste
+ * arquivo para gerar a classe; concatenar o variant em runtime não funciona.
+ */
+export const GENDER_TOGGLE_ACTIVE_CLASS: Record<ProductGender, string> = {
+  menino: "data-[state=on]:bg-gender-menino",
+  menina: "data-[state=on]:bg-gender-menina",
+  unissex: "data-[state=on]:bg-gender-unissex",
+};
+
 /** Fundo + texto da pill de conservação. */
 export const CONDITION_PILL_CLASS: Record<ProductCondition, string> = {
   novo: "bg-condition-novo text-condition-novo-foreground",

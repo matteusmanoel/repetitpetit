@@ -84,7 +84,7 @@ export function ProductGallery({
 
       {images.length > 1 ? (
         <div
-          className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center"
+          className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 items-center"
           role="tablist"
           aria-label="Navegação da galeria"
         >
@@ -95,15 +95,15 @@ export function ProductGallery({
               role="tab"
               aria-selected={index === activeIndex}
               aria-label={`Foto ${index + 1} de ${images.length}`}
-              className="flex size-11 items-center justify-center"
+              className="flex h-11 w-8 items-center justify-center"
               onClick={() => goTo(index)}
             >
               <span
                 className={cn(
-                  "size-2.5 rounded-full transition-colors",
+                  "h-1.5 rounded-full shadow-sm transition-all duration-300",
                   index === activeIndex
-                    ? "bg-primary"
-                    : "bg-background/80 ring-1 ring-foreground/25",
+                    ? "w-5 bg-primary"
+                    : "w-1.5 bg-background/80 ring-1 ring-foreground/25",
                 )}
               />
             </button>
@@ -116,10 +116,7 @@ export function ProductGallery({
 
 function UniqueBadge() {
   return (
-    <Badge
-      variant="destructive"
-      className="absolute top-3 left-3 z-10 h-auto px-2.5 py-1 text-xs font-medium shadow-sm"
-    >
+    <Badge className="absolute top-3 left-3 z-10 h-auto animate-badge-pulse rounded-full bg-destructive px-2.5 py-1 text-[11px] font-bold tracking-wide text-destructive-foreground uppercase shadow-sm">
       Peça única
     </Badge>
   );

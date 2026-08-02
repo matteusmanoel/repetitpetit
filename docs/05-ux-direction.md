@@ -30,8 +30,42 @@ Prioridade conforme solicitado (maior = mais importante):
 | 6 | **Preço** | slider ou faixas | `price` | Faixas: até R$30 / R$30–60 / R$60–100 / acima |
 
 Persistência: filtros refletidos em query params para compartilhar/bookmarkar links.
-Filtros ativos: chips removíveis no topo do grid.
+Filtros ativos: chips removíveis no topo do grid, com saída animada (fade+scale).
 Ordenação padrão: mais recentes primeiro (`created_at DESC`).
+
+### Layout dos filtros (D57)
+
+- **Mobile** (`< lg`): painel completo vira um `Drawer` inferior (`Sheet`
+  `side="bottom"`), aberto por um botão com badge de contagem de filtros
+  ativos e fechado por "Ver resultados".
+- **Desktop** (`≥ lg`): sidebar fixa (`sticky`) de 260px ao lado esquerdo do
+  grid, sempre visível — sem drawer.
+- **Gênero**: `ToggleGroup` grande com fundo ativo colorido por opção (azul
+  Menino / coral Menina / lima Unissex — `GENDER_TOGGLE_ACTIVE_CLASS`), não
+  um chip genérico `bg-primary`.
+- **Conservação**: pill colorida por condição (`CONDITION_PILL_CLASS` —
+  mesma paleta do `ProductCard`), com anel de foco quando ativa.
+- Tamanho, marca e preço mantêm o comportamento de chip simples.
+
+---
+
+## Card de produto (grid do catálogo/home/relacionados)
+
+```
+[Foto — aspect 3/4, object-cover]
+  [Badge "PEÇA ÚNICA" — coral, absoluto, se quantity = 1]
+[Marca · Tamanho — Inter 12px muted]
+[Nome — Nunito 600 16px, line-clamp-2]
+[Pill de condição colorida]        [Preço — primary bold, riscado se compare_at_price]
+```
+
+- Borda 2px colorida por gênero (`GENDER_BORDER_CLASS`, D57): azul (Menino),
+  coral (Menina), lima (Unissex) — sinal visível sem precisar abrir o produto.
+- `rounded-2xl`, hover `scale(1.02)` + sombra, active `scale(0.99)` — nunca
+  hover-only como único indicador (regra do topo deste doc).
+- Grid: 2 colunas no mobile, 3 no tablet, 4 no desktop, gap uniforme de 12px.
+- Skeleton do grid espelha essa mesma anatomia (borda, pill, duas linhas de
+  texto) com shimmer em vez de pulse simples.
 
 ---
 
@@ -40,17 +74,16 @@ Ordenação padrão: mais recentes primeiro (`created_at DESC`).
 ### Layout mobile (stack vertical)
 
 ```
-[Gallery — aspect 3/4, swipeable, dots]
+[Gallery — aspect 3/4, swipeable, dots repaginados (ativo = pill alongada)]
+  [Badge "PEÇA ÚNICA" — coral, com pulso 100→70→100 a cada 2s] ← se quantity = 1
 [Nome do produto — Nunito 700, 22px]
 [Preço — destaque primary, strike no compare_at_price]
-[Badge "Peça única"] ← sempre visível se quantity = 1
-[Seção de atributos]
-  Marca: GAP   Tamanho: 18–24m   Condição: Seminovo
-  Gênero: Menina
+[Pills horizontais scrolláveis: Marca · Tamanho · Condição (colorida) · Gênero (colorido)]
 [Descrição livre (medidas, observações)]
-[CTA: "Adicionar ao carrinho" — full-width, rounded-full, primary]
+[CTA: "Adicionar ao carrinho" — full-width, rounded-full ≥52px, primary;
+  estado "Adicionado ✓" por 1.5s antes de virar "Ver carrinho"]
 [Indicador de reserva se item está reservado por outro]
-[Seção: "Você pode gostar" (peças relacionadas por tamanho/gênero)]
+[Seção: "Você pode gostar" — scroll horizontal com snap (não grid)]
 ```
 
 ### Indicador de reserva ativa
@@ -77,9 +110,13 @@ Badge vermelho/coral (`--destructive`) visível sem scroll:
 
 ## Carrinho
 
-- Sheet deslizante da direita (mobile e desktop).
-- Timer regressivo por item (countdown numérico: `12:34`).
-- Ao expirar: item some com toast "A reserva da peça X expirou" e produto volta a 'available'.
+- Painel deslizante da direita (mobile e desktop), slide-in `x: 100% → 0`
+  com spring; overlay com `backdrop-blur`.
+- Timer regressivo por item (countdown numérico: `12:34`); vira coral e
+  semibold abaixo de 5 minutos restantes.
+- Ao expirar: item sai com fade+slide-up, toast "A reserva da peça X expirou"
+  e produto volta a `available`. Remoção manual do item usa a mesma saída
+  animada.
 - CTA principal: "Finalizar compra" — primary, full-width.
 - CTA secundário: "Continuar comprando" — ghost.
 - Sem giftwrap, mensagem de cartão ou extras no MVP.

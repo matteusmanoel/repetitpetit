@@ -1123,3 +1123,82 @@ com mínimo de Secrets (5 vars) + Vercel/local; ajustar dispatch e playbook.
 **Contexto**: Cloud Agents sem MCP configurável; workarounds (SSH/Tailscale para MCP no Mac) descartados.
 **Decisão**: Executores cloud entregam PR + nota de handoff quando precisarem de MCP; orquestrador local aplica migrations, Supabase/MP/Context7/Filesystem/TestSprite após merge.
 **Consequência**: Issues devem permitir “migration no repo, apply local”; playbook em `docs/agents/cloud-dispatch.md`.
+
+---
+
+## D56 — `motion` como única lib de animação da loja
+
+**Data**: 2026-08-02
+**Contexto**: O refactor de UI (T0–T8) precisava de spring/`AnimatePresence` para o
+badge do carrinho (T4), chips ativos de filtro (T2), o CTA "Adicionado" da PDP
+(T6) e o carrinho deslizante com saída animada por item (T7). O repo só tinha
+`tw-animate-css` (utilitários CSS) e Embla (carrossel), nenhuma lib de animação
+imperativa para React.
+**Decisão**: Instalar `motion` (sucessor do `framer-motion`, import de
+`motion/react`) e usá-la nesses quatro pontos. Nada de `framer-motion` legado
+nem de uma segunda lib de animação — `motion` é a única daqui em diante.
+**Consequência**: +~34kb gz no bundle público onde é importado (carrinho, PDP,
+header, filtros). O carrinho (T7) passou a montar seu próprio `Dialog` do
+`radix-ui` em vez do `Sheet` compartilhado de `components/ui/sheet.tsx`, para
+poder animar com `motion`/`AnimatePresence` sem afetar o drawer de filtros
+mobile (T2) nem o admin (T8), que continuam com a animação CSS padrão do
+shadcn.
+
+---
+
+## D57 — `CatalogProduct`/`CATALOG_SELECT` ganham `gender` + `condition`
+
+**Data**: 2026-08-02
+**Contexto**: O `ProductCard` redesenhado (T1) precisa de borda colorida por
+gênero e pill de condição, e a PDP (T6) precisa dos mesmos dados nos
+"relacionados". `CatalogProduct` (features/catalog/types.ts) e `CATALOG_SELECT`
+(features/catalog/data.ts) não traziam essas colunas — só apareciam no
+`ProductDetail` da PDP.
+**Decisão**: Ampliar `CATALOG_SELECT` e `CatalogProduct` com `gender` e
+`condition`. Como catálogo, home ("últimas novidades") e relacionados da PDP
+compartilham a mesma constante/tipo, os três passam a trazer as duas colunas.
+Tokens visuais derivados centralizados em `features/catalog/ui-tokens.ts`:
+`GENDER_BORDER_CLASS`, `GENDER_TOGGLE_ACTIVE_CLASS`, `CONDITION_PILL_CLASS`,
+`GENDER_PILL_CLASS` — nunca hardcodear hex/classe condicional inline nos
+componentes.
+**Consequência**: Payload por produto um pouco maior nas listagens (2 colunas
+a mais). Qualquer novo consumidor de `CatalogProduct` já recebe `gender`/
+`condition` sem migration adicional.
+
+---
+
+## D58 — Hero da home: copy em overlay sobre a imagem (revisa D39)
+
+**Data**: 2026-08-02
+**Contexto**: D39 definiu a copy do carrossel da home **abaixo** da imagem
+full-bleed. O refactor de UI (T5) pediu um hero mais editorial — aspect
+`16/9` no desktop / `4/3` no mobile, com um scrim escuro no terço inferior e
+título/subtítulo/CTA **sobrepostos** à imagem, no padrão comum de e-commerce
+de moda.
+**Decisão**: `home-banner-carousel.tsx` passa a renderizar título, subtítulo
+e CTA dentro de um `div` de overlay com gradiente escuro sobre a foto, não
+mais em um bloco de texto abaixo dela. O fallback sem imagem (`BrandHeroFallback`)
+troca o gradiente linear por `--primary` com um padrão geométrico de pontos
+(`radial-gradient`), mantendo o logo como sinal hero-level.
+**Consequência**: Revisa o item (2) de D39. Banners cadastrados no admin
+precisam de contraste suficiente no terço inferior da foto para o texto
+permanecer legível — evitar fotos muito claras na base da imagem.
+
+---
+
+## D59 — Overlay "Reservado por outro" no card do grid: adiado
+
+**Data**: 2026-08-02
+**Contexto**: O spec visual do `ProductCard` (T1) pedia um overlay "Reservado"
+quando outra sessão já reservou a peça, visível direto no grid do catálogo/
+home. `cart_reservations` não concede `SELECT` a `anon` (D13/D50); mostrar
+isso no grid exigiria uma query extra com `service_role` no catálogo, na home
+e nos relacionados da PDP — mudança de lógica de dados, não só de apresentação,
+fora do escopo de um refactor puramente visual.
+**Decisão**: Adiar. O `ProductCard` (T1) sai sem esse overlay; a peça
+reservada por outra sessão só fica indisponível no `AddToCartButton` da PDP
+(que já resolve `getProductReservationView`, T14) quando o comprador chega
+até lá. Overlay no grid vira ticket futuro dedicado.
+**Consequência**: Sinal "Reservado" continua existindo só na PDP individual
+(`ReservationIndicator`, T14); o grid não reflete reservas de terceiros até o
+ticket futuro ser feito.

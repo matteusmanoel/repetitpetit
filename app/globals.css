@@ -57,6 +57,17 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+}
+
+/*
+ * Shimmer do skeleton do catálogo (docs/09-decisions.md D57) — só a loja usa;
+ * o admin (T8) mantém o `animate-pulse` padrão do shadcn.
+ */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /*

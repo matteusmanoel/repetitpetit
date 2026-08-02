@@ -97,6 +97,7 @@ Após subir o ambiente:
 
 1. **Criar admin no Supabase Auth**: Dashboard → Authentication → Users → Add user.
    Anotar o `auth_user_id` e inserir em `public.admins`.
+   (Produção T24: `admin@repetipetit.com.br` já existe — ver `docs/11-soft-launch.md`.)
 
 2. **Configurar settings iniciais**: rodar seed ou inserir manualmente em `public.settings`.
 
@@ -109,3 +110,7 @@ Após subir o ambiente:
 5. **Configurar redirect URLs no Supabase Auth**:
    Site URL: `https://seu-dominio.vercel.app`
    Redirect URLs: `https://seu-dominio.vercel.app/auth/reset`
+
+6. **Inventário real**: Admin → Produtos → Importar (`docs/admin-xlsx-import-template.md`).
+
+Gate VIP / smoke / Lighthouse: `docs/11-soft-launch.md`.

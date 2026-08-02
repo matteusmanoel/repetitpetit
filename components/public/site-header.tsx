@@ -4,7 +4,7 @@ import { Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,16 +23,36 @@ const NAV_LINKS = [
   { href: "/desapegue", label: "Desapegue" },
 ] as const;
 
+/** Distância de scroll (px) para o header ganhar blur/sombra. */
+const SCROLL_THRESHOLD = 8;
+
 export function SiteHeader() {
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    function handleScroll() {
+      setScrolled(window.scrollY > SCROLL_THRESHOLD);
+    }
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur-sm supports-backdrop-filter:bg-card/80">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-8">
+    <header
+      className={cn(
+        "sticky top-0 z-30 border-b transition-[background-color,box-shadow,border-color] duration-200",
+        scrolled
+          ? "border-border bg-card/90 shadow-sm backdrop-blur-sm supports-backdrop-filter:bg-card/75"
+          : "border-transparent bg-background",
+      )}
+    >
+      <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-2 px-4 sm:px-8">
         <Link
           href="/"
           aria-label="Repeti Petit — página inicial"
-          className="flex min-h-11 min-w-11 items-center py-1 pr-3"
+          className="flex min-h-11 min-w-11 items-center py-2 pr-4"
         >
           <Image
             src="/brand/logo.png"
@@ -40,12 +60,12 @@ export function SiteHeader() {
             width={335}
             height={597}
             priority
-            className="h-11 w-auto sm:h-12"
+            className="h-11 w-auto sm:h-13"
           />
         </Link>
 
         <nav
-          className="hidden items-center gap-1 sm:flex"
+          className="hidden items-center gap-2 sm:flex"
           aria-label="Navegação principal"
         >
           {NAV_LINKS.map((link) => (
@@ -117,11 +137,17 @@ function NavLink({
     <Link
       href={href}
       className={cn(
-        "flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground",
+        "relative flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground",
         isActive && "text-primary",
       )}
     >
       {children}
+      {isActive ? (
+        <span
+          aria-hidden
+          className="absolute right-3 bottom-1.5 left-3 h-0.5 rounded-full bg-primary"
+        />
+      ) : null}
     </Link>
   );
 }

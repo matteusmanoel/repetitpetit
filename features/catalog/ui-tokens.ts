@@ -33,3 +33,10 @@ export const CONDITION_PILL_CLASS: Record<ProductCondition, string> = {
   com_detalhes:
     "bg-condition-com-detalhes text-condition-com-detalhes-foreground",
 };
+
+/** Fundo suave + texto da pill de gênero na PDP (T6). */
+export const GENDER_PILL_CLASS: Record<ProductGender, string> = {
+  menino: "bg-gender-menino/10 text-gender-menino",
+  menina: "bg-gender-menina/10 text-gender-menina",
+  unissex: "bg-gender-unissex/10 text-gender-unissex",
+};

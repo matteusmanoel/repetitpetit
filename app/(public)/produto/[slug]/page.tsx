@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/features/catalog/components/AddToCartButton";
 import { ProductAttributes } from "@/features/catalog/components/ProductAttributes";
 import { ProductGallery } from "@/features/catalog/components/ProductGallery";
-import { ProductGrid } from "@/features/catalog/components/ProductGrid";
+import { RelatedProductsCarousel } from "@/features/catalog/components/RelatedProductsCarousel";
 import { ReservationIndicator } from "@/features/catalog/components/ReservationIndicator";
 import { UniquePieceNotice } from "@/features/catalog/components/UniquePieceNotice";
 import { getProductBySlug, getRelatedProducts } from "@/features/catalog/data";
@@ -139,7 +139,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           >
             Você pode gostar
           </h2>
-          <ProductGrid products={related} />
+          <RelatedProductsCarousel products={related} />
         </section>
       ) : null}
     </div>

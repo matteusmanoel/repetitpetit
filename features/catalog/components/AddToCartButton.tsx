@@ -1,11 +1,16 @@
 "use client";
 
+import { CheckIcon } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/features/cart/store";
 import type { ReservationView } from "@/features/catalog/types";
+
+/** Duração visual do estado "Adicionado ✓" antes de virar "Ver carrinho" (T6). */
+const ADDED_FEEDBACK_MS = 1500;
 
 type AddToCartButtonProps = {
   productId: string;
@@ -38,6 +43,14 @@ export function AddToCartButton({
   const openCart = useCartStore((s) => s.openCart);
   const [isPending, startTransition] = useTransition();
   const [ui, setUi] = useState<UiState>({ status: "idle" });
+  const [justAdded, setJustAdded] = useState(false);
+  const justAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (justAddedTimeoutRef.current) clearTimeout(justAddedTimeoutRef.current);
+    };
+  }, []);
 
   const effectiveReservation: ReservationView =
     ui.status === "success"
@@ -98,6 +111,8 @@ export function AddToCartButton({
       });
 
       setUi({ status: "success", expiresAt: payload.reservation.expires_at });
+      setJustAdded(true);
+      justAddedTimeoutRef.current = setTimeout(() => setJustAdded(false), ADDED_FEEDBACK_MS);
       startTransition(() => router.refresh());
     } catch {
       setUi({
@@ -107,12 +122,22 @@ export function AddToCartButton({
     }
   }
 
+  const stateKey = isPending
+    ? "pending"
+    : justAdded
+      ? "added"
+      : inOwnCart
+        ? "own"
+        : reservedByOther
+          ? "reserved"
+          : "idle";
+
   return (
     <div className="flex flex-col gap-2">
       <Button
         type="button"
         size="lg"
-        className="h-12 w-full rounded-full text-base font-medium"
+        className="h-13 w-full overflow-hidden rounded-full text-base font-medium"
         disabled={reservedByOther || isPending}
         onClick={() => {
           if (inOwnCart) {
@@ -122,13 +147,31 @@ export function AddToCartButton({
           void handleReserve();
         }}
       >
-        {isPending
-          ? "Reservando…"
-          : inOwnCart
-            ? "Ver carrinho"
-            : reservedByOther
-              ? "Indisponível no momento"
-              : "Adicionar ao carrinho"}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={stateKey}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="inline-flex items-center gap-1.5"
+          >
+            {justAdded ? (
+              <>
+                <CheckIcon className="size-4" aria-hidden />
+                Adicionado
+              </>
+            ) : isPending ? (
+              "Reservando…"
+            ) : inOwnCart ? (
+              "Ver carrinho"
+            ) : reservedByOther ? (
+              "Indisponível no momento"
+            ) : (
+              "Adicionar ao carrinho"
+            )}
+          </motion.span>
+        </AnimatePresence>
       </Button>
 
       {ui.status === "error" ? (

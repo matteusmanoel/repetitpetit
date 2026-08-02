@@ -1,0 +1,11 @@
+minimumReleaseAge: 0
+
+onlyBuiltDependencies:
+  - sharp
+  - esbuild
+  - unrs-resolver
+
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true

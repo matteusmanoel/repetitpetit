@@ -1007,3 +1007,29 @@ o alvo.
 **Consequência**: O fluxo diário do lojista fecha sem WhatsApp; double-click não
 duplica eventos. Custo: cancelamento não reabre estoque neste ticket (fora de
 escopo); produtos já `sold` no pagamento (D46) permanecem sold.
+
+---
+
+## D49 — Soft launch: roadmap sync, Lighthouse local, deploy público bloqueante
+
+**Data**: 2026-08-02
+**Contexto**: T24/#24 é o gate VIP. Em `develop` M0–M4 já estão implementados
+(PRs T08–T23), mas `docs/08-roadmap.md` estava defasado. O alias
+o alias de produção (`NEXT_PUBLIC_SITE_URL`) responde `DEPLOYMENT_NOT_FOUND`; previews exigem SSO;
+o tip de `develop` foi cancelado por Ignored Build Step na Vercel. MCP
+Supabase/Vercel não autenticam no agente cloud — verificação via REST Auth
+Admin + service role e HTTP local.
+**Decisão**: (1) Sincronizar checklists M0–M5 com o código real e documentar o
+gate em `docs/11-soft-launch.md`. (2) Medir Lighthouse mobile no build local
+(`pnpm build` + `pnpm start`) — `/` 92 / `/catalogo` 95 — e tratar revalidação
+no domínio público como passo pós-deploy. (3) Confirmar admin de produção já
+existente (`admin@repetipetit.com.br` + `public.admins`); não inventar senha
+nem inventário XLSX. (4) Em `pnpm-workspace.yaml`, `minimumReleaseAge: 0` +
+`allowBuilds` para sharp/esbuild/unrs-resolver (pnpm 11 bloqueava o lockfile
+por pacotes Rollup <24h e ignorava scripts nativos). (5) `sharp` como
+devDependency explícita para otimização de imagem no Next. (6) `.env.example`
+com placeholders (sem URL de projeto) e nota do path do webhook.
+**Consequência**: Soft launch fica rastreável; scores ≥80 no código atual.
+Custo: sem alias Production saudável o webhook/MP back_urls e o smoke VIP
+continuam bloqueados para Mateus; `minimumReleaseAge: 0` relaxa a política de
+idade do pnpm — reavaliar para o default (1440) quando o ecossistema estabilizar.

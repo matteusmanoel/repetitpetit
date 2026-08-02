@@ -1,5 +1,32 @@
 # 06 — Agent Playbook
 
+## Modelo de operação — local orquestra, cloud executa
+
+```text
+LOCAL (orquestrador)                    CLOUD (N VMs)
+─────────────────────                   ─────────────────
+wayfinder · to-tickets · grilling       implement (1 issue / agente)
+review · merge · secrets · HITL    ──►  branch → PR → develop
+MCP ricos (Mac + ~/.agents/skills)      AGENTS.md + docs + issue + .cursor/skills/
+```
+
+| Fase | Onde | Skills típicas |
+|---|---|---|
+| Descoberta / decisões | Local | `wayfinder`, `grill-me`, `domain-modeling` |
+| Quebra de trabalho | Local | `to-tickets` → issues com AC completos |
+| Implementação paralela | Cloud | `implement` (repo); ver `docs/agents/cloud-dispatch.md` |
+| Review / merge | Local | `code-review` (repo); CI GitHub |
+| Release / soft launch | Local + humano | `docs/11-soft-launch.md`, promote `main` |
+
+**Invariante**: Cloud Agent não vê chat anterior nem skills globais do Mac. Tudo que o
+executor precisa está no **issue**, **`docs/*`**, **`AGENTS.md`** (seção Cloud) e
+**`.cursor/skills/`**.
+
+**Hardware (M1 8 GB)**: preferir cloud para 2+ builds paralelos; local = 1 sessão
+orquestradora leve (+ `gh`, review), não vários `pnpm dev` simultâneos.
+
+---
+
 ## Fluxo obrigatório: AUDIT → PLAN → EXECUTE
 
 ### AUDIT (antes de qualquer implementação)
@@ -35,10 +62,11 @@
 | Precisa entender o domínio antes de codificar | `domain-modeling` |
 | Precisa transformar uma história de usuário em spec detalhado | `to-spec` |
 | Precisa quebrar um spec em tasks acionáveis | `to-tickets` |
-| Pronto para implementar um ticket/spec | `implement` |
+| Orquestrar waves / dispatch cloud | `orchestrate` (local) + `docs/agents/cloud-dispatch.md` |
+| Cloud Agent implementando issue | `implement` (`.cursor/skills/`) |
+| Review de PR antes do merge | `code-review` (`.cursor/skills/`) |
 | Precisa de decisão de interface de módulo | `codebase-design` |
 | Algo está quebrado / comportamento inesperado | `diagnosing-bugs` |
-| Quer revisar um changeset ou branch | `code-review` |
 | Construindo funcionalidade testada | `tdd` |
 | Precisa de docs de biblioteca (Next.js, Supabase, MP...) | `research` + context7 MCP |
 | Fim de sessão | `handoff` |
@@ -46,6 +74,30 @@
 ---
 
 ## MCP tools — quando usar cada um
+
+### Ordem de preferência (evitar ferramenta errada)
+
+1. **`docs/*` + código em `repetitpetit`** — decisões de domínio, schema, UX, decisões fechadas (`docs/09-decisions.md`).
+2. **Ferramentas nativas do Cursor** (`Read`, `Write`, `Grep`, `Glob`, `Shell`) — qualquer arquivo dentro do workspace aberto.
+3. **Supabase MCP** — estado real do banco, migrations, advisors, tipos gerados.
+4. **Vercel / shadcn / Mercado Pago MCP** — infra, UI, pagamentos conforme a tarefa.
+5. **Context7** — sintaxe/API de biblioteca quando (4) e docs internas não bastam.
+6. **Filesystem MCP** — leitura em **outro** repo sob `~/Projects` (ex.: `flordoestudante`) sem trocar workspace.
+7. **TestSprite** — validação E2E planejada (milestone / smoke), não substitui `pnpm build` nem review manual mobile 375px.
+
+Config: `.cursor/mcp.json` no repo (Supabase + shadcn). Demais MCPs vêm do Cursor global do operador — ver `docs/07-setup.md`.
+
+### Local vs Cloud Agent
+
+| MCP / tool | Agente local (Mac) | Cloud Agent (VM) |
+|---|---|---|
+| Supabase, shadcn (repo `.cursor/mcp.json`) | Sim | **Não confiar** — MCP cloud often unavailable; migrations via PR + Supabase projeto compartilhado |
+| Context7, Filesystem `~/Projects`, TestSprite | Global Mac | **Não** (sem MCP ou sem Mac paths) |
+| Skills `~/.agents/skills/` | Sim | **Não** — usar `.cursor/skills/` no repo |
+| Secrets `.env.local` | Local | [Cloud Secrets](https://cursor.com/dashboard/cloud-agents) |
+| `flordoestudante` no disco | Filesystem MCP ou path | Multi-repo environment **ou** só reuse-map |
+
+---
 
 ### Supabase MCP (`wcgpamsvnhpgonxzbzlg`)
 
@@ -82,11 +134,105 @@ search_items_in_registries → view_items_in_registries → get_add_command_for_
 
 Sempre pesquisar pelo componente antes de implementar manualmente.
 
-### context7 (`user-context7`)
+### Context7 (`user-context7`)
 
-Usar para buscar docs atualizadas de: Next.js App Router, Supabase, Mercado Pago SDK,
-React Hook Form, Zod, Tailwind v4, shadcn/ui.
-Não confiar em conhecimento de treinamento para APIs que mudam frequentemente.
+**Quando usar**
+
+- Integração nova ou incerta: Next.js App Router, Mercado Pago SDK/webhooks, React Hook Form, Zod, Tailwind v4, `@supabase/ssr`.
+- Skill `research` em ticket de biblioteca — Context7 como fonte primária **depois** de checar `docs/*`.
+
+**Quando não usar**
+
+- Schema/RLS deste projeto → `docs/04-data-model.md` + Supabase MCP (`list_tables`, `search_docs` do plugin Supabase).
+- Regras de negócio Repeti Petit → docs internas.
+- Refatoração, review ou debug só de lógica de app (sem dúvida de API).
+
+**Fluxo obrigatório**
+
+```
+resolve-library-id(libraryName, query) → query-docs(libraryId, query)
+```
+
+- Uma **pergunta por chamada** de `query-docs` (ex.: assinatura de webhook MP ≠ cookies no App Router).
+- Máximo **3 chamadas** por tópico (`resolve-library-id` + `query-docs` contam); se insuficiente, resumir lacuna e seguir com código existente no repo.
+- **Nunca** colocar secrets, tokens ou PII no `query` (usar placeholders).
+
+**Bibliotecas frequentes neste MVP**
+
+| Tópico | `libraryName` sugerido |
+|---|---|
+| Next.js | `Next.js` |
+| Supabase JS / SSR | `Supabase` |
+| Mercado Pago | `Mercado Pago` ou SDK oficial |
+| Forms | `React Hook Form`, `Zod` |
+| UI | `shadcn/ui`, `Tailwind CSS` |
+
+---
+
+### Filesystem MCP (`user-filesystem`)
+
+Raiz permitida típica: `~/Projects` (inclui `repetitpetit` e `flordoestudante`).
+
+**Quando usar**
+
+- Portar pattern de `flordoestudante` conforme `docs/reference/reuse-map-flordoestudante.md` **sem** abrir esse repo como workspace.
+- `read_multiple_files` / `search_files` em árvore grande do Flor (catálogo, checkout, admin).
+- `directory_tree` com `excludePatterns` (`node_modules`, `.next`, `.git`).
+
+**Quando não usar**
+
+- Arquivos dentro de **`repetitpetit`** → preferir `Read` / `Grep` / `Glob` nativos (menos latência, mesmo resultado).
+- **Escrita** (`write_file`, `edit_file`) fora de `repetitpetit` — proibido salvo pedido explícito do operador.
+- Substituir Supabase MCP ou Git — não é DB nem controle de versão.
+
+**Fluxo recomendado**
+
+1. `list_allowed_directories` se o path falhar.
+2. Leitura somente; copiar/adaptar para `repetitpetit` via ferramentas nativas.
+3. Nunca commitar paths ou credenciais do Flor.
+
+---
+
+### TestSprite (`user-testsprite`)
+
+Requer `TESTSPRITE_API_KEY` no ambiente do Cursor (global). Testa app **local** via túnel; URL só em deploy → CLI TestSprite (fora deste playbook).
+
+**Quando usar**
+
+- Fechar critérios de milestone em `docs/08-roadmap.md` (smoke mobile, fluxo reserva, E2E pago→webhook quando aplicável).
+- Gerar plano de teste frontend **depois** de feature estável e `pnpm build` ok.
+
+**Quando não usar**
+
+- Durante implementação ativa (preferir `pnpm dev` + review manual 375px).
+- Substituir migrations, unit tests ou `diagnosing-bugs` em produção.
+- Chamar `testsprite_bootstrap` se já existir `.testsprite/config.json`.
+
+**Fluxo Repeti Petit (Next.js, porta 3000)**
+
+1. **Primeira vez só**: `testsprite_bootstrap` com `projectPath` = raiz do repo, `localPort`: **3000**, `type`: `frontend`, `testScope`: `codebase`.
+2. Subir app: preferir **`pnpm build && pnpm start`** (`serverMode`: `production` na execução). Dev (`pnpm dev`) limita quantidade de testes frontend.
+3. `testsprite_generate_frontend_test_plan` — `needLogin`: `true` para admin; fluxos públicos podem rodar em sessão separada com `false`.
+4. `testsprite_generate_code_and_execute` — instruções em PT-BR alinhadas ao PRD (catálogo, peça única, carrinho, checkout MP sandbox).
+5. Revisar relatório; falhas de pagamento real → sandbox MP + webhook local (ngrok/CLI), não produção.
+
+**Admin / checkout nos testes**
+
+- Credenciais de teste vêm do operador (Supabase Auth admin de staging/local) — nunca hardcodar no plano TestSprite commitado.
+
+---
+
+### GitHub MCP (`user-github`) e Playwright MCP (`user-playwright`)
+
+- **GitHub**: issues e PRs — neste repo o fluxo habitual é **`gh`** (issues #1–#24, PRs para `develop`/`main`). MCP quando `gh` não estiver disponível.
+- **Playwright**: smoke pontual (PDP, catálogo 375px, FAB WhatsApp) — complementa TestSprite; não substitui checklist em `docs/11-soft-launch.md`.
+
+---
+
+### Mercado Pago MCP (`user-mercadopago-mcp-server`)
+
+- Homologação, checklist de qualidade, `search_documentation` antes de alterar checkout/webhook.
+- Implementação must match `docs/09-decisions.md` (webhook signature, idempotência) e código em `lib/mercado-pago/`, `app/api/webhooks/mercadopago/`.
 
 ---
 

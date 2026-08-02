@@ -1,6 +1,7 @@
 "use client";
 
 import { XIcon } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,19 +39,28 @@ export function ActiveFilterChips() {
         </Button>
       </div>
       <ul className="flex flex-wrap gap-2" aria-label="Filtros ativos">
-        {chips.map((chip) => (
-          <li key={chip.id}>
-            <button
-              type="button"
-              onClick={() => replaceFilters(chip.remove(filters))}
-              className="inline-flex h-11 min-h-11 items-center gap-1.5 rounded-full border border-border bg-muted px-3 text-sm text-foreground transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-muted/70"
-              aria-label={`Remover filtro ${chip.label}`}
+        <AnimatePresence initial={false}>
+          {chips.map((chip) => (
+            <motion.li
+              key={chip.id}
+              layout
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
             >
-              <span>{chip.label}</span>
-              <XIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
-            </button>
-          </li>
-        ))}
+              <button
+                type="button"
+                onClick={() => replaceFilters(chip.remove(filters))}
+                className="inline-flex h-11 min-h-11 items-center gap-1.5 rounded-full border border-border bg-muted px-3 text-sm text-foreground transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-muted/70"
+                aria-label={`Remover filtro ${chip.label}`}
+              >
+                <span>{chip.label}</span>
+                <XIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
+              </button>
+            </motion.li>
+          ))}
+        </AnimatePresence>
       </ul>
     </div>
   );

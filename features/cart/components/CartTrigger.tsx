@@ -1,6 +1,7 @@
 "use client";
 
 import { ShoppingBag } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/features/cart/store";
@@ -34,11 +35,20 @@ export function CartTrigger({ className }: CartTriggerProps) {
       onClick={openCart}
     >
       <ShoppingBag className="size-5" />
-      {count > 0 ? (
-        <span className="absolute top-1.5 right-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-          {count > 9 ? "9+" : count}
-        </span>
-      ) : null}
+      <AnimatePresence>
+        {count > 0 ? (
+          <motion.span
+            key={count}
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.4, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            className="absolute top-1.5 right-1.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground"
+          >
+            {count > 9 ? "9+" : count}
+          </motion.span>
+        ) : null}
+      </AnimatePresence>
     </Button>
   );
 }

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import { AdminProductRowActions } from "@/components/admin/AdminProductRowActions";
+import { AdminProductStatusFilter } from "@/components/admin/AdminProductStatusFilter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,18 +53,16 @@ export default async function AdminProductsPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h1 className="font-heading text-2xl font-extrabold text-foreground">
-            Produtos
-          </h1>
+          <h1 className="text-xl font-semibold text-foreground">Produtos</h1>
           <p className="text-sm text-muted-foreground">
             Cadastre, edite e desative peças do catálogo.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" size="sm">
             <Link href="/admin/produtos/importar">Importar XLSX</Link>
           </Button>
-          <Button asChild>
+          <Button asChild size="sm">
             <Link href="/admin/produtos/novo">Nova peça</Link>
           </Button>
         </div>
@@ -84,27 +84,10 @@ export default async function AdminProductsPage({
           />
         </div>
         <div className="flex w-full flex-col gap-1.5 sm:w-48">
-          <label
-            htmlFor="status"
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Status
-          </label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={status}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="all">Todos</option>
-            {PRODUCT_STATUSES.map((value) => (
-              <option key={value} value={value}>
-                {PRODUCT_STATUS_LABELS[value]}
-              </option>
-            ))}
-          </select>
+          <span className="text-xs font-medium text-muted-foreground">Status</span>
+          <AdminProductStatusFilter name="status" defaultValue={status} />
         </div>
-        <Button type="submit" variant="outline">
+        <Button type="submit" variant="outline" size="sm">
           Filtrar
         </Button>
       </form>
@@ -163,9 +146,11 @@ export default async function AdminProductsPage({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button asChild variant="ghost" size="sm">
-                      <Link href={`/admin/produtos/${product.id}`}>Editar</Link>
-                    </Button>
+                    <AdminProductRowActions
+                      productId={product.id}
+                      productName={product.name}
+                      status={product.status}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

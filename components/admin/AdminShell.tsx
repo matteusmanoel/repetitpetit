@@ -8,6 +8,8 @@ import type { AdminRow } from "@/features/admin/session";
 /**
  * Shell autenticado do admin — header com identidade + nav + sign-out.
  * Badge de "Pedidos" vive em `AdminNav` (client) via FulfillmentQueueProvider.
+ * `.admin-shell` (globals.css, T8) troca a tipografia de títulos para Inter
+ * 600 — sem Nunito/lima/coral lúdicos, identidade de ferramenta.
  */
 export function AdminShell({
   admin,
@@ -17,11 +19,11 @@ export function AdminShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="admin-shell flex min-h-screen flex-col font-sans">
       <header className="border-b border-border bg-card">
         <div className="flex items-center justify-between px-4 py-3 sm:px-8">
           <div className="flex flex-col">
-            <span className="font-heading text-sm font-extrabold text-foreground">
+            <span className="text-sm font-semibold text-foreground">
               Repeti Petit · Admin
             </span>
             <span className="text-xs text-muted-foreground">

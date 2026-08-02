@@ -1033,3 +1033,25 @@ com placeholders (sem URL de projeto) e nota do path do webhook.
 Custo: sem alias Production saudável o webhook/MP back_urls e o smoke VIP
 continuam bloqueados para Mateus; `minimumReleaseAge: 0` relaxa a política de
 idade do pnpm — reavaliar para o default (1440) quando o ecossistema estabilizar.
+
+---
+
+## D50 — Soft-launch review: apertar RLS anon + sold no retry do webhook
+
+**Data**: 2026-08-02
+**Contexto**: Review do release `develop` → `main` (#53). Cart/checkout já
+escrevem via `service_role` (D13), mas a migration inicial deixava
+`cart_reservations` DELETE/INSERT e `customers`/`addresses` SELECT/INSERT
+abertos ao `anon` (`USING (true)` / `WITH CHECK (true)`). Além disso, se o
+webhook marcava o pedido `paid` e falhava ao marcar `products` como `sold`,
+retries retornavam `already_paid` sem reparar o inventário.
+**Decisão**: (1) Dropar policies anon permissivas nessas três tabelas
+(migration `20260802010000_tighten_anon_rls.sql`); leads/intake continuam com
+INSERT anon. (2) No caminho `already_paid`, chamar
+`ensureOrderProductsSold` para idempotentemente marcar peças vendidas e limpar
+reservas. (3) Ignored Build Step da Vercel
+(`production → exit 1`, preview → `exit 0`) permanece — só Production em
+`main` builda; previews SSO-protegidas ficam canceladas de propósito.
+**Consequência**: Anon key deixa de ler PII / apagar reservas arbitrárias;
+webhook retries fecham o loop peça única. Soft launch ainda exige deploy
+Production saudável + E2E pago + XLSX real (#24).

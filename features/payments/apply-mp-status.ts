@@ -31,8 +31,9 @@ export type ApplyMpStatusResult = ApplyMpStatusSuccess | ApplyMpStatusFailure;
 /**
  * Aplica status do pagamento MP no pedido (service role — D13 / D46).
  *
- * Idempotente: `paid → paid` retorna `already_paid` sem erro e sem
- * reescrever produtos / order_events.
+ * Idempotente: `paid → paid` retorna `already_paid` sem segundo
+ * `order_events`, mas ainda garante `products.status = sold` (retry após
+ * falha parcial no webhook).
  */
 export async function applyMercadoPagoPaymentStatus(
   payment: MercadoPagoPayment,
@@ -49,10 +50,11 @@ export async function applyMercadoPagoPaymentStatus(
     };
   }
 
-  // Já confirmado (ou além) + MP ainda approved → no-op idempotente.
+  // Já confirmado (ou além) + MP ainda approved → no-op de eventos, mas
+  // repara inventário se o apply anterior falhou após marcar o pedido paid.
   if (mapped === "paid" && isOrderPastPendingPayment(order.status)) {
+    const nowIso = new Date().toISOString();
     if (order.payment_status !== "paid" || !order.mp_payment_id) {
-      const nowIso = new Date().toISOString();
       await supabase
         .from("orders")
         .update({
@@ -63,6 +65,11 @@ export async function applyMercadoPagoPaymentStatus(
         })
         .eq("id", order.id);
       await upsertPaymentRow(supabase, order.id, payment, "paid", nowIso);
+    }
+
+    const sold = await ensureOrderProductsSold(supabase, order.id, nowIso);
+    if (!sold.ok) {
+      return sold;
     }
 
     return {
@@ -272,30 +279,13 @@ async function markOrderPaid(
 
   const refreshed = updated;
 
-  if (productIds.length > 0) {
-    const { error: productsError } = await supabase
-      .from("products")
-      .update({ status: "sold", updated_at: nowIso })
-      .in("id", productIds);
-
-    if (productsError) {
-      console.error("markOrderPaid products sold:", productsError);
-      return {
-        ok: false,
-        error: "Pagamento confirmado, mas falhou ao marcar peças como vendidas.",
-        code: "db",
-      };
-    }
-
-    const { error: reservationsError } = await supabase
-      .from("cart_reservations")
-      .delete()
-      .in("product_id", productIds);
-
-    if (reservationsError) {
-      console.error("markOrderPaid reservations:", reservationsError);
-      // Não falha o fluxo — produto já sold; reserva órfã será varrida pelo cron.
-    }
+  const sold = await markProductsSoldAndClearReservations(
+    supabase,
+    productIds,
+    nowIso,
+  );
+  if (!sold.ok) {
+    return sold;
   }
 
   await upsertPaymentRow(supabase, order.id, payment, "paid", nowIso, paidAt);
@@ -322,6 +312,75 @@ async function markOrderPaid(
     paymentStatus: "paid",
     orderStatus: "paid",
   };
+}
+
+async function ensureOrderProductsSold(
+  supabase: ReturnType<typeof createServiceSupabaseClient>,
+  orderId: string,
+  nowIso: string,
+): Promise<ApplyMpStatusResult | { ok: true }> {
+  const { data: items, error: itemsError } = await supabase
+    .from("order_items")
+    .select("product_id")
+    .eq("order_id", orderId);
+
+  if (itemsError) {
+    console.error("ensureOrderProductsSold items:", itemsError);
+    return {
+      ok: false,
+      error: "Não foi possível carregar os itens do pedido.",
+      code: "db",
+    };
+  }
+
+  const productIds = [
+    ...new Set(
+      (items ?? [])
+        .map((row) => row.product_id)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  ];
+
+  return markProductsSoldAndClearReservations(supabase, productIds, nowIso);
+}
+
+async function markProductsSoldAndClearReservations(
+  supabase: ReturnType<typeof createServiceSupabaseClient>,
+  productIds: string[],
+  nowIso: string,
+): Promise<ApplyMpStatusResult | { ok: true }> {
+  if (productIds.length === 0) {
+    return { ok: true };
+  }
+
+  const { error: productsError } = await supabase
+    .from("products")
+    .update({ status: "sold", updated_at: nowIso })
+    .in("id", productIds);
+
+  if (productsError) {
+    console.error("markProductsSoldAndClearReservations sold:", productsError);
+    return {
+      ok: false,
+      error: "Pagamento confirmado, mas falhou ao marcar peças como vendidas.",
+      code: "db",
+    };
+  }
+
+  const { error: reservationsError } = await supabase
+    .from("cart_reservations")
+    .delete()
+    .in("product_id", productIds);
+
+  if (reservationsError) {
+    console.error(
+      "markProductsSoldAndClearReservations reservations:",
+      reservationsError,
+    );
+    // Não falha o fluxo — produto já sold; reserva órfã será varrida pelo cron.
+  }
+
+  return { ok: true };
 }
 
 async function upsertPaymentRow(

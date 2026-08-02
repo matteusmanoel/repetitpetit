@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/public/site-header";
 import { WhatsAppFab } from "@/components/public/whatsapp-fab";
 import { Toaster } from "@/components/ui/sonner";
 import { CartSheet } from "@/features/cart/components/CartSheet";
-import { env } from "@/lib/env";
+import { publicEnv } from "@/lib/env/public";
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
@@ -15,7 +15,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <SiteFooter />
       <CartSheet />
       <Toaster position="top-center" richColors closeButton />
-      <WhatsAppFab whatsappNumber={env.NEXT_PUBLIC_STORE_WHATSAPP} />
+      <WhatsAppFab whatsappNumber={publicEnv.NEXT_PUBLIC_STORE_WHATSAPP} />
     </div>
   );
 }

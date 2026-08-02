@@ -1114,3 +1114,12 @@ reporta Integrations/MCP instável e `.cursor/mcp.json` não lido na VM.
 **Decisão**: Documentar cloud **sem depender de MCP**; adicionar `docs/agents/env-matrix.md`
 com mínimo de Secrets (5 vars) + Vercel/local; ajustar dispatch e playbook.
 **Consequência**: Paridade cloud = Secrets + git + skills no repo, não MCP parity.
+
+---
+
+## D55 — MCP só no orquestrador local pós-cloud
+
+**Data**: 2026-08-02
+**Contexto**: Cloud Agents sem MCP configurável; workarounds (SSH/Tailscale para MCP no Mac) descartados.
+**Decisão**: Executores cloud entregam PR + nota de handoff quando precisarem de MCP; orquestrador local aplica migrations, Supabase/MP/Context7/Filesystem/TestSprite após merge.
+**Consequência**: Issues devem permitir “migration no repo, apply local”; playbook em `docs/agents/cloud-dispatch.md`.

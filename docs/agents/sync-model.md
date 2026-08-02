@@ -56,5 +56,5 @@ Matriz detalhada: [env-matrix.md](./env-matrix.md).
 
 ## MCP
 
-- **Local:** `.cursor/mcp.json` + `~/.cursor/mcp.json` global.
-- **Cloud:** custom MCP **não** confiar; `.cursor/mcp.json` do repo **não** é lido pela VM (comportamento reportado Cursor + experiência do operador).
+- **Cloud:** no custom MCP — do not plan SSH/tunnel workarounds.
+- **Local orchestrator:** runs MCP after cloud PRs merge when tickets require DB apply, MP homologation, Flor reads, etc. See `docs/agents/cloud-dispatch.md`.

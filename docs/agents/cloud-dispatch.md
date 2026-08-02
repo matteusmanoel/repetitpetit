@@ -8,7 +8,7 @@ One-time per environment ([Cloud Agents → Environments](https://cursor.com/das
 
 1. Repo linked; `.cursor/environment.json` runs `pnpm install` on boot.
 2. **Secrets** — minimum set in [Secrets tab](https://cursor.com/dashboard/cloud-agents); see `docs/agents/env-matrix.md`.
-3. **MCP (optional)** — many accounts **cannot** configure cloud MCP (missing/broken Integrations UI). Plan for **no MCP on VM**; use env + repo migrations.
+3. **No MCP on cloud** — executors do not use Supabase/MP/Context7 MCP on the VM. When a ticket needs MCP, the **PR must state it** in a “Handoff to orchestrator” note; local session runs MCP after merge.
 4. Optional **multi-repo** environment if `flordoestudante` is on GitHub.
 5. Base branch **`develop`** for feature PRs.
 
@@ -56,4 +56,16 @@ You have **no prior conversation** — everything needed is below or in the repo
 
 ## After agents finish
 
-Local orchestrator runs `code-review` against `develop...feature-branch` or reviews PR on GitHub, then squash-merge and delete branch.
+1. Local orchestrator: `code-review` on the PR; squash-merge to `develop`; delete branch.
+2. `git pull origin develop` on the Mac.
+3. **MCP handoff (local only)** — if the PR or issue required tools unavailable on cloud, run on the **orchestrator session** (Mac):
+
+| Need | Local action |
+|---|---|
+| Apply migration / `list_tables` / types | Supabase MCP or `supabase db push` + `generate_typescript_types` |
+| MP homologation / webhook docs | Mercado Pago MCP + smoke |
+| Flor pattern deep-dive | Filesystem MCP or local Flor path + reuse-map |
+| Library API gap | Context7 + `research` skill |
+| E2E / TestSprite | Local `pnpm build && pnpm start` + TestSprite MCP |
+
+Cloud agents **must not** block waiting for MCP. They commit migration **files** and document “orchestrator applies after merge” when remote DB must change.

@@ -12,7 +12,8 @@ You are the **local orchestrator** for Repeti Petit. You do not implement large 
 2. Ensure issues have clear AC, doc pointers, and correct **Blocked by** links.
 3. **Dispatch** Cloud Agents (Task `environment: cloud`, base `develop`) for independent tickets — max parallel limited by dependency graph, not by RAM fantasies.
 4. **Review** PRs with `/code-review` skill; merge to `develop` when CI and standards pass.
-5. **HITL**: product calls, secrets, production promote, soft launch — human decides; you document in `docs/09-decisions.md` when architectural.
+5. **MCP handoff** — after merge, run any Supabase / Mercado Pago / Filesystem / Context7 / TestSprite work the cloud PR flagged (`docs/agents/cloud-dispatch.md` § After agents finish).
+6. **HITL**: product calls, secrets, production promote, soft launch — human decides; you document in `docs/09-decisions.md` when architectural.
 
 ## Do not
 

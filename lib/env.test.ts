@@ -1,14 +1,50 @@
 import { describe, expect, it } from "vitest";
 
-import { loadEnv } from "@/lib/env";
+import { loadEnv } from "@/lib/env/load-server";
+import { loadPublicEnv } from "@/lib/env/public";
 
-const validRequiredEnv = {
+const validPublicEnv = {
   NEXT_PUBLIC_SUPABASE_URL: "https://example-project.supabase.co",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",
-  SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
   NEXT_PUBLIC_SITE_URL: "https://repetipetit.com.br",
   NEXT_PUBLIC_STORE_NAME: "Repeti Petit",
 };
+
+const validRequiredEnv = {
+  ...validPublicEnv,
+  SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
+};
+
+describe("loadPublicEnv", () => {
+  it("succeeds without SUPABASE_SERVICE_ROLE_KEY (client-safe)", () => {
+    const env = loadPublicEnv(validPublicEnv);
+
+    expect(env.NEXT_PUBLIC_SUPABASE_URL).toBe(
+      validPublicEnv.NEXT_PUBLIC_SUPABASE_URL,
+    );
+    expect(
+      "SUPABASE_SERVICE_ROLE_KEY" in (env as Record<string, unknown>),
+    ).toBe(false);
+  });
+
+  it("throws when a required public var is missing", () => {
+    const incomplete: Record<string, string | undefined> = {
+      ...validPublicEnv,
+    };
+    delete incomplete.NEXT_PUBLIC_SUPABASE_URL;
+
+    expect(() => loadPublicEnv(incomplete)).toThrowError(
+      /NEXT_PUBLIC_SUPABASE_URL/,
+    );
+  });
+
+  it("does not require service role even when other keys are empty", () => {
+    expect(() => loadPublicEnv({})).toThrowError(/NEXT_PUBLIC_SUPABASE_URL/);
+    expect(() => loadPublicEnv({})).not.toThrowError(
+      /SUPABASE_SERVICE_ROLE_KEY/,
+    );
+  });
+});
 
 describe("loadEnv", () => {
   it("parses a fully valid env object, including optional vars", () => {
@@ -75,7 +111,7 @@ describe("loadEnv", () => {
 
   it("lists every missing required var in the thrown error", () => {
     expect(() => loadEnv({})).toThrowError(
-      /NEXT_PUBLIC_SUPABASE_URL[\s\S]*NEXT_PUBLIC_SUPABASE_ANON_KEY[\s\S]*SUPABASE_SERVICE_ROLE_KEY[\s\S]*NEXT_PUBLIC_SITE_URL[\s\S]*NEXT_PUBLIC_STORE_NAME/,
+      /NEXT_PUBLIC_SUPABASE_URL[\s\S]*NEXT_PUBLIC_SUPABASE_ANON_KEY[\s\S]*NEXT_PUBLIC_SITE_URL[\s\S]*NEXT_PUBLIC_STORE_NAME[\s\S]*SUPABASE_SERVICE_ROLE_KEY/,
     );
   });
 });

@@ -1055,3 +1055,19 @@ reservas. (3) Ignored Build Step da Vercel
 **Consequência**: Anon key deixa de ler PII / apagar reservas arbitrárias;
 webhook retries fecham o loop peça única. Soft launch ainda exige deploy
 Production saudável + E2E pago + XLSX real (#24).
+
+---
+
+## D51 — Split `publicEnv` / server `env` (client não valida service role)
+
+**Data**: 2026-08-02
+**Contexto**: Em Production, Client Components (login admin, fila Realtime)
+importavam `lib/supabase/browser.ts` → `lib/env.ts` → `loadEnv(process.env)`,
+que exige `SUPABASE_SERVICE_ROLE_KEY`. No browser essa chave nunca existe
+(correto), então o Zod lançava e quebrava auth/UI mesmo com env Vercel ok.
+**Decisão**: (1) `lib/env/public.ts` valida só `NEXT_PUBLIC_*` e exporta
+`publicEnv` (leitura por chave para inlining no build). (2) `lib/env/server.ts`
+é `server-only` + `env` completo; `lib/env.ts` reexporta o server barrel.
+(3) `browser.ts` e middleware usam `publicEnv`.
+**Consequência**: Bundle client deixa de exigir secrets; falha de import
+acidental de `@/lib/env` no client vira erro de build (`server-only`).

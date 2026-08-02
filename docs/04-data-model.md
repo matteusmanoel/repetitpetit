@@ -187,9 +187,14 @@ CREATE INDEX idx_reservations_expires ON cart_reservations(expires_at);
 
 ### Reserva atômica (SQL crítico)
 
+Implementada como RPC `reserve_cart_product(p_product_id, p_session_id)`
+(migration T13). Em uma única transação: (1) devolve a reserva ativa da mesma
+sessão se já existir; (2) apaga a linha expirada da peça (D14 — o UNIQUE plain
+em `product_id` não pode ser parcial com `now()`); (3) faz o INSERT atômico.
+
 ```sql
--- Chamado em /api/cart/reserve
--- Retorna a reserva criada ou NULL se produto indisponível / já reservado
+-- Chamado em /api/cart/reserve via rpc('reserve_cart_product')
+-- Passos 1–2 omitidos aqui; o INSERT atômico:
 INSERT INTO cart_reservations (product_id, session_id)
 SELECT p.id, $2
 FROM products p
@@ -203,6 +208,10 @@ WHERE p.id = $1
   )
 RETURNING *;
 ```
+
+TTL da reserva: **20 minutos** flat (carrinho e checkout) — ver D28.
+O default da coluna `expires_at` (`now() + interval '20 minutes'`) é a fonte
+de verdade no banco.
 
 ### pg_cron: sweep de reservas expiradas
 

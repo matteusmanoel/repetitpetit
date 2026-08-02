@@ -17,7 +17,8 @@ In order:
 8. `docs/07-setup.md` — local bootstrap and env
 9. `docs/08-roadmap.md` — milestones
 10. `docs/09-decisions.md` — closed decisions (append, never overwrite)
-11. `docs/reference/reuse-map-flordoestudante.md` — what to port from Flor, what to skip
+11. `docs/11-soft-launch.md` — gate VIP / checklist operacional (T24)
+12. `docs/reference/reuse-map-flordoestudante.md` — what to port from Flor, what to skip
 
 ## Hard constraints
 

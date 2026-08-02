@@ -44,7 +44,7 @@ INSERT INTO products (name, slug, description, price, compare_at_price, cover_im
 -- MENINA RN–24m (6 peças)
 ('Vestido Xadrez Carter''s Menina', 'vestido-xadrez-carters-menina',
   'Vestido manga longa xadrez vermelho e branco. Ombro: 20cm | Peito: 23cm | Comprimento: 32cm. Estado excelente, usado poucas vezes.',
-  45.00, NULL, 'https://placehold.co/400x533/FFE8E8/1A1A1A?text=Carter%27s', "Carter's", '9–12 meses', '6_12m', 'menina', 'seminovo', 'available', 1, true),
+  45.00, NULL, 'https://placehold.co/400x533/FFE8E8/1A1A1A?text=Carter%27s', 'Carter''s', '9–12 meses', '6_12m', 'menina', 'seminovo', 'available', 1, true),
 
 ('Body Floral GAP Bebê', 'body-floral-gap-bebe',
   'Body manga curta estampa floral delicada. Ombro: 17cm | Peito: 20cm. Com etiqueta, nunca usado.',
@@ -52,7 +52,7 @@ INSERT INTO products (name, slug, description, price, compare_at_price, cover_im
 
 ('Macacão Veludo Rosa Carter''s', 'macacao-veludo-rosa-carters',
   'Macacão de veludo rosa bebê, zíper frontal. Conservação excelente. Ombro: 22cm | Comprimento: 45cm.',
-  55.00, NULL, 'https://placehold.co/400x533/FFE8F5/1A1A1A?text=Carter%27s', "Carter's", '12–18 meses', '12_18m', 'menina', 'seminovo', 'available', 1, false),
+  55.00, NULL, 'https://placehold.co/400x533/FFE8F5/1A1A1A?text=Carter%27s', 'Carter''s', '12–18 meses', '12_18m', 'menina', 'seminovo', 'available', 1, false),
 
 ('Vestido Festa Zara Menina', 'vestido-festa-zara-menina',
   'Vestido de festa tule branco com laço nas costas. Usado apenas uma vez. Ombro: 24cm | Comprimento: 48cm.',
@@ -102,7 +102,7 @@ INSERT INTO products (name, slug, description, price, compare_at_price, cover_im
 
 ('Conjunto Carter''s Xadrez Menina 4–5 Anos', 'conjunto-carters-xadrez-4-5a',
   'Conjunto blusa manga longa + calça xadrez azul e branco. Seminovo.',
-  55.00, NULL, 'https://placehold.co/400x533/FFE8E8/1A1A1A?text=Carter%27s', "Carter's", '4–5 anos', '4_5a', 'menina', 'seminovo', 'available', 1, false),
+  55.00, NULL, 'https://placehold.co/400x533/FFE8E8/1A1A1A?text=Carter%27s', 'Carter''s', '4–5 anos', '4_5a', 'menina', 'seminovo', 'available', 1, false),
 
 -- MENINO 2–5a (4 peças)
 ('Moletom Capuz Adidas Menino 3 Anos', 'moletom-capuz-adidas-3a',
@@ -163,7 +163,7 @@ UPDATE products SET category_id = (SELECT id FROM categories WHERE slug = 'calca
 WHERE slug IN ('tenis-nike-menino-23', 'tenis-nike-unissex-30');
 
 UPDATE products SET category_id = (SELECT id FROM categories WHERE slug = 'conjuntos')
-WHERE slug IN ('macacão-veludo-rosa-carters', 'macacao-jeans-gap-bebe-menino', 'macacão-veludo-rosa-carters');
+WHERE slug IN ('macacao-veludo-rosa-carters', 'macacao-jeans-gap-bebe-menino');
 
 -- Remaining uncategorized → assign Conjuntos as fallback
 UPDATE products SET category_id = (SELECT id FROM categories WHERE slug = 'conjuntos')

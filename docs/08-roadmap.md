@@ -1,72 +1,82 @@
 # 08 — Roadmap
 
-## M0 — Scaffold e fundação (atual)
+## M0 — Scaffold e fundação
 
-**Status**: em andamento (esta sessão)
+**Status**: concluído
 
 - [x] Repo criado e vinculado ao GitHub
 - [x] Supabase projeto vinculado (CLI + MCP)
 - [x] Documentação de agentes completa
 - [x] `.env.example`, `AGENTS.md`, `README.md`
 - [x] mattpocock/skills instalado globalmente
-- [ ] Next.js app scaffolded (`create-next-app`)
-- [ ] Tailwind v4 + shadcn/ui configurados
-- [ ] `lib/env.ts` com validação Zod
-- [ ] `lib/supabase/{browser,server,server-service}.ts`
-- [ ] Migrations base aplicadas (enums + tabelas)
-- [ ] Tipos Supabase gerados
-- [ ] Seed de desenvolvimento aplicado
+- [x] Next.js app scaffolded (`create-next-app`)
+- [x] Tailwind v4 + shadcn/ui configurados
+- [x] `lib/env.ts` com validação Zod
+- [x] `lib/supabase/{browser,server,server-service}.ts`
+- [x] Migrations base aplicadas (enums + tabelas)
+- [x] Tipos Supabase gerados (`lib/supabase/types.ts`)
+- [x] Seed de desenvolvimento aplicado
 
 ## M1 — Catálogo público
 
-- [ ] `categories` + `products` no DB (migration aplicada)
-- [ ] `/catalogo` com grid e filtros por query params
-- [ ] `/produto/[slug]` — PDP completa
-- [ ] Gallery com swipe mobile
-- [ ] Badge "Peça única"
-- [ ] Filtros: tamanho, gênero, faixa etária, marca, conservação, preço
-- [ ] Home: banners + últimas novidades + CTAs
-- [ ] Admin: CRUD de produtos e categorias + importação XLSX
-- [ ] Admin: CRUD de banners
+**Status**: concluído (código em `develop`)
+
+- [x] `categories` + `products` no DB (migration aplicada)
+- [x] `/catalogo` com grid e filtros por query params
+- [x] `/produto/[slug]` — PDP completa
+- [x] Gallery com swipe mobile
+- [x] Badge "Peça única"
+- [x] Filtros: tamanho, gênero, faixa etária, marca, conservação, preço
+- [x] Home: banners + últimas novidades + CTAs
+- [x] Admin: CRUD de produtos e categorias + importação XLSX
+- [x] Admin: CRUD de banners
 
 ## M2 — Carrinho, checkout e pagamento
 
-- [ ] `cart_reservations` + reserva atômica
-- [ ] CartSheet com timer regressivo
-- [ ] `/checkout` com ViaCEP
-- [ ] Fulfillment: retirada / entrega / Correios
-- [ ] Integração Mercado Pago (Checkout Pro)
-- [ ] `/api/webhooks/mercadopago` com validação de assinatura
-- [ ] `/api/payments/sync`
-- [ ] `/pedido/[codigo]` — página pública
-- [ ] pg_cron sweep de reservas expiradas
+**Status**: concluído (código em `develop`)
+
+- [x] `cart_reservations` + reserva atômica
+- [x] CartSheet com timer regressivo
+- [x] `/checkout` com ViaCEP
+- [x] Fulfillment: retirada / entrega / Correios
+- [x] Integração Mercado Pago (Checkout Pro)
+- [x] `/api/webhooks/mercadopago` com validação de assinatura
+- [x] `/api/payments/sync`
+- [x] `/pedido/[codigo]` — página pública
+- [x] pg_cron sweep de reservas expiradas
 
 ## M3 — Admin e fila de fulfillment
 
-- [ ] `/admin/pedidos` com Supabase Realtime + badge + som
-- [ ] Ação "Conferir e separar"
-- [ ] Atualização de status (pronto / enviado / concluído)
-- [ ] Campo de código de rastreio (Correios)
-- [ ] Dashboard admin básico (KPIs: pedidos pagos, em separação, enviados)
-- [ ] Auth de admin + reset de senha
+**Status**: concluído (código em `develop`)
+
+- [x] `/admin/pedidos` com Supabase Realtime + badge + som
+- [x] Ação "Conferir e separar"
+- [x] Atualização de status (pronto / enviado / concluído)
+- [x] Campo de código de rastreio (Correios)
+- [x] Dashboard admin básico (KPIs: pedidos pagos, em separação, enviados)
+- [x] Auth de admin + reset de senha
 
 ## M4 — Desapego e lead capture
 
-- [ ] `/desapegue` — formulário multi-step com upload de fotos
-- [ ] `intake_requests` + `intake_photos` no DB
-- [ ] Geração de mensagem WhatsApp pré-preenchida
-- [ ] Popup de lead capture (primeiro scroll)
-- [ ] `leads` no DB
+**Status**: concluído (código em `develop`)
+
+- [x] `/desapegue` — formulário multi-step com upload de fotos
+- [x] `intake_requests` + `intake_photos` no DB
+- [x] Geração de mensagem WhatsApp pré-preenchida
+- [x] Popup de lead capture (primeiro scroll)
+- [x] `leads` no DB
 
 ## M5 — Soft launch (VIP WhatsApp)
 
-- [ ] Smoke tests completos em mobile (375px)
-- [ ] Performance: Lighthouse mobile ≥ 80
-- [ ] `.env` de produção configurado na Vercel
-- [ ] Webhook MP configurado em produção
-- [ ] Admin criado no Supabase Auth de produção
-- [ ] Seed de produtos reais carregado (XLSX)
-- [ ] DNS / domínio configurado (ou Vercel domain temporário)
+**Status**: parcialmente concluído — detalhes e ações manuais em `docs/11-soft-launch.md`
+
+- [ ] Smoke tests completos em mobile (375px) — path público + reserva OK @375px; E2E pago→webhook→fila ainda pendente
+- [x] Performance: Lighthouse mobile ≥ 80 — local `/` = 92, `/catalogo` = 95 (revalidar no domínio público após deploy)
+- [x] `.env` de produção configurado na Vercel
+- [x] Webhook MP configurado em produção
+- [x] Admin criado no Supabase Auth de produção (`admin@repetipetit.com.br` + `public.admins`)
+- [ ] Seed de produtos reais carregado (XLSX) — hoje só o seed de desenvolvimento (~28 peças / placehold.co); `imports_log` vazio
+- [ ] DNS / domínio configurado (ou Vercel domain temporário estável) — alias de produção (`NEXT_PUBLIC_SITE_URL`) retorna `DEPLOYMENT_NOT_FOUND`; builds de `develop` com Ignored Build Step
 - [ ] Link enviado para grupo VIP
 
 ## Pós-MVP

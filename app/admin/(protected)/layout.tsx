@@ -2,13 +2,16 @@ import type { ReactNode } from "react";
 
 import { AdminShell } from "@/components/admin/AdminShell";
 import { FulfillmentQueueProvider } from "@/components/admin/FulfillmentQueueProvider";
-import { getPaidFulfillmentQueue } from "@/features/admin/fulfillment/queries";
+import {
+  getInProgressFulfillmentQueue,
+  getPaidFulfillmentQueue,
+} from "@/features/admin/fulfillment/queries";
 import { requireAdminSession } from "@/features/admin/session";
 
 /**
  * Layout do grupo de rotas `(protected)` — todo o admin exceto `/admin/login`.
  * `requireAdminSession()` redireciona para `/admin/login` sem sessão válida.
- * A fila paid é carregada aqui para badge no nav em qualquer rota admin (T19).
+ * Filas paid + em progresso carregadas aqui para badge/nav e `/admin/pedidos`.
  */
 export default async function ProtectedAdminLayout({
   children,
@@ -16,10 +19,16 @@ export default async function ProtectedAdminLayout({
   children: ReactNode;
 }) {
   const session = await requireAdminSession();
-  const initialOrders = await getPaidFulfillmentQueue();
+  const [initialOrders, initialInProgressOrders] = await Promise.all([
+    getPaidFulfillmentQueue(),
+    getInProgressFulfillmentQueue(),
+  ]);
 
   return (
-    <FulfillmentQueueProvider initialOrders={initialOrders}>
+    <FulfillmentQueueProvider
+      initialOrders={initialOrders}
+      initialInProgressOrders={initialInProgressOrders}
+    >
       <AdminShell admin={session.admin}>{children}</AdminShell>
     </FulfillmentQueueProvider>
   );

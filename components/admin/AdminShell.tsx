@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { AdminNav } from "@/components/admin/AdminNav";
 import { SignOutButton } from "@/components/admin/SignOutButton";
+import { Toaster } from "@/components/ui/sonner";
 import type { AdminRow } from "@/features/admin/session";
 
 /**
@@ -33,6 +34,7 @@ export function AdminShell({
       </header>
 
       <main className="flex-1 px-4 py-6 sm:px-8">{children}</main>
+      <Toaster position="top-center" richColors closeButton />
     </div>
   );
 }

@@ -39,6 +39,17 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-condition-novo: var(--condition-novo-bg);
+  --color-condition-novo-foreground: var(--condition-novo-fg);
+  --color-condition-seminovo: var(--condition-seminovo-bg);
+  --color-condition-seminovo-foreground: var(--condition-seminovo-fg);
+  --color-condition-bom-estado: var(--condition-bom-estado-bg);
+  --color-condition-bom-estado-foreground: var(--condition-bom-estado-fg);
+  --color-condition-com-detalhes: var(--condition-com-detalhes-bg);
+  --color-condition-com-detalhes-foreground: var(--condition-com-detalhes-fg);
+  --color-gender-menino: var(--gender-menino);
+  --color-gender-menina: var(--gender-menina);
+  --color-gender-unissex: var(--gender-unissex);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -87,6 +98,25 @@
   --sidebar-accent-foreground: hsl(0 0% 10%);
   --sidebar-border: hsl(60 8% 89%);
   --sidebar-ring: hsl(210 77% 37%);
+
+  /*
+   * Pills de condição do produto (docs/09-decisions.md D57).
+   * Valores literais do brief de UI — não derivados de --primary/--secondary/--destructive
+   * porque são tons claros de fundo com texto escuro próprio, não variações de opacidade.
+   */
+  --condition-novo-bg: #eaf3de;
+  --condition-novo-fg: #3f6b1a;
+  --condition-seminovo-bg: #e6f1fb;
+  --condition-seminovo-fg: #164a7a;
+  --condition-bom-estado-bg: var(--muted);
+  --condition-bom-estado-fg: var(--muted-foreground);
+  --condition-com-detalhes-bg: #faece7;
+  --condition-com-detalhes-fg: #a83e3c;
+
+  /* Borda de gênero do ProductCard/PDP — alias dos tokens de marca já existentes. */
+  --gender-menino: var(--primary);
+  --gender-menina: var(--destructive);
+  --gender-unissex: var(--secondary);
 }
 
 @layer base {

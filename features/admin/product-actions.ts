@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import {
+  isValidRpStaffCode,
+  planProductActivation,
+} from "@/features/admin/activate-product";
 import { requireAdminSession } from "@/features/admin/session";
 import {
   parseProductFormData,
@@ -11,6 +15,10 @@ import {
 } from "@/features/admin/product-schemas";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
 import type { Database } from "@/lib/supabase/types";
+
+export type ActivateProductResult =
+  | { ok: true; staffCode: string; productId: string }
+  | { ok: false; error: string };
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
 
@@ -216,4 +224,143 @@ export async function deactivateProductAction(
 
   revalidateProductPaths(data.slug);
   redirect("/admin/produtos");
+}
+
+/**
+ * SN-09 — ativa peça para o chão de loja: atribui `staff_code` (RP-XXXXXX)
+ * exatamente uma vez e garante `status = available` (D64 / D67).
+ *
+ * Idempotente se o código já existir. Não altera hold/sold (SN-02 / SN-05).
+ * Auditoria de status de produto fica para SN-15 (`product_status_events`).
+ */
+export async function activateProductAction(
+  productId: string,
+): Promise<ActivateProductResult> {
+  await requireAdminSession();
+
+  if (!productId) {
+    return { ok: false, error: "Produto inválido." };
+  }
+
+  const supabase = createServiceSupabaseClient();
+
+  const { data: product, error: loadError } = await supabase
+    .from("products")
+    .select("id, status, staff_code, slug")
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (loadError) {
+    return {
+      ok: false,
+      error: `Não foi possível carregar o produto: ${loadError.message}`,
+    };
+  }
+
+  if (!product) {
+    return { ok: false, error: "Produto não encontrado." };
+  }
+
+  const plan = planProductActivation(product);
+
+  if (plan.kind === "reject") {
+    return { ok: false, error: plan.error };
+  }
+
+  if (plan.kind === "idempotent") {
+    if (plan.setAvailable) {
+      const { error: reactivateError } = await supabase
+        .from("products")
+        .update({
+          status: "available",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", productId)
+        .eq("staff_code", plan.staffCode);
+
+      if (reactivateError) {
+        return {
+          ok: false,
+          error: `Não foi possível reativar a peça: ${reactivateError.message}`,
+        };
+      }
+    }
+
+    revalidateProductPaths(product.slug);
+    return {
+      ok: true,
+      staffCode: plan.staffCode,
+      productId: product.id,
+    };
+  }
+
+  const { data: nextCode, error: seqError } = await supabase.rpc(
+    "next_rp_staff_code",
+  );
+
+  if (seqError || !nextCode || typeof nextCode !== "string") {
+    return {
+      ok: false,
+      error: seqError
+        ? `Não foi possível gerar o código RP: ${seqError.message}`
+        : "Não foi possível gerar o código RP.",
+    };
+  }
+
+  if (!isValidRpStaffCode(nextCode)) {
+    return {
+      ok: false,
+      error: `Código RP inválido gerado pelo banco: ${nextCode}`,
+    };
+  }
+
+  // Conditional update: only assign if still null (race-safe; wasted seq ok).
+  const { data: updated, error: updateError } = await supabase
+    .from("products")
+    .update({
+      staff_code: nextCode,
+      status: "available",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", productId)
+    .is("staff_code", null)
+    .select("id, staff_code, slug")
+    .maybeSingle();
+
+  if (updateError) {
+    return {
+      ok: false,
+      error: `Não foi possível ativar a peça: ${updateError.message}`,
+    };
+  }
+
+  if (!updated) {
+    // Concurrent activation won — reload and return existing code (idempotent).
+    const { data: raced, error: raceError } = await supabase
+      .from("products")
+      .select("id, staff_code, slug")
+      .eq("id", productId)
+      .maybeSingle();
+
+    if (raceError || !raced?.staff_code) {
+      return {
+        ok: false,
+        error: "Não foi possível ativar a peça (conflito de ativação).",
+      };
+    }
+
+    revalidateProductPaths(raced.slug);
+    return {
+      ok: true,
+      staffCode: raced.staff_code,
+      productId: raced.id,
+    };
+  }
+
+  revalidateProductPaths(updated.slug);
+  return {
+    ok: true,
+    staffCode: updated.staff_code ?? nextCode,
+    productId: updated.id,
+  };
 }

@@ -999,6 +999,7 @@ export type Database = {
       }
       expire_due_hold_sessions: { Args: never; Returns: Json }
       is_active_admin: { Args: never; Returns: boolean }
+      next_rp_staff_code: { Args: never; Returns: string }
       release_hold_item: {
         Args: { p_product_id: string; p_session_id: string }
         Returns: Json

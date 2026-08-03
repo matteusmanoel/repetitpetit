@@ -135,7 +135,7 @@ export async function executeOverrideAction(
     p_product_id: productId,
     p_staff_id: staffId,
     p_reason: reason,
-    p_context: context ?? null,
+    ...(context ? { p_context: context } : {}),
   });
 
   if (error) {

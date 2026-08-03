@@ -176,7 +176,6 @@ describe("executeOverrideAction", () => {
       p_product_id: PRODUCT_ID,
       p_staff_id: STAFF_ID,
       p_reason: "Cliente na loja quer a peça",
-      p_context: null,
     });
     expect(result).toEqual({
       ok: true,

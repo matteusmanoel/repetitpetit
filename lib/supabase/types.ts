@@ -997,6 +997,7 @@ export type Database = {
         Args: { p_order_id: string; p_session_id: string }
         Returns: Json
       }
+      expire_due_hold_sessions: { Args: never; Returns: Json }
       is_active_admin: { Args: never; Returns: boolean }
       release_hold_item: {
         Args: { p_product_id: string; p_session_id: string }

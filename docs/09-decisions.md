@@ -1485,3 +1485,18 @@ products.status` for hold/release. (5) Contract doc:
 `docs/slice-n/SN-02-contract.md`.
 **Consequência**: Unlock SN-03/04/05 after validation; cart dual-read remains until
 SN-04.
+
+---
+
+## D76 — SN-03 expire via SQL RPC + pg_cron (Edge Function thin wrapper)
+
+**Data**: 2026-08-03
+**Contexto**: D70 prefers schedule → Edge Function; SN-02 forbids duplicate status
+SQL; existing cart sweep already uses pg_cron → SQL.
+**Decisão**: (1) `expire_due_hold_sessions()` is the sole expire batch entrypoint and
+only calls `_finalize_hold_session(..., 'expired')`. (2) Primary schedule:
+`pg_cron` every 5 min → that RPC (no HTTP secrets). (3) Edge Function
+`expire-hold-sessions` wraps the same RPC for manual/ops invoke. (4) Contract:
+`docs/slice-n/SN-03-contract.md`.
+**Consequência**: TTL enforcement is system-owned without a second inventory path.
+Cloud agents must not reimplement expire mutation logic.

@@ -146,16 +146,12 @@ Downstream agents **MUST NOT**:
 
 ### SN-03 — Expiration
 
-- Job finds `hold_sessions WHERE status = 'active' AND expires_at <= now()`.
-- For each row, call `release_hold_session(session_id, 'expired')` (by cookie `session_id`) **or** extend with an id-based wrapper that calls `_finalize_hold_session(id, 'expired')`.
-- **Do not** duplicate `UPDATE products` / `DELETE hold_items` in the Edge Function body beyond invoking the RPC.
-- Realtime follows the DB commit (publication already on `hold_sessions` / `hold_items` from SN-01).
+**Shipped** — see `docs/slice-n/SN-03-contract.md` / D76.
 
-**Contract gap (non-blocking):** Edge Function today would need the browser `session_id` text. Prefer adding in SN-03 (same migration owner wave) a thin:
-
-`expire_hold_session_by_id(p_hold_session_id uuid) → jsonb`
-
-that calls `_finalize_hold_session(id, 'expired')`. Optional follow-up — not required to dispatch SN-03 if the job selects `session_id` and calls `release_hold_session`.
+- Batch entrypoint: `expire_due_hold_sessions()` → `_finalize_hold_session(id, 'expired')`.
+- Primary schedule: pg_cron `expire-hold-sessions` every 5 minutes.
+- Edge Function `expire-hold-sessions` is a thin RPC wrapper (manual/ops).
+- **Do not** duplicate status SQL in future agents.
 
 ### SN-04 — Hold checkout
 

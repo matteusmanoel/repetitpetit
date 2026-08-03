@@ -5,6 +5,7 @@ import { createOrderSchema } from "@/features/checkout/schemas";
 const base = {
   fullName: "Maria Silva",
   phone: "45999999999",
+  email: "maria@exemplo.com",
   productIds: ["11111111-1111-4111-8111-111111111111"],
 };
 
@@ -15,6 +16,43 @@ describe("createOrderSchema", () => {
       fulfillmentType: "pickup",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("exige e-mail no checkout", () => {
+    const result = createOrderSchema.safeParse({
+      fullName: base.fullName,
+      phone: base.phone,
+      email: "",
+      productIds: base.productIds,
+      fulfillmentType: "pickup",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((issue) => issue.path.includes("email")),
+      ).toBe(true);
+    }
+  });
+
+  it("rejeita e-mail inválido", () => {
+    const result = createOrderSchema.safeParse({
+      ...base,
+      email: "nao-e-email",
+      fulfillmentType: "pickup",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("normaliza e-mail para minúsculas", () => {
+    const result = createOrderSchema.safeParse({
+      ...base,
+      email: "Maria@Exemplo.COM",
+      fulfillmentType: "pickup",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.email).toBe("maria@exemplo.com");
+    }
   });
 
   it("exige endereço na entrega", () => {
@@ -28,7 +66,6 @@ describe("createOrderSchema", () => {
   it("aceita entrega com endereço completo", () => {
     const result = createOrderSchema.safeParse({
       ...base,
-      email: "",
       fulfillmentType: "delivery",
       address: {
         recipientName: "Maria Silva",
@@ -44,7 +81,7 @@ describe("createOrderSchema", () => {
     if (result.success) {
       expect(result.data.address?.state).toBe("PR");
       expect(result.data.address?.postalCode).toBe("85851000");
-      expect(result.data.email).toBeUndefined();
+      expect(result.data.email).toBe("maria@exemplo.com");
     }
   });
 

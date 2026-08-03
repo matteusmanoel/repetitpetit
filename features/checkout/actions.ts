@@ -2,6 +2,7 @@
 
 import { peekCartSessionId } from "@/features/cart/session";
 import { nextPublicCode } from "@/features/checkout/public-code";
+import { planCustomerResolve } from "@/features/checkout/resolve-customer";
 import { createOrderSchema } from "@/features/checkout/schemas";
 import type { CreateOrderResult } from "@/features/checkout/types";
 import { createCheckoutPreferenceForOrder } from "@/features/payments/create-checkout-preference";
@@ -22,7 +23,7 @@ function normalizeCity(city: string): string {
  *
  * - Recalcula preços a partir de `products` (nunca confia no client).
  * - Valida reservas ativas da sessão (`cart_reservations`).
- * - Reusa `customers` por telefone.
+ * - Reusa `customers` por e-mail, depois telefone (SN-12 / D69); sempre liga `customer_id`.
  * - Cria preferência MP, grava `mp_preference_id` e retorna `initPoint`.
  */
 export async function createOrderAction(
@@ -215,30 +216,50 @@ export async function createOrderAction(
 
   const total = subtotal + shippingAmount;
 
-  // ── customer: reuse by phone ────────────────────────────────────────────
-  const { data: existingCustomer, error: customerLookupError } = await supabase
-    .from("customers")
-    .select("id")
-    .eq("phone", data.phone)
-    .maybeSingle();
+  // ── customer: email first, then phone (SN-12); always linked on online orders ─
+  const [emailLookup, phoneLookup] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("id, full_name, phone, email")
+      .eq("email", data.email)
+      .maybeSingle(),
+    supabase
+      .from("customers")
+      .select("id, full_name, phone, email")
+      .eq("phone", data.phone)
+      .maybeSingle(),
+  ]);
 
-  if (customerLookupError) {
-    console.error("Falha ao buscar customer:", customerLookupError);
+  if (emailLookup.error || phoneLookup.error) {
+    console.error("Falha ao buscar customer:", emailLookup.error ?? phoneLookup.error);
     return {
       success: false,
       error: "Não foi possível salvar seus dados. Tente novamente.",
     };
   }
 
+  const plan = planCustomerResolve(
+    {
+      fullName: data.fullName,
+      phone: data.phone,
+      email: data.email,
+    },
+    emailLookup.data,
+    phoneLookup.data,
+  );
+
+  if (plan.action === "reuse" && plan.warn) {
+    console.warn("[checkout/customer]", plan.warn);
+  }
+
   let customerId: string;
 
-  if (existingCustomer) {
-    customerId = existingCustomer.id;
+  if (plan.action === "reuse") {
+    customerId = plan.customerId;
     const { error: updateError } = await supabase
       .from("customers")
       .update({
-        full_name: data.fullName,
-        email: data.email ?? null,
+        ...plan.updates,
         updated_at: nowIso,
       })
       .eq("id", customerId);
@@ -253,11 +274,7 @@ export async function createOrderAction(
   } else {
     const { data: createdCustomer, error: createCustomerError } = await supabase
       .from("customers")
-      .insert({
-        full_name: data.fullName,
-        phone: data.phone,
-        email: data.email ?? null,
-      })
+      .insert(plan.insert)
       .select("id")
       .single();
 
@@ -272,8 +289,16 @@ export async function createOrderAction(
     customerId = createdCustomer.id;
   }
 
+  // Contact always snapshotted on the order (pickup has no street address).
+  // Nested under address_snapshot_json.contact — no schema migration (SN-12).
+  const contactSnapshot = {
+    full_name: data.fullName,
+    phone: data.phone,
+    email: data.email,
+  };
+
   // ── address (delivery only) ─────────────────────────────────────────────
-  let addressSnapshot: Json | null = null;
+  let addressSnapshot: Json = { contact: contactSnapshot };
 
   if (data.fulfillmentType === "delivery" && data.address) {
     const addr = data.address;
@@ -299,6 +324,7 @@ export async function createOrderAction(
     }
 
     addressSnapshot = {
+      contact: contactSnapshot,
       recipient_name: addr.recipientName,
       street: addr.street,
       number: addr.number,

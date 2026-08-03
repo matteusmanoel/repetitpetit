@@ -1697,3 +1697,26 @@ Minimal reusable dialog only — full POS is SN-08. (9) `/admin/override` deep
 link from Passport hosts the shared button (replaces SN-11 stub).
 **Consequência**: Unlocks SN-14 override counts and SN-15 Passport history;
 SN-08 wires the shared button into POS. Contract: `docs/slice-n/SN-13-contract.md`.
+
+---
+
+## D86 — SN-08: POS UI scan-first com Override + create/confirm SN-07
+
+**Data**: 2026-08-03
+**Contexto**: SN-07 entregou `createStoreOrderAction` / `confirmStoreSaleAction`
+(D82); SN-11 deep-linka Vender → `/admin/pos?product=<id>` (D84); SN-13
+oferece `OverrideActionButton` + `executeOverrideActionFromAdmin` (D85). Falta
+a UI de balcão mobile-first (D73 scan-first, D62 override, D71 paid→sold).
+**Decisão**: (1) Rota real `app/admin/(protected)/pos` substitui o stub; mantém
+contrato `?product=<uuid>` do Passaporte. (2) `lookupProductForPos` em
+`features/pos/lookup-product.ts` resolve por `staff_code` (RP-…) **ou** `id`
+(service role), devolve hold ativo (countdown / minutos restantes) e flags de
+pedido online `pending_payment` / pago. (3) Gate de UI: `available` → toggle
+Dinheiro/Cartão/Pix (`cash` / `card_local` / `pix_local`) → Confirmar venda;
+`hold` / `pending_payment` → aviso + `OverrideActionButton` antes de vender;
+`sold`/`paid` e `inactive` → bloqueio com cópia clara, sem ação de venda.
+(4) Confirmação chama `completePosSaleFromAdmin` = create + confirm SN-07 em
+sequência; staff id da sessão admin. (5) Sucesso mostra card com
+`orders.public_code`. (6) Sem migration — reusa schema/actions existentes.
+**Consequência**: Unlock smoke de balcão e contagens SN-14; Passaporte continua
+ponto de entrada do QR; Override auditado permanece em SN-13.

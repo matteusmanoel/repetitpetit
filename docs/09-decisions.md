@@ -127,6 +127,8 @@ Pós-MVP: automatizar com cupons reais.
 ## D11 — Sacolinha: out do MVP, schema extensível
 
 **Data**: 2026-08-01
+**Status**: **Superseded by D60** — a definição de negócio estava errada (assinatura/
+consignação mensal). Manter este bloco só como histórico.
 **Contexto**: "Sacolinha" é um modelo de assinatura/pacote mensal interessante para
 o futuro mas fora do escopo agora.
 **Decisão**: `orders.order_type ENUM ('standard', 'sacolinha')` já presente no schema.
@@ -1202,3 +1204,247 @@ até lá. Overlay no grid vira ticket futuro dedicado.
 **Consequência**: Sinal "Reservado" continua existindo só na PDP individual
 (`ReservationIndicator`, T14); o grid não reflete reservas de terceiros até o
 ticket futuro ser feito.
+
+---
+
+## D60 — Sacolinha = bolsa de inventário do cliente (corrige D11)
+
+**Data**: 2026-08-02
+**Contexto**: D11 tratou "Sacolinha" como assinatura/pacote mensal ou consignação e
+tirou do MVP. Isso era equívoco de requisito. No domínio real da loja, Sacolinha é
+a bolsa de inventário do cliente: peças **pagas** aguardando retirada ou entrega,
+com prazo de liquidação de até **30 dias**. Há **uma Sacolinha aberta por Customer**;
+cada pagamento confirmado adiciona peças a essa bolsa. Área do cliente (login pós
+primeira compra, códigos, endereços) pode evoluir depois; o significado do termo
+não.
+**Decisão**: (1) Glossário canônico: Sacolinha = inventory bag do Customer (ver
+`CONTEXT.md`). Descartar significados de assinatura mensal / consignação-como-
+Sacolinha. (2) D11 fica histórico; não usar `order_type = 'sacolinha'` como
+sinônimo desse conceito. O enum legado pode permanecer no schema até migração
+dedicada — não modela a Sacolinha de negócio. (3) Escopo de produto: peças entram
+na Sacolinha no pagamento confirmado; packing agrupa por Customer; settle ≤30 dias
+com aviso a cliente e lojista se não liquidar.
+**Consequência**: PRD/roadmap que citam "Sacolinha mensal" ficam desalinhados até
+revisão; tickets de área do cliente e packing devem usar este significado. Revisar
+uso futuro do enum `order_type` em ticket de schema separado. TTL de settle ~30
+dias por pacote de pagamento é **default operacional ajustável** — prioridade é
+visibilidade/TTL para lojista + lembrete WhatsApp, não motor rígido de expiração
+no MVP.
+
+---
+
+## D61 — Hold Session MVP + prioridade omnichannel (não é e-commerce clássico)
+
+**Data**: 2026-08-03
+**Contexto**: A loja é omnichannel com peça única e um só inventário. O fluxo
+otimizado não é "Add to Cart" eterno: é Hold Session com pagamento único; Sacolinha
+só após pago. Balcão precisa poder vender apesar de holds abandonados, sem
+invadir venda online paga.
+**Decisão**: (1) Jornada MVP: Browse → Comprar agora → Hold Session (máx. 5,
+TTL 15–20 min, countdown, expiração) → continuar comprando opcional → um checkout/
+pagamento → Sacolinha. (2) Prioridade: pedido online pago > venda física concluída
+> Hold Session > carrinho sem reserva. Carrinho, se existir, **não reserva**.
+(3) Override físico só sobre Hold (não pago): cancela hold, notifica cliente,
+goodwill; bloqueia se já pago online. (4) Verdade = Postgres; Realtime só espelha.
+Detalhe e trade-off: `docs/adr/0001-omnichannel-inventory-priority.md` + `CONTEXT.md`.
+**Consequência**: Carrinho atual (Zustand + reserva) deixa de ser o modelo mental —
+a reserva atômica permanece, mas como Hold Session. Schema/`product_status` e
+fluxo MP ainda não expressam override de balcão, QR `RP-…`, nem pipeline AI;
+isso exige tickets/migrations futuros. D42–D45 (cart UX) ficam candidatos a
+revisão alinhada a Hold Session.
+
+---
+
+## D62 — Override de balcão: Hold + pending_payment; paid é sagrado
+
+**Data**: 2026-08-03
+**Contexto**: Cliente no balcão precisa fechar venda mesmo se alguém online acabou
+de ir ao Mercado Pago. Checkout Pro não autoriza cartão durante o hold; o risco
+real é corrida hold / `pending_payment` / webhook atrasado.
+**Decisão**: Override permitido em Hold Session **e** `pending_payment`. Ação
+atômica: cancela hold e/ou pedido pendente, notifica cliente, goodwill. Webhooks
+MP permanecem idempotentes — pagamento tardio pós-override → reconcile
+(cancel/refund + notify), nunca `paid`/`sold` na peça. Após pagamento confirmado
+(`paid`), sem override. Detalhe: `docs/adr/0001-omnichannel-inventory-priority.md`
++ `CONTEXT.md`.
+**Consequência**: Precisa de caminho admin/POS para override + testes de corrida
+webhook; `applyMercadoPagoPaymentStatus` deve rejeitar/reconciliar se pedido já
+cancelado por override.
+
+---
+
+## D63 — Próximo slice: Hold Session + Override + POS mínimo + QR Passport (AI depois)
+
+**Data**: 2026-08-03
+**Contexto**: O ADR omnichannel é amplo (AI intake, lifecycle rico, returns). Precisa
+de corte executável. QR/`RP-…` desbloqueia todo fluxo de loja; AI só acelera cadastro.
+**Decisão**: Slice imediato inclui: (1) refactor Hold Session (máx. 5, TTL 15–20,
+continuar comprando, um pagamento); (2) Override idempotente + reconcile de webhook
+tardio (D62); (3) venda física mínima no admin/POS; (4) geração/impressão de QR e
+scan-to-open Garment Passport. **Fora deste slice** (iteração seguinte): pipeline
+AI foto+áudio, batch review, merge/reject de drafts. Visão longa permanece em
+`docs/adr/0001-omnichannel-inventory-priority.md`.
+**Consequência**: Tickets/PR devem caber neste corte; não misturar AI intake no
+mesmo epic. Identidade permanente da peça (`RP-…` + QR) entra no schema cedo.
+Fila de packing atual (paid → Realtime + beep) **permanece**; aprofundar Sacolinha/
+categoria no pick fica para o slice seguinte, depois de identidade + POS estáveis.
+
+---
+
+## D64 — Identidade da Peça: UUID interno cedo; `RP-…` só na ativação
+
+**Data**: 2026-08-03
+**Contexto**: QR/Passport precisam de código estável de chão; drafts/AI não devem
+consumir sequência. Staff não usa UUID.
+**Decisão**: (1) UUID (PK) desde a criação — referência de sistema para draft/
+review/AI. (2) `RP-…` atribuído **somente** na aprovação/ativação para venda
+(“ready for floor”), junto com geração/impressão do QR. (3) `RP-…` nunca muda e
+não é reatribuído. Ver `CONTEXT.md` (Peça).
+**Consequência**: Migration com coluna `staff_code` (ou nome canônico) nullable até
+ativar; sequência só incrementa na ativação. Produtos seed/atuais: backfill na
+migração ou na primeira ativação/reprint.
+
+---
+
+## D65 — `sold` é inventário; canal é atributo da Sale
+
+**Data**: 2026-08-03
+**Contexto**: POS mínimo e omnichannel precisam distinguir “sumiu do estoque” de
+“como saiu”. Enums `sold_online` / `sold_store` duplicam o terminal e quebram
+quando surgir marketplace/pop-up/Instagram.
+**Decisão**: (1) Status de inventário terminal único: `sold` (= ninguém compra de
+novo). (2) Canal em `sold_channel` e/ou registro de Sale/order (`online` | `store`,
+extensível). (3) Packing/Sacolinha só consomem vendas online pagas; vendas loja
+servem histórico, KPI e auditoria de Override. (4) Passport em item sold mostra
+“Sold” + contexto da Sale — sem multi-status de inventário. Ver `CONTEXT.md`.
+**Consequência**: Migration/backfill: vendas MP atuais → channel online; POS grava
+Sale store. Lifecycle ADR que lista `SOLD_ONLINE` / `SOLD_STORE` como status de
+produto fica interpretado como **canal da Sale**, não como `product_status`.
+
+---
+
+## D66 — Hold: status é projeção; Hold Session é a verdade
+
+**Data**: 2026-08-03
+**Contexto**: Passport/POS precisam responder “posso vender agora?” num lookup;
+multi-item + TTL + override precisam de sessão. D40 contava hold só em
+`cart_reservations` sem mudar `products.status` — fricção com scan-first.
+**Decisão**: (1) Fonte de verdade: Hold Session (+ itens), com status de sessão
+(active/expired/cancelled/converted), `expires_at`, vínculo a checkout. (2)
+Projeção: `products.status = hold` enquanto houver hold ativo na peça. (3)
+Expire/cancel/override/convert atualizam **atomicamente** sessão e status do
+produto (`available` ou `sold` no pago). (4) Realtime anuncia mudança de produto;
+não decide ownership. Substitui o modelo mental “só `cart_reservations`” da D40
+para o caminho omnichannel (D40 permanece histórico para o KPI antigo até o
+refactor). Ver `CONTEXT.md` + ADR.
+**Consequência**: Migration: evoluir `cart_reservations` → `hold_sessions` /
+`hold_items` (ou equivalente); enum `reserved` → `hold` (ou alias); KPI
+“reservadas” passa a `status = hold`. RPC de reserve deve setar status na mesma
+transação.
+
+---
+
+## D67 — Slice N: quatro status de inventário (`inactive` permanece)
+
+**Data**: 2026-08-03
+**Contexto**: Modelo ideal (status × visibility × lifecycle) é mais limpo, mas
+explodiria o slice junto com Hold/POS/QR. Admin já soft-deactivate com `inactive`.
+**Decisão**: Slice N: `available | hold | sold | inactive`. `inactive` = peça já
+do inventário oficial retirada de venda sem venda. Drafts/AI ficam fora (sem
+`RP-…`). Evolução tipo C (separar visibility/lifecycle) fica explícita como
+pós–Slice N. Ver `CONTEXT.md`.
+**Consequência**: Passport/POS: inactive e sold bloqueiam venda; hold oferece
+Override; available vende. Não reutilizar `inactive` para sold.
+
+---
+
+## D68 — POS e online: um agregado `orders` (canal distingue)
+
+**Data**: 2026-08-03
+**Nota**: Fronteira paid→sold esclarecida em **D71** (criar Order store ≠ sold).
+**Contexto**: POS mínimo precisa registrar saída de inventário sem duplicar line
+items/pagamento/auditoria. Split `store_sales` vs `orders` cria duas verdades.
+**Decisão**: Reusar `orders` + `order_items` como Sale. Campos de canal
+(`online` | `store`), payment_provider (MP vs cash/card/pix…), customer nullable
+no balcão, fulfillment adequado (`store_counter` vs pickup/delivery/correios).
+Pago → `products.status = sold` + `sold_channel` alinhado. Packing só fila online
+paga. Refatoração futura para `sales` genérico fica fora do Slice N. Ver
+`CONTEXT.md`.
+**Consequência**: Migration/enum channel + providers; fluxo POS grava Order e só
+após **paid** aplica sold (ver D71); Passport lê order da peça sold.
+
+---
+
+## D69 — Slice N: Customer + e-mail no checkout; sem área logada do comprador
+
+**Data**: 2026-08-03
+**Contexto**: Portal Sacolinha com Auth de comprador é cedo demais no mesmo slice
+que Hold/POS/QR. Perder e-mail agora torna migração futura dolorosa.
+**Decisão**: (1) Manter/ enriquecer entidade `customers` e sempre vincular
+`orders.customer_id`. (2) Checkout coleta/confirma e-mail (além de nome/telefone
+já usados). (3) Sem login comprador / painel Sacolinha no Slice N — tracking
+público `/pedido/[codigo]` + WhatsApp; staff gerencia Sacolinha. (4) Portal
+magic-link fica para slice posterior (após packing deepen). Ver `CONTEXT.md`.
+**Consequência**: Evita segundo sistema de Auth no epic crítico; prepara histórico
+para magic-link. Leads do popup continuam distintos de Customer de pedido.
+
+---
+
+## D70 — Expiração de Hold Session: automática via schedule Supabase (MVP)
+
+**Data**: 2026-08-03
+**Contexto**: Hold TTL não pode depender de staff. Workers/filas externas são
+overhead desnecessário no MVP. D66 já exige atualização atômica sessão + status.
+**Decisão**: (1) Expiração é **automatizada**, ownership do sistema. (2) MVP
+preferido: **scheduled trigger Supabase** invocando **Edge Function** (sem worker
+externo / queue infra). (3) Job: achar Hold Sessions expiradas → marcar
+`expired` → liberar Peças → `products.status` `hold` → `available` → realtime
+reflete o commit. (4) Hold Session continua a verdade; status a projeção (D66).
+**Consequência**: pg_cron/schedule + Edge Function versionada no repo; mesmo
+caminho atômico que expire manual de teste usaria. Sem Redis/SQS/etc. no MVP.
+
+---
+
+## D71 — POS: Order store ≠ sold; só `paid` move inventário (esclarece D68)
+
+**Data**: 2026-08-03
+**Contexto**: D68 unifica POS em `orders`, mas a consequência “cria order já
+paid” pode ser lida como criar = vender. Inventário deve espelhar o online.
+**Decisão**: (1) POS reusa `orders` + `order_items` (D68). (2) Criar Order store
+**não** marca Peça `sold`. (3) Transição para `sold` **somente** quando Order
+alcança estado **paid**. (4) Pagamento loja: cash/card/Pix **sem** Checkout Pro
+MP; o caminho paid→sold guarda as **mesmas garantias de consistência** do
+checkout online (transação/idempotência). (5) D68 permanece; este D71 só fija a
+fronteira paid→sold.
+**Consequência**: UI POS pode ter Order `pending_payment` no balcão até
+confirmar recebimento; ou um único passo “receber + paid” — desde que sold não
+rode antes de paid. Não reinterpretar D68 como sold-on-insert.
+
+---
+
+## D72 — Override: auditoria mínima (ops, não compliance)
+
+**Data**: 2026-08-03
+**Contexto**: Override cancela claim online; suporte e debug precisam saber quem/
+quando/por quê. Plataforma de compliance é fora de escopo.
+**Decisão**: Todo Override grava trilha mínima: Peça afetada; Hold Session e/ou
+Order `pending_payment` afetado(s); staff responsável; timestamp; reason/context.
+Uso: debug operacional, atendimento, explicar cancelamento de claim online.
+**Consequência**: Tabela/`order_events`-like ou `override_events` enxuta; UI POS
+pede motivo curto. Sem SIEM, retenção legal elaborada, ou portal de auditoria.
+
+---
+
+## D73 — QR Passport / labels MVP: identidade operacional, não labeling retail
+
+**Data**: 2026-08-03
+**Contexto**: Slice N inclui QR (D63/D64); falta fronteira de impressão e scan.
+**Decisão**: Na ativação (“ready for floor”): gerar `RP-…` + QR + label
+imprimível. Impressão MVP: saída térmica se disponível + **PDF fallback**.
+Labels **sem preço fixo** no MVP. QR identifica a Peça de forma permanente.
+Scan (câmera do dispositivo / browser admin) abre ficha staff com ações: sell,
+edit, return, archive, view status (e reprint). **Sem app nativo de scanner** no
+MVP. Objetivo: identidade operacional, não sistema completo de etiquetagem/
+precificação retail.
+**Consequência**: Rota/admin de ativação + print; deep link Passport por
+`RP-…`/id; preço continua na ficha digital, não na etiqueta impressa.

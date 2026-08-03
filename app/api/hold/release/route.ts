@@ -5,12 +5,13 @@ import {
   cartProductBodySchema,
   cartSessionCookieOptions,
   getCartSessionId,
-  releaseProduct,
 } from "@/features/cart";
+import { releaseHoldItem } from "@/features/cart/hold-session";
 
 /**
- * `POST /api/cart/release` — legacy cart release (cart_reservations).
- * Prefer `POST /api/hold/release` (SN-02). Remains until SN-04 cutover.
+ * `POST /api/hold/release` — SN-02 release one Peça from the active Hold Session.
+ *
+ * Body JSON: `{ "productId": "<uuid>" }`
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -26,19 +27,26 @@ export async function POST(request: Request) {
   const { sessionId, isNew } = await getCartSessionId();
 
   try {
-    const result = await releaseProduct(parsed.data.productId, sessionId);
+    const result = await releaseHoldItem(sessionId, parsed.data.productId);
 
-    const response = NextResponse.json(result);
+    const response = NextResponse.json({
+      released: result.status === "ok",
+      status: result.status,
+    });
 
     if (isNew) {
-      response.cookies.set(CART_SESSION_COOKIE, sessionId, cartSessionCookieOptions());
+      response.cookies.set(
+        CART_SESSION_COOKIE,
+        sessionId,
+        cartSessionCookieOptions(),
+      );
     }
 
     return response;
   } catch (error) {
-    console.error("Erro inesperado em POST /api/cart/release:", error);
+    console.error("Erro inesperado em POST /api/hold/release:", error);
     return NextResponse.json(
-      { error: "internal_error", message: "Erro inesperado ao liberar a reserva." },
+      { error: "internal_error", message: "Erro inesperado ao liberar a peça." },
       { status: 500 },
     );
   }

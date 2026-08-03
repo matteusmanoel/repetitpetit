@@ -1468,3 +1468,20 @@ DELETE on expire/cancel (same D14 pattern). (6) One active Hold Session per
 **Consequência**: Migration
 `supabase/migrations/20260803100000_slice_n_foundation.sql` + regenerated
 `lib/supabase/types.ts`. Wave 2 agents must not re-shape this contract.
+
+---
+
+## D75 — SN-02 Hold Session RPC is the sole reservation primitive
+
+**Data**: 2026-08-03
+**Contexto**: Wave 1 inventory gate. Downstream issues must share one hold/release
+contract; convert must not mean sold.
+**Decisão**: (1) `reserve_hold_item` / `release_hold_item` / `release_hold_session`
+/ `convert_hold_session` own available↔hold and session convert. (2) Convert links
+`checkout_order_id` and sets session `converted`; **products stay `hold`** until
+paid→sold (SN-05/SN-06). (3) SN-03 expire must call `release_hold_session(...,
+'expired')` — no duplicate status SQL. (4) No other agent may `UPDATE
+products.status` for hold/release. (5) Contract doc:
+`docs/slice-n/SN-02-contract.md`.
+**Consequência**: Unlock SN-03/04/05 after validation; cart dual-read remains until
+SN-04.

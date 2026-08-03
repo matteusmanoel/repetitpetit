@@ -989,7 +989,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _finalize_hold_session: {
+        Args: { p_final_status: string; p_hold_session_id: string }
+        Returns: undefined
+      }
+      convert_hold_session: {
+        Args: { p_order_id: string; p_session_id: string }
+        Returns: Json
+      }
       is_active_admin: { Args: never; Returns: boolean }
+      release_hold_item: {
+        Args: { p_product_id: string; p_session_id: string }
+        Returns: Json
+      }
+      release_hold_session: {
+        Args: { p_final_status?: string; p_session_id: string }
+        Returns: Json
+      }
       reserve_cart_product: {
         Args: { p_product_id: string; p_session_id: string }
         Returns: {
@@ -1005,6 +1021,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      reserve_hold_item: {
+        Args: { p_product_id: string; p_session_id: string }
+        Returns: Json
       }
     }
     Enums: {

@@ -1648,3 +1648,30 @@ path for paid→paid (D46/D50). (5) No migration.
 **Consequência**: Unlocks SN-13 Override action to consume the gate; late webhooks
 cannot resurrect cancelled claims into sold inventory. Live MP refund homolog is
 orchestrator/HITL — not Cloud Agent scope.
+
+---
+
+## D84 — SN-13: Override action in `features/override/` + atomic RPC
+
+**Data**: 2026-08-03
+**Contexto**: Issue #79 needs an atomic cancel of Hold Session / `pending_payment`
+plus `override_events` (D72). SN-06 already shipped `assertOverrideAllowed` under
+`features/override/`. PostgREST cannot cleanly run multi-step `FOR UPDATE` +
+hold release + order cancel + audit in one client transaction.
+**Decisão**: (1) Place `executeOverrideAction` in `features/override/` next to
+`assertOverrideAllowed` (not `features/pos/override.ts`) so the paid-block gate
+and mutation share one module; POS/Passport consume via
+`OverrideActionButton` + `executeOverrideActionFromAdmin`. (2) Atomicity via
+SQL RPC `execute_override_action` (`SECURITY DEFINER`, service_role) with
+product `FOR UPDATE`; migration
+`20260803150000_execute_override_action.sql` — orchestrator applies remotely.
+(3) TS **must** call `assertOverrideAllowed` before RPC; RPC re-checks paid/sold.
+(4) Hold release only through SN-02: active → `release_hold_session(...,
+'cancelled')`; converted (pending checkout) → `_finalize_hold_session` to clear
+`hold_items` + restore `available`. (5) Cancel online `pending_payment` +
+`order_events.cancelled_by_override` so SN-06 late webhook reconciles. (6)
+Idempotent double override → `outcome: noop` without a second `override_events`
+row. (7) Stub customer notify (`console.info` + TODO WhatsApp/email). (8)
+Minimal reusable dialog only — full POS is SN-08.
+**Consequência**: Unlocks SN-14 override counts and SN-15 Passport history;
+SN-08/SN-11 wire the shared button. Contract: `docs/slice-n/SN-13-contract.md`.

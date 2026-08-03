@@ -1009,6 +1009,15 @@ export type Database = {
         Returns: Json
       }
       expire_due_hold_sessions: { Args: never; Returns: Json }
+      execute_override_action: {
+        Args: {
+          p_context?: string
+          p_product_id: string
+          p_reason: string
+          p_staff_id: string
+        }
+        Returns: Json
+      }
       is_active_admin: { Args: never; Returns: boolean }
       next_rp_staff_code: { Args: never; Returns: string }
       release_hold_item: {

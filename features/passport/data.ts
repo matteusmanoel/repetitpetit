@@ -7,6 +7,7 @@ import type { Database } from "@/lib/supabase/types";
 import { normalizePassportRpCode } from "@/features/passport/normalize-rp-code";
 import type {
   PassportData,
+  PassportHistoryEvent,
   PassportHoldSession,
   PassportSale,
 } from "@/features/passport/types";
@@ -32,12 +33,34 @@ type OrderItemSaleRow = {
     paid_at: string | null;
     created_at: string;
     status: OrderStatus;
+    store_payment_method: string | null;
   } | null;
 };
 
+function salePaymentMethod(
+  channel: string,
+  storePaymentMethod: string | null,
+): string | null {
+  if (channel === "store") return storePaymentMethod;
+  if (channel === "online") return "mercado_pago";
+  return storePaymentMethod;
+}
+
+type StatusEventRow = {
+  id: string;
+  created_at: string;
+  from_status: string | null;
+  to_status: string;
+  actor_type: string;
+  actor_id: string | null;
+  context: string | null;
+  notes: string | null;
+  order_id: string | null;
+};
+
 /**
- * Garment Passport payload (SN-11): product by permanent `staff_code` (RP-…)
- * plus active hold (if any) and latest paid sale (if sold).
+ * Garment Passport payload (SN-11 / SN-15): product by permanent `staff_code`
+ * plus active hold, latest paid sale, and status timeline.
  * Service role only — never call from the client.
  */
 export async function getPassportData(
@@ -65,12 +88,13 @@ export async function getPassportData(
   );
   const product = { ...data, product_images: images };
 
-  const [hold, sale] = await Promise.all([
+  const [hold, sale, history] = await Promise.all([
     loadActiveHold(product.id),
     product.status === "sold" ? loadLatestSale(product.id) : Promise.resolve(null),
+    loadStatusHistory(product.id),
   ]);
 
-  return { product, hold, sale };
+  return { product, hold, sale, history };
 }
 
 async function loadActiveHold(
@@ -106,12 +130,10 @@ async function loadActiveHold(
 async function loadLatestSale(productId: string): Promise<PassportSale | null> {
   const supabase = createServiceSupabaseClient();
 
-  // Pull recent order_items for this Peça; filter to paid+ in app code
-  // (PostgREST enum `in` is awkward across fulfillment statuses).
   const { data, error } = await supabase
     .from("order_items")
     .select(
-      "order_id, orders!inner(id, public_code, channel, paid_at, created_at, status)",
+      "order_id, orders!inner(id, public_code, channel, paid_at, created_at, status, store_payment_method)",
     )
     .eq("product_id", productId)
     .order("created_at", { ascending: false })
@@ -146,5 +168,100 @@ async function loadLatestSale(productId: string): Promise<PassportSale | null> {
     channel: order.channel,
     soldAt: order.paid_at ?? order.created_at,
     status: order.status,
+    paymentMethod: salePaymentMethod(
+      order.channel,
+      order.store_payment_method,
+    ),
   };
+}
+
+async function loadStatusHistory(
+  productId: string,
+): Promise<PassportHistoryEvent[]> {
+  const supabase = createServiceSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("product_status_events")
+    .select(
+      "id, created_at, from_status, to_status, actor_type, actor_id, context, notes, order_id",
+    )
+    .eq("product_id", productId)
+    .order("created_at", { ascending: true })
+    .limit(100);
+
+  if (error) {
+    console.error("getPassportData product_status_events:", error);
+    return [];
+  }
+
+  const rows = (data ?? []) as StatusEventRow[];
+  if (rows.length === 0) return [];
+
+  const actorIds = [
+    ...new Set(
+      rows
+        .filter((row) => row.actor_type === "admin" && row.actor_id)
+        .map((row) => row.actor_id as string),
+    ),
+  ];
+  const orderIds = [
+    ...new Set(
+      rows
+        .map((row) => row.order_id)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  ];
+
+  const [adminsRes, ordersRes] = await Promise.all([
+    actorIds.length > 0
+      ? supabase.from("admins").select("id, full_name, email").in("id", actorIds)
+      : Promise.resolve({ data: [], error: null }),
+    orderIds.length > 0
+      ? supabase
+          .from("orders")
+          .select("id, public_code, channel, store_payment_method")
+          .in("id", orderIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (adminsRes.error) {
+    console.error("getPassportData admins:", adminsRes.error);
+  }
+  if (ordersRes.error) {
+    console.error("getPassportData history orders:", ordersRes.error);
+  }
+
+  const adminById = new Map(
+    (adminsRes.data ?? []).map((admin) => [
+      admin.id,
+      admin.full_name?.trim() || admin.email,
+    ]),
+  );
+  const orderById = new Map(
+    (ordersRes.data ?? []).map((order) => [order.id, order]),
+  );
+
+  return rows.map((row) => {
+    const order = row.order_id ? orderById.get(row.order_id) : undefined;
+    return {
+      id: row.id,
+      createdAt: row.created_at,
+      fromStatus: row.from_status,
+      toStatus: row.to_status,
+      actorType: row.actor_type,
+      actorId: row.actor_id,
+      actorName:
+        row.actor_type === "admin" && row.actor_id
+          ? (adminById.get(row.actor_id) ?? null)
+          : null,
+      context: row.context,
+      notes: row.notes,
+      orderId: row.order_id,
+      orderPublicCode: order?.public_code ?? null,
+      saleChannel: order?.channel ?? null,
+      paymentMethod: order
+        ? salePaymentMethod(order.channel, order.store_payment_method)
+        : null,
+    };
+  });
 }

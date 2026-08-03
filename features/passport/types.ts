@@ -20,12 +20,33 @@ export type PassportSale = {
   /** Prefer `paid_at`; fall back to `created_at`. */
   soldAt: string;
   status: OrderStatus;
+  /** `orders.store_payment_method` or online provider label key. */
+  paymentMethod: string | null;
+};
+
+/** One row in the Passport status timeline (SN-15 / D88). */
+export type PassportHistoryEvent = {
+  id: string;
+  createdAt: string;
+  fromStatus: string | null;
+  toStatus: string;
+  actorType: string;
+  actorId: string | null;
+  /** Admin display name when actor is staff. */
+  actorName: string | null;
+  context: string | null;
+  notes: string | null;
+  orderId: string | null;
+  orderPublicCode: string | null;
+  saleChannel: string | null;
+  paymentMethod: string | null;
 };
 
 export type PassportData = {
   product: ProductWithImages;
   hold: PassportHoldSession | null;
   sale: PassportSale | null;
+  history: PassportHistoryEvent[];
 };
 
 export type PassportQuickActionId =

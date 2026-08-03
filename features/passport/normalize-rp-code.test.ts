@@ -70,7 +70,7 @@ describe("passport deep-link helpers", () => {
 describe("passport labels", () => {
   it("maps sale channels", () => {
     expect(saleChannelLabel("online")).toBe("Online");
-    expect(saleChannelLabel("store")).toBe("Loja");
+    expect(saleChannelLabel("store")).toBe("Loja física");
   });
 
   it("shortens long hold session ids", () => {

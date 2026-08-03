@@ -14,6 +14,7 @@ import {
   type ProductFormInput,
 } from "@/features/admin/product-schemas";
 import { applyInventoryTransition } from "@/features/inventory/apply-transition";
+import { emitProductStatusEvent } from "@/features/passport/emit-status-event";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
 import type { Database } from "@/lib/supabase/types";
 
@@ -319,7 +320,8 @@ export async function deactivateProductAction(
  * exatamente uma vez e garante `status = available` (D64 / D67).
  *
  * Idempotente se o código já existir. Não altera hold/sold (SN-02 / SN-05).
- * Auditoria de status de produto fica para SN-15 (`product_status_events`).
+ * SN-15: emite `product_status_events` (context=activation) via TS — staff_code
+ * assignment is outside inventory RPCs.
  */
 export async function activateProductAction(
   productId: string,
@@ -358,6 +360,7 @@ export async function activateProductAction(
   if (plan.kind === "idempotent") {
     if (plan.setAvailable) {
       // SN-05 owns inactive → available
+      const fromStatus = product.status;
       const transition = await applyInventoryTransition(productId, {
         from: "inactive",
         to: "available",
@@ -369,6 +372,21 @@ export async function activateProductAction(
           ok: false,
           error: `Não foi possível reativar a peça (${transition.reason}).`,
         };
+      }
+
+      if (transition.outcome !== "already_sold") {
+        const emitted = await emitProductStatusEvent({
+          productId,
+          fromStatus,
+          toStatus: "available",
+          actorType: "admin",
+          actorId: session.admin.id,
+          context: "activation",
+          notes: `${plan.staffCode} atribuído`,
+        });
+        if (!emitted.ok) {
+          console.error("activateProductAction status event:", emitted.error);
+        }
       }
     }
 
@@ -401,6 +419,7 @@ export async function activateProductAction(
   }
 
   const wasInactive = product.status === "inactive";
+  const fromStatus = product.status === "available" ? null : product.status;
 
   // Assign staff_code only (status via SN-05 when inactive → available).
   const { data: updated, error: updateError } = await supabase
@@ -460,10 +479,24 @@ export async function activateProductAction(
     }
   }
 
+  const staffCode = updated.staff_code ?? nextCode;
+  const emitted = await emitProductStatusEvent({
+    productId: updated.id,
+    fromStatus,
+    toStatus: "available",
+    actorType: "admin",
+    actorId: session.admin.id,
+    context: "activation",
+    notes: `${staffCode} atribuído`,
+  });
+  if (!emitted.ok) {
+    console.error("activateProductAction status event:", emitted.error);
+  }
+
   revalidateProductPaths(updated.slug);
   return {
     ok: true,
-    staffCode: updated.staff_code ?? nextCode,
+    staffCode,
     productId: updated.id,
   };
 }

@@ -1663,10 +1663,37 @@ by `staff_code` (normalized trim/decode/uppercase) via service role;
 countdown + browser session label when hold), status-dependent quick actions,
 and sale snippet (`orders.public_code` / channel / date) when sold. (3) Sell →
 `/admin/pos?product=<id>` stub (SN-08); Override → `/admin/override?product=<id>`
-stub (SN-13 consumes `assertOverrideAllowed`); Reprint → SN-10
-`/admin/produto/[id]/label.pdf`; Edit → `/admin/produtos/[id]`; Archive/
-Reativar → existing `deactivateProductAction` / `activateProductAction` (SN-09).
-(4) Data loader `features/passport/data.ts` (`getPassportData`) — no client
-inventory writes. (5) No DB migration.
+(SN-13); Reprint → SN-10 `/admin/produto/[id]/label.pdf`; Edit →
+`/admin/produtos/[id]`; Archive/Reativar → existing `deactivateProductAction` /
+`activateProductAction` (SN-09). (4) Data loader `features/passport/data.ts`
+(`getPassportData`) — no client inventory writes. (5) No DB migration.
 **Consequência**: QR scan lands on Passport. SN-08 wires real POS modal into the
 Sell deep link; SN-13 replaces Override stub; SN-15 may enrich history/events.
+
+---
+
+## D85 — SN-13: Override action in `features/override/` + atomic RPC
+
+**Data**: 2026-08-03
+**Contexto**: Issue #79 needs an atomic cancel of Hold Session / `pending_payment`
+plus `override_events` (D72). SN-06 already shipped `assertOverrideAllowed` under
+`features/override/`. PostgREST cannot cleanly run multi-step `FOR UPDATE` +
+hold release + order cancel + audit in one client transaction.
+**Decisão**: (1) Place `executeOverrideAction` in `features/override/` next to
+`assertOverrideAllowed` (not `features/pos/override.ts`) so the paid-block gate
+and mutation share one module; POS/Passport consume via
+`OverrideActionButton` + `executeOverrideActionFromAdmin`. (2) Atomicity via
+SQL RPC `execute_override_action` (`SECURITY DEFINER`, service_role) with
+product `FOR UPDATE`; migration
+`20260803150000_execute_override_action.sql` — orchestrator applies remotely.
+(3) TS **must** call `assertOverrideAllowed` before RPC; RPC re-checks paid/sold.
+(4) Hold release only through SN-02: active → `release_hold_session(...,
+'cancelled')`; converted (pending checkout) → `_finalize_hold_session` to clear
+`hold_items` + restore `available`. (5) Cancel online `pending_payment` +
+`order_events.cancelled_by_override` so SN-06 late webhook reconciles. (6)
+Idempotent double override → `outcome: noop` without a second `override_events`
+row. (7) Stub customer notify (`console.info` + TODO WhatsApp/email). (8)
+Minimal reusable dialog only — full POS is SN-08. (9) `/admin/override` deep
+link from Passport hosts the shared button (replaces SN-11 stub).
+**Consequência**: Unlocks SN-14 override counts and SN-15 Passport history;
+SN-08 wires the shared button into POS. Contract: `docs/slice-n/SN-13-contract.md`.

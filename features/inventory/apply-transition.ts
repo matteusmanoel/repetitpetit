@@ -122,6 +122,7 @@ async function applyViaRpc(
 ): Promise<ApplyInventoryTransitionResult> {
   const supabase = createServiceSupabaseClient();
 
+  // Generated RPC Args use optional `string | undefined` (not null).
   const soldChannel =
     transition.to === "sold" ? transition.context.channel : undefined;
   const holdSessionId =

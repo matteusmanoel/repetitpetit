@@ -1,5 +1,6 @@
 import "server-only";
 
+import { markProductsSoldForOrder } from "@/features/inventory/apply-transition";
 import type { MercadoPagoPayment } from "@/lib/mercado-pago/fetch-payment";
 import {
   isOrderPastPendingPayment,
@@ -67,7 +68,7 @@ export async function applyMercadoPagoPaymentStatus(
       await upsertPaymentRow(supabase, order.id, payment, "paid", nowIso);
     }
 
-    const sold = await ensureOrderProductsSold(supabase, order.id, nowIso);
+    const sold = await ensureOrderProductsSold(supabase, order.id);
     if (!sold.ok) {
       return sold;
     }
@@ -280,9 +281,8 @@ async function markOrderPaid(
   const refreshed = updated;
 
   const sold = await markProductsSoldAndClearReservations(
-    supabase,
+    order.id,
     productIds,
-    nowIso,
   );
   if (!sold.ok) {
     return sold;
@@ -317,7 +317,6 @@ async function markOrderPaid(
 async function ensureOrderProductsSold(
   supabase: ReturnType<typeof createServiceSupabaseClient>,
   orderId: string,
-  nowIso: string,
 ): Promise<ApplyMpStatusResult | { ok: true }> {
   const { data: items, error: itemsError } = await supabase
     .from("order_items")
@@ -341,43 +340,30 @@ async function ensureOrderProductsSold(
     ),
   ];
 
-  return markProductsSoldAndClearReservations(supabase, productIds, nowIso);
+  return markProductsSoldAndClearReservations(orderId, productIds);
 }
 
+/**
+ * SN-05 — paid → sold via inventory state machine (hold→sold or available→sold).
+ * Channel online for Mercado Pago checkout (D65 / D71).
+ */
 async function markProductsSoldAndClearReservations(
-  supabase: ReturnType<typeof createServiceSupabaseClient>,
+  orderId: string,
   productIds: string[],
-  nowIso: string,
 ): Promise<ApplyMpStatusResult | { ok: true }> {
-  if (productIds.length === 0) {
-    return { ok: true };
-  }
+  const result = await markProductsSoldForOrder({
+    orderId,
+    productIds,
+    channel: "online",
+  });
 
-  const { error: productsError } = await supabase
-    .from("products")
-    .update({ status: "sold", updated_at: nowIso })
-    .in("id", productIds);
-
-  if (productsError) {
-    console.error("markProductsSoldAndClearReservations sold:", productsError);
+  if (!result.ok) {
+    console.error("markProductsSoldAndClearReservations:", result.reason);
     return {
       ok: false,
       error: "Pagamento confirmado, mas falhou ao marcar peças como vendidas.",
       code: "db",
     };
-  }
-
-  const { error: reservationsError } = await supabase
-    .from("cart_reservations")
-    .delete()
-    .in("product_id", productIds);
-
-  if (reservationsError) {
-    console.error(
-      "markProductsSoldAndClearReservations reservations:",
-      reservationsError,
-    );
-    // Não falha o fluxo — produto já sold; reserva órfã será varrida pelo cron.
   }
 
   return { ok: true };

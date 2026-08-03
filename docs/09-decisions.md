@@ -1537,3 +1537,23 @@ status paths (SN-02/SN-03).
 **Consequência**: Migration
 `supabase/migrations/20260803130000_rp_staff_code_seq.sql`. Orchestrator applies
 remote + regenerates types after merge. "Reimprimir" UI stub waits for SN-10.
+
+---
+
+## D79 — SN-05: Inventory state machine owns sold/inactive; hold stays SN-02
+
+**Data**: 2026-08-03
+**Contexto**: Wave 3 needs one place for `products.status` transitions so webhook,
+POS paid, and admin inactive paths do not scatter bare UPDATEs. SN-02 already
+owns available↔hold atomically.
+**Decisão**: (1) Pure `planTransition` covers the Slice N transition union
+(including available↔hold for validation). (2) Runtime available↔hold **must**
+call SN-02 RPCs — never bare status UPDATE. (3) SN-05 owns `hold|available → sold`
+(+ `sold_channel`), `available ↔ inactive`, via SQL
+`apply_inventory_transition` (`SELECT … FOR UPDATE`, hold_items cleanup on sold).
+(4) `apply-mp-status` and admin deactivate/reactivate route through
+`applyInventoryTransition` / `markProductsSoldForOrder`. (5) Contract:
+`docs/slice-n/SN-05-contract.md`.
+**Consequência**: Migration
+`supabase/migrations/20260803140000_inventory_apply_transition.sql` — orchestrator
+applies after merge. Unlocks SN-06 reconcile and SN-07 POS paid→sold consumers.

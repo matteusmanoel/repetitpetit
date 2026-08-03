@@ -993,6 +993,17 @@ export type Database = {
         Args: { p_final_status: string; p_hold_session_id: string }
         Returns: undefined
       }
+      apply_inventory_transition: {
+        Args: {
+          p_product_id: string
+          p_from: string
+          p_to: string
+          p_sold_channel?: string | null
+          p_hold_session_id?: string | null
+          p_order_id?: string | null
+        }
+        Returns: Json
+      }
       convert_hold_session: {
         Args: { p_order_id: string; p_session_id: string }
         Returns: Json

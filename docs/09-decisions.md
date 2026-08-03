@@ -1500,3 +1500,21 @@ only calls `_finalize_hold_session(..., 'expired')`. (2) Primary schedule:
 `docs/slice-n/SN-03-contract.md`.
 **Consequência**: TTL enforcement is system-owned without a second inventory path.
 Cloud agents must not reimplement expire mutation logic.
+
+---
+
+## D77 — SN-12: e-mail obrigatório no checkout + dedup customer (sem migration)
+
+**Data**: 2026-08-03
+**Contexto**: D69 exige capturar e-mail e sempre vincular `orders.customer_id`.
+D43 reusava só por telefone; e-mail era opcional. `idx_customers_email` já existe
+(SN-01 / D74). `email_verified_at` não é necessário sem portal/magic-link.
+**Decisão**: (1) Checkout exige e-mail (Zod + UI); normaliza `trim` + lowercase.
+(2) `createOrderAction` resolve customer via `planCustomerResolve`: e-mail →
+telefone → insert; não sobrescreve e-mail já preenchido; conflito e-mail/telefone
+em linhas distintas mantém o match por e-mail e loga warn. (3) Pedidos online
+sempre gravam `customer_id`. (4) Snapshot de contato em
+`address_snapshot_json.contact` (`full_name`, `phone`, `email`) — inclusive na
+retirada — sem nova coluna. (5) Sem migration; Hold RPCs intocados (D75).
+**Consequência**: Base para notificações/portal futuro sem Auth no Slice N.
+`pricing_snapshot_json` permanece só preços.

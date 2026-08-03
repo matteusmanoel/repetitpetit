@@ -105,10 +105,9 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     if (!/^\d{10,15}$/.test(digits)) {
       nextContact.phone = "Informe o telefone com DDD, só números.";
     }
-    if (
-      contact.email.trim() &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim())
-    ) {
+    if (!contact.email.trim()) {
+      nextContact.email = "Informe seu e-mail.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim())) {
       nextContact.email = "Informe um e-mail válido.";
     }
 
@@ -228,7 +227,9 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
   }
 
   const contactSummary = contact.fullName
-    ? `${contact.fullName}${contact.phone ? ` · ${contact.phone}` : ""}`
+    ? `${contact.fullName}${contact.phone ? ` · ${contact.phone}` : ""}${
+        contact.email.trim() ? ` · ${contact.email.trim()}` : ""
+      }`
     : undefined;
 
   return (

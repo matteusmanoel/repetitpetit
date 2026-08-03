@@ -9,13 +9,14 @@ const phoneSchema = z
     "Informe o telefone com DDD, só números (ex.: 45999999999).",
   );
 
+/** Required at checkout (SN-12 / D69). Normalized like lead emails. */
 const emailSchema = z
-  .union([
-    z.literal(""),
-    z.string().trim().email("Informe um e-mail válido."),
-  ])
-  .optional()
-  .transform((value) => (value && value.length > 0 ? value : undefined));
+  .string({ error: "Informe seu e-mail." })
+  .trim()
+  .toLowerCase()
+  .min(1, "Informe seu e-mail.")
+  .email("Informe um e-mail válido.")
+  .max(254, "E-mail muito longo.");
 
 export const checkoutAddressSchema = z.object({
   recipientName: z

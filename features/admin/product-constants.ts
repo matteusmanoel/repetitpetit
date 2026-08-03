@@ -5,9 +5,11 @@ export type ProductCondition = Database["public"]["Enums"]["product_condition"];
 export type ProductGender = Database["public"]["Enums"]["product_gender"];
 export type SizeGroup = Database["public"]["Enums"]["size_group"];
 
+/** Admin-selectable statuses. `reserved` remains in the DB enum for
+ *  compatibility until a cleanup ticket removes it; staff UI uses `hold`. */
 export const PRODUCT_STATUSES = [
   "available",
-  "reserved",
+  "hold",
   "sold",
   "inactive",
 ] as const satisfies readonly ProductStatus[];
@@ -40,7 +42,8 @@ export const SIZE_GROUPS = [
 
 export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
   available: "Disponível",
-  reserved: "Reservado",
+  hold: "Em hold",
+  reserved: "Reservado (legado)",
   sold: "Vendido",
   inactive: "Inativo",
 };

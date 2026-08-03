@@ -58,5 +58,6 @@ describe("getFulfillmentLabel", () => {
     expect(getFulfillmentLabel("pickup")).toBe("Retirada na loja");
     expect(getFulfillmentLabel("delivery")).toBe("Entrega local");
     expect(getFulfillmentLabel("correios")).toBe("Envio pelos Correios");
+    expect(getFulfillmentLabel("store_counter")).toBe("Venda no balcão");
   });
 });

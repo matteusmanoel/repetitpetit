@@ -231,6 +231,90 @@ export type Database = {
         }
         Relationships: []
       }
+      hold_items: {
+        Row: {
+          created_at: string
+          hold_session_id: string
+          id: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          hold_session_id: string
+          id?: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          hold_session_id?: string
+          id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hold_items_hold_session_id_fkey"
+            columns: ["hold_session_id"]
+            isOneToOne: false
+            referencedRelation: "hold_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hold_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hold_sessions: {
+        Row: {
+          checkout_order_id: string | null
+          created_at: string
+          customer_id: string | null
+          expires_at: string
+          id: string
+          session_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          checkout_order_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          expires_at?: string
+          id?: string
+          session_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          checkout_order_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          expires_at?: string
+          id?: string
+          session_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hold_sessions_checkout_order_id_fkey"
+            columns: ["checkout_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hold_sessions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imports_log: {
         Row: {
           created_at: string
@@ -477,6 +561,7 @@ export type Database = {
           address_snapshot_json: Json | null
           admin_note: string | null
           cancelled_at: string | null
+          channel: string
           completed_at: string | null
           confirmed_at: string | null
           created_at: string
@@ -497,6 +582,7 @@ export type Database = {
           shipping_amount: number
           shipping_rule_id: string | null
           status: Database["public"]["Enums"]["order_status"]
+          store_payment_method: string | null
           subtotal_amount: number
           total_amount: number
           tracking_code: string | null
@@ -506,6 +592,7 @@ export type Database = {
           address_snapshot_json?: Json | null
           admin_note?: string | null
           cancelled_at?: string | null
+          channel?: string
           completed_at?: string | null
           confirmed_at?: string | null
           created_at?: string
@@ -526,6 +613,7 @@ export type Database = {
           shipping_amount?: number
           shipping_rule_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          store_payment_method?: string | null
           subtotal_amount?: number
           total_amount?: number
           tracking_code?: string | null
@@ -535,6 +623,7 @@ export type Database = {
           address_snapshot_json?: Json | null
           admin_note?: string | null
           cancelled_at?: string | null
+          channel?: string
           completed_at?: string | null
           confirmed_at?: string | null
           created_at?: string
@@ -555,6 +644,7 @@ export type Database = {
           shipping_amount?: number
           shipping_rule_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
+          store_payment_method?: string | null
           subtotal_amount?: number
           total_amount?: number
           tracking_code?: string | null
@@ -573,6 +663,68 @@ export type Database = {
             columns: ["shipping_rule_id"]
             isOneToOne: false
             referencedRelation: "shipping_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      override_events: {
+        Row: {
+          context_json: Json | null
+          created_at: string
+          hold_session_id: string | null
+          id: string
+          order_id: string | null
+          product_id: string
+          reason: string
+          staff_id: string
+        }
+        Insert: {
+          context_json?: Json | null
+          created_at?: string
+          hold_session_id?: string | null
+          id?: string
+          order_id?: string | null
+          product_id: string
+          reason: string
+          staff_id: string
+        }
+        Update: {
+          context_json?: Json | null
+          created_at?: string
+          hold_session_id?: string | null
+          id?: string
+          order_id?: string | null
+          product_id?: string
+          reason?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "override_events_hold_session_id_fkey"
+            columns: ["hold_session_id"]
+            isOneToOne: false
+            referencedRelation: "hold_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "override_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "override_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "override_events_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "admins"
             referencedColumns: ["id"]
           },
         ]
@@ -684,6 +836,8 @@ export type Database = {
           size_group: Database["public"]["Enums"]["size_group"]
           size_label: string
           slug: string
+          sold_channel: string | null
+          staff_code: string | null
           status: Database["public"]["Enums"]["product_status"]
           tags: string[] | null
           updated_at: string
@@ -706,6 +860,8 @@ export type Database = {
           size_group: Database["public"]["Enums"]["size_group"]
           size_label: string
           slug: string
+          sold_channel?: string | null
+          staff_code?: string | null
           status?: Database["public"]["Enums"]["product_status"]
           tags?: string[] | null
           updated_at?: string
@@ -728,6 +884,8 @@ export type Database = {
           size_group?: Database["public"]["Enums"]["size_group"]
           size_label?: string
           slug?: string
+          sold_channel?: string | null
+          staff_code?: string | null
           status?: Database["public"]["Enums"]["product_status"]
           tags?: string[] | null
           updated_at?: string
@@ -831,11 +989,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_active_admin: { Args: never; Returns: boolean }
       reserve_cart_product: {
-        Args: {
-          p_product_id: string
-          p_session_id: string
-        }
+        Args: { p_product_id: string; p_session_id: string }
         Returns: {
           created_at: string
           expires_at: string
@@ -843,10 +999,16 @@ export type Database = {
           product_id: string
           session_id: string
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "cart_reservations"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
     }
     Enums: {
-      fulfillment_type: "pickup" | "delivery" | "correios"
+      fulfillment_type: "pickup" | "delivery" | "correios" | "store_counter"
       intake_status: "new" | "reviewing" | "accepted" | "rejected" | "completed"
       order_status:
         | "pending_payment"
@@ -858,7 +1020,7 @@ export type Database = {
         | "cancelled"
         | "expired"
       order_type: "standard" | "sacolinha"
-      payment_provider: "mercado_pago"
+      payment_provider: "mercado_pago" | "cash" | "card_local" | "pix_local"
       payment_status:
         | "pending"
         | "authorized"
@@ -869,7 +1031,7 @@ export type Database = {
         | "refunded"
       product_condition: "novo" | "seminovo" | "bom_estado" | "com_detalhes"
       product_gender: "menino" | "menina" | "unissex"
-      product_status: "available" | "reserved" | "sold" | "inactive"
+      product_status: "available" | "reserved" | "sold" | "inactive" | "hold"
       size_group:
         | "rn_3m"
         | "3_6m"
@@ -1008,7 +1170,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      fulfillment_type: ["pickup", "delivery", "correios"],
+      fulfillment_type: ["pickup", "delivery", "correios", "store_counter"],
       intake_status: ["new", "reviewing", "accepted", "rejected", "completed"],
       order_status: [
         "pending_payment",
@@ -1021,7 +1183,7 @@ export const Constants = {
         "expired",
       ],
       order_type: ["standard", "sacolinha"],
-      payment_provider: ["mercado_pago"],
+      payment_provider: ["mercado_pago", "cash", "card_local", "pix_local"],
       payment_status: [
         "pending",
         "authorized",
@@ -1033,7 +1195,7 @@ export const Constants = {
       ],
       product_condition: ["novo", "seminovo", "bom_estado", "com_detalhes"],
       product_gender: ["menino", "menina", "unissex"],
-      product_status: ["available", "reserved", "sold", "inactive"],
+      product_status: ["available", "reserved", "sold", "inactive", "hold"],
       size_group: [
         "rn_3m",
         "3_6m",

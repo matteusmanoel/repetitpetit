@@ -1448,3 +1448,23 @@ MVP. Objetivo: identidade operacional, não sistema completo de etiquetagem/
 precificação retail.
 **Consequência**: Rota/admin de ativação + print; deep link Passport por
 `RP-…`/id; preço continua na ficha digital, não na etiqueta impressa.
+
+---
+
+## D74 — SN-01 foundation applied: schema adaptations locked for Wave 2+
+
+**Data**: 2026-08-03
+**Contexto**: SN-01 (#67) applied to project `wcgpamsvnhpgonxzbzlg`. Issue SQL
+sketches needed adaptation to live RLS/enums/data.
+**Decisão**: (1) `product_status` gains `'hold'`; `'reserved'` **kept** until a
+cleanup ticket (cart dual-read; 0 live rows used `reserved`). (2) Hold / override
+writes are **service_role only**; admin SELECT via `is_active_admin()` — no anon
+cookie RLS (aligns D13/D50). (3) `cart_reservations` + cron
+`release-expired-reservations` remain until SN-02/SN-04 cutover. (4) Addenda
+folded in: `fulfillment_type.store_counter`, `payment_provider` cash/card_local/
+pix_local, `idx_customers_email`. (5) `hold_items.uq_hold_item_product` requires
+DELETE on expire/cancel (same D14 pattern). (6) One active Hold Session per
+`session_id` via partial unique index.
+**Consequência**: Migration
+`supabase/migrations/20260803100000_slice_n_foundation.sql` + regenerated
+`lib/supabase/types.ts`. Wave 2 agents must not re-shape this contract.

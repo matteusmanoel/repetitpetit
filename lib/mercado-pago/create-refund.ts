@@ -84,7 +84,7 @@ export async function createMercadoPagoRefund(
 }
 
 /**
- * Stub used by SN-06 reconcile path (D81). Logs intent; no network call.
+ * Stub used by SN-06 reconcile path (D83). Logs intent; no network call.
  * Never fails silently — always emits a clear warn.
  */
 export async function stubMercadoPagoRefund(

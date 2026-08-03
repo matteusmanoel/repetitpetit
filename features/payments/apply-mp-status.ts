@@ -37,7 +37,7 @@ export type ApplyMpStatusFailure = {
 export type ApplyMpStatusResult = ApplyMpStatusSuccess | ApplyMpStatusFailure;
 
 /**
- * Aplica status do pagamento MP no pedido (service role — D13 / D46 / D81).
+ * Aplica status do pagamento MP no pedido (service role — D13 / D46 / D83).
  *
  * Idempotente: `paid → paid` retorna `already_paid` sem segundo
  * `order_events`, mas ainda garante `products.status = sold` (retry após
@@ -92,7 +92,7 @@ export async function applyMercadoPagoPaymentStatus(
     };
   }
 
-  // Late webhook after Override / admin cancel — reconcile, never mark sold (D62/D81).
+  // Late webhook after Override / admin cancel — reconcile, never mark sold (D62/D83).
   if (mapped === "paid" && order.status === "cancelled") {
     const reconciled = await reconcileLatePayment(order, payment, { supabase });
     if (!reconciled.ok) {

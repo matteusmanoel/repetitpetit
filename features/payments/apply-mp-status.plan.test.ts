@@ -7,7 +7,7 @@ import {
 
 /**
  * Plano de transição puro (espelha a política de apply-mp-status.ts)
- * — testável sem Supabase / server-only. Inclui SN-06 late reconcile (D81).
+ * — testável sem Supabase / server-only. Inclui SN-06 late reconcile (D83).
  */
 function planApply(input: {
   orderStatus: Parameters<typeof isOrderPastPendingPayment>[0];

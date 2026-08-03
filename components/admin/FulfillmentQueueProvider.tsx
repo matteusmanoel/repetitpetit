@@ -10,13 +10,17 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 import {
   fetchFulfillmentOrderByIdAction,
   fetchFulfillmentQueueOrderAction,
 } from "@/features/admin/fulfillment/actions";
+import {
+  applyProductStatusToCache,
+  shouldRefreshDashboardForHoldEvent,
+} from "@/features/admin/fulfillment/inventory-realtime";
 import { playOrderNotificationBeep } from "@/features/admin/fulfillment/notify-beep";
 import {
   applyLocalStatusChange,
@@ -34,6 +38,8 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import type { Database } from "@/lib/supabase/types";
 
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
+type ProductRow = Database["public"]["Tables"]["products"]["Row"];
+type HoldSessionRow = Database["public"]["Tables"]["hold_sessions"]["Row"];
 
 type QueueState = {
   paid: FulfillmentQueueOrder[];
@@ -46,6 +52,11 @@ type FulfillmentQueueContextValue = {
   inProgressOrders: FulfillmentQueueOrder[];
   paidCount: number;
   isRealtimeConnected: boolean;
+  /**
+   * Cache leve de `products.status` (hold/available) para POS/Passport
+   * abertos no admin. `sold` remove a entrada.
+   */
+  productStatusCache: Readonly<Record<string, string>>;
   applyLocalTransition: (
     orderId: string,
     status: OrderStatus,
@@ -69,6 +80,8 @@ export function useFulfillmentQueue(): FulfillmentQueueContextValue {
 /**
  * Assina Realtime em todo o admin (badge no nav + title) e mantém as listas
  * paid + em progresso. Pedidos iniciais vêm do SSR (service role).
+ * SN-14: também escuta `products` (status hold/available/sold) e
+ * `hold_sessions` para invalidar cache e refrescar KPIs do `/admin`.
  */
 export function FulfillmentQueueProvider({
   initialOrders,
@@ -83,10 +96,19 @@ export function FulfillmentQueueProvider({
     paid: initialOrders,
     inProgress: initialInProgressOrders,
   });
+  const [productStatusCache, setProductStatusCache] = useState<
+    Record<string, string>
+  >({});
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const knownPaidIdsRef = useRef(new Set(initialOrders.map((o) => o.id)));
   const enrichingRef = useRef(new Set<string>());
+  const pathnameRef = useRef(pathname);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     setQueues({
@@ -108,6 +130,13 @@ export function FulfillmentQueueProvider({
       document.title = formatQueueDocumentTitle(0);
     }
   }, [paidCount, pathname]);
+
+  const refreshDashboardIfNeeded = useCallback(() => {
+    const path = pathnameRef.current;
+    if (path === "/admin" || path === "/admin/") {
+      router.refresh();
+    }
+  }, [router]);
 
   const applyLocalTransition = useCallback(
     (
@@ -171,7 +200,7 @@ export function FulfillmentQueueProvider({
     }
   }, []);
 
-  const handleChange = useCallback(
+  const handleOrderChange = useCallback(
     (payload: RealtimePostgresChangesPayload<OrderRow>) => {
       const newRow = payload.new as Partial<OrderRow>;
       const oldRow = payload.old as Partial<OrderRow>;
@@ -206,14 +235,61 @@ export function FulfillmentQueueProvider({
 
       if (isPaidQueuePayload(newStatus) && newStatus?.id) {
         void enqueuePaidOrder(newStatus.id);
+        refreshDashboardIfNeeded();
         return;
       }
 
       if (isInProgressQueuePayload(newStatus) && newStatus?.id) {
         void enqueueInProgressOrder(newStatus.id);
       }
+
+      // Pedidos canal loja (create/confirm) podem alterar KPIs do painel.
+      if (newRow?.channel === "store") {
+        refreshDashboardIfNeeded();
+      }
     },
-    [enqueuePaidOrder, enqueueInProgressOrder],
+    [enqueuePaidOrder, enqueueInProgressOrder, refreshDashboardIfNeeded],
+  );
+
+  const handleProductChange = useCallback(
+    (payload: RealtimePostgresChangesPayload<ProductRow>) => {
+      try {
+        const newRow = payload.new as Partial<ProductRow> | null;
+        setProductStatusCache((prev) =>
+          applyProductStatusToCache(prev, {
+            id: newRow?.id ? String(newRow.id) : undefined,
+            status: newRow?.status ?? undefined,
+          }),
+        );
+
+        // hold/available/sold na peça pode mudar contagem de holds no painel
+        // (projeção) — refresh só no /admin.
+        if (
+          newRow?.status === "hold" ||
+          newRow?.status === "available" ||
+          newRow?.status === "sold"
+        ) {
+          refreshDashboardIfNeeded();
+        }
+      } catch {
+        // Realtime de inventário é best-effort — nunca derruba a fila.
+      }
+    },
+    [refreshDashboardIfNeeded],
+  );
+
+  const handleHoldSessionChange = useCallback(
+    (payload: RealtimePostgresChangesPayload<HoldSessionRow>) => {
+      try {
+        const newRow = payload.new as Partial<HoldSessionRow> | null;
+        if (shouldRefreshDashboardForHoldEvent(newRow?.status)) {
+          refreshDashboardIfNeeded();
+        }
+      } catch {
+        // same best-effort policy as products
+      }
+    },
+    [refreshDashboardIfNeeded],
   );
 
   useEffect(() => {
@@ -221,6 +297,7 @@ export function FulfillmentQueueProvider({
 
     // UPDATE é o caminho real (webhook: pending_payment → paid).
     // INSERT + filter status=eq.paid cobre o caso raro de insert já pago.
+    // SN-14: products + hold_sessions para cache POS e KPIs do painel.
     const channel = supabase
       .channel("fulfillment-queue")
       .on(
@@ -230,7 +307,7 @@ export function FulfillmentQueueProvider({
           schema: "public",
           table: "orders",
         },
-        handleChange,
+        handleOrderChange,
       )
       .on(
         "postgres_changes",
@@ -240,7 +317,25 @@ export function FulfillmentQueueProvider({
           table: "orders",
           filter: "status=eq.paid",
         },
-        handleChange,
+        handleOrderChange,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "products",
+        },
+        handleProductChange,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "hold_sessions",
+        },
+        handleHoldSessionChange,
       )
       .subscribe((status) => {
         setIsRealtimeConnected(status === "SUBSCRIBED");
@@ -249,7 +344,7 @@ export function FulfillmentQueueProvider({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [handleChange]);
+  }, [handleOrderChange, handleProductChange, handleHoldSessionChange]);
 
   const value = useMemo(
     () => ({
@@ -257,9 +352,16 @@ export function FulfillmentQueueProvider({
       inProgressOrders: queues.inProgress,
       paidCount,
       isRealtimeConnected,
+      productStatusCache,
       applyLocalTransition,
     }),
-    [queues, paidCount, isRealtimeConnected, applyLocalTransition],
+    [
+      queues,
+      paidCount,
+      isRealtimeConnected,
+      productStatusCache,
+      applyLocalTransition,
+    ],
   );
 
   return (

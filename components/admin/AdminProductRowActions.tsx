@@ -25,6 +25,10 @@ import {
   activateProductAction,
   deactivateProductAction,
 } from "@/features/admin/product-actions";
+import {
+  productLabelPdfPath,
+  productLabelPrintPath,
+} from "@/lib/qr/passport-url";
 
 type Props = {
   productId: string;
@@ -60,7 +64,16 @@ export function AdminProductRowActions({
         toast.error(result.error);
         return;
       }
-      toast.success(`Peça ativada: ${result.staffCode}`);
+      const pdfHref = productLabelPdfPath(result.productId);
+      toast.success(`Peça ativada: ${result.staffCode}`, {
+        action: {
+          label: "Imprimir etiqueta",
+          onClick: () => {
+            window.open(pdfHref, "_blank", "noopener,noreferrer");
+          },
+        },
+      });
+      window.open(pdfHref, "_blank", "noopener,noreferrer");
       router.refresh();
     } finally {
       setIsActivating(false);
@@ -108,9 +121,22 @@ export function AdminProductRowActions({
               <Link href={`/admin/produtos/${productId}`}>Editar</Link>
             </DropdownMenuItem>
             {staffCode ? (
-              <DropdownMenuItem disabled title="Etiqueta/QR em SN-10">
-                Reimprimir
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem asChild>
+                  <a
+                    href={productLabelPdfPath(productId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Reimprimir (PDF)
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={productLabelPrintPath(productId)}>
+                    Imprimir térmica
+                  </Link>
+                </DropdownMenuItem>
+              </>
             ) : null}
             {status !== "inactive" ? (
               <DropdownMenuItem

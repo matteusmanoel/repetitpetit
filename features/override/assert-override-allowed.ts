@@ -8,7 +8,7 @@ export type OverrideGateResult =
   | { ok: false; reason: "already_paid" };
 
 /**
- * Pure gate for SN-13 Override (D62 / D81).
+ * Pure gate for SN-13 Override (D62 / D83).
  *
  * Call **inside the same DB transaction** as the override insert, after
  * `SELECT … FOR UPDATE` on the product and (when present) the online order.

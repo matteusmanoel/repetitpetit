@@ -45,7 +45,7 @@ export type ReconcileLatePaymentDeps = {
 /**
  * Late Mercado Pago webhook after the order was cancelled (Override or admin).
  *
- * D62 / D81:
+ * D62 / D83:
  * 1. Mark payments row cancelled + note in `raw_payload_json`
  * 2. Stub/call MP Refunds API (default: stub with clear log — no silent fail)
  * 3. Insert `order_events.late_webhook_reconciled`

@@ -1581,7 +1581,52 @@ applies after merge. Unlocks SN-06 reconcile and SN-07 POS paid→sold consumers
 
 ---
 
-## D81 — SN-06: Paid online priority — override block + late webhook reconcile
+## D81 — SN-10: QR Passport URL + PDF/thermal label (no price, no migration)
+
+**Data**: 2026-08-03
+**Contexto**: D73/D64 define QR permanente na ativação; SN-09 already assigns
+`staff_code`. SN-11 Passport page may still 404 — QR must still encode the deep
+link. Need printable artifact without thermal printer dependency.
+**Decisão**: (1) QR content =
+`{NEXT_PUBLIC_SITE_URL}/admin/passport/{staff_code}` (D16 site URL). (2) Server-only
+`qrcode` (SVG/PNG) + `@react-pdf/renderer` PDF at
+`GET /admin/produto/[id]/label.pdf` (`requireAdminSession`, requires
+`staff_code`). (3) HTML thermal label via `ProductLabel` + `@media print` 58mm
+CSS; print page `/admin/produto/[id]/etiqueta`. (4) Labels **never** include
+price (D73). (5) `qrcode` and `@react-pdf/renderer` in `serverExternalPackages`.
+(6) Admin “Reimprimir” / “Imprimir Etiqueta” wired after activation; no DB
+migration.
+**Consequência**: Unlocks SN-11 Passport deep-link contract. Cloud agents must
+not change QR payload shape without a new decision.
+
+---
+
+## D82 — SN-07: POS store Order create ≠ sold; confirm uses SN-05 store channel
+
+**Data**: 2026-08-03
+**Contexto**: Wave 4 POS precisa gravar venda de balcão no mesmo agregado `orders`
+(D68) sem marcar inventário na criação (D71) e sem duplicar transição sold fora
+da máquina SN-05 (D80). Issue API usa `cash | card_local | pix_local`; CHECK
+SN-01 em `store_payment_method` é `cash | card | pix`.
+**Decisão**: (1) `createStoreOrderAction` cria `orders` com `channel=store`,
+`status=pending_payment`, `fulfillment_type=store_counter`,
+`store_payment_method` mapeado (`card_local→card`, `pix_local→pix`),
+`customer_id` nullable; `order_items` com preço do servidor; **não** muda
+`products.status`. Aceita peças `available|hold` (D62). (2) `confirmStoreSaleAction`
+só em Order store `pending_payment` → `paid` + `markProductsSoldForOrder({
+channel: 'store' })` (SN-05). (3) Hold: após sold, finaliza sessões ainda
+`active` via `release_hold_session(..., 'cancelled')` (SN-02) — sem orphan.
+(4) `order_events` com `actor_type=admin` só no confirm aplicado; `already_paid`
+é idempotente (sem segundo event; pode reparar inventário como apply-mp-status).
+(5) Sem migration — `store_counter` / channel / store_payment_method já em SN-01.
+(6) UI POS fica SN-08.
+**Consequência**: Server actions em `features/pos/*`. Unlock SN-08 UI, SN-14
+dashboard, SN-15 histórico. SN-13 Override continua o caminho formal para
+quebrar hold online antes da venda quando a operação exigir auditoria completa.
+
+---
+
+## D83 — SN-06: Paid online priority — override block + late webhook reconcile
 
 **Data**: 2026-08-03
 **Contexto**: D62 makes paid online untouchable and requires late MP webhooks after

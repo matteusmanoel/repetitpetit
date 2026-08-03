@@ -2,7 +2,7 @@
 
 **Issue**: [#72](https://github.com/matteusmanoel/repetitpetit/issues/72)  
 **Depends on**: SN-01, SN-05 (`markProductsSoldForOrder`)  
-**Decisions**: D62, D46, D50, D81  
+**Decisions**: D62, D46, D50, D83  
 **Migration**: none
 
 ---

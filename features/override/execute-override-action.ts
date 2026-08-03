@@ -61,7 +61,7 @@ function readString(
 
 /**
  * SN-13 Override — atomically cancel Hold Session and/or pending online
- * payment claim, then insert `override_events` (D62 / D72 / D84).
+ * payment claim, then insert `override_events` (D62 / D72 / D85).
  *
  * Lives in `features/override/` next to `assertOverrideAllowed` (not
  * `features/pos/override.ts`) so the paid-block gate and the mutation share

@@ -1,4 +1,4 @@
--- SN-13 — Atomic Override action (D62 / D72 / D84)
+-- SN-13 — Atomic Override action (D62 / D72 / D85)
 -- Issue: #79
 --
 -- Cancels active (or converted) Hold Session claim and/or pending_payment

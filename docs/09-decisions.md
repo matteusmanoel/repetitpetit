@@ -1651,7 +1651,28 @@ orchestrator/HITL — not Cloud Agent scope.
 
 ---
 
-## D84 — SN-13: Override action in `features/override/` + atomic RPC
+## D84 — SN-11: Garment Passport deep link + status quick actions (no migration)
+
+**Data**: 2026-08-03
+**Contexto**: D81 locked QR payload to `/admin/passport/{staff_code}`; D73/D64
+define scan → staff ficha; SN-09 assigns `staff_code`; SN-10 PDF/print paths
+exist; SN-08 POS UI and SN-13 Override UI still open.
+**Decisão**: (1) Route `app/admin/(protected)/passport/[rpCode]` resolves product
+by `staff_code` (normalized trim/decode/uppercase) via service role;
+`notFound()` if missing. (2) Page shows identity header, status bar (hold
+countdown + browser session label when hold), status-dependent quick actions,
+and sale snippet (`orders.public_code` / channel / date) when sold. (3) Sell →
+`/admin/pos?product=<id>` stub (SN-08); Override → `/admin/override?product=<id>`
+(SN-13); Reprint → SN-10 `/admin/produto/[id]/label.pdf`; Edit →
+`/admin/produtos/[id]`; Archive/Reativar → existing `deactivateProductAction` /
+`activateProductAction` (SN-09). (4) Data loader `features/passport/data.ts`
+(`getPassportData`) — no client inventory writes. (5) No DB migration.
+**Consequência**: QR scan lands on Passport. SN-08 wires real POS modal into the
+Sell deep link; SN-13 replaces Override stub; SN-15 may enrich history/events.
+
+---
+
+## D85 — SN-13: Override action in `features/override/` + atomic RPC
 
 **Data**: 2026-08-03
 **Contexto**: Issue #79 needs an atomic cancel of Hold Session / `pending_payment`
@@ -1672,6 +1693,7 @@ product `FOR UPDATE`; migration
 `order_events.cancelled_by_override` so SN-06 late webhook reconciles. (6)
 Idempotent double override → `outcome: noop` without a second `override_events`
 row. (7) Stub customer notify (`console.info` + TODO WhatsApp/email). (8)
-Minimal reusable dialog only — full POS is SN-08.
+Minimal reusable dialog only — full POS is SN-08. (9) `/admin/override` deep
+link from Passport hosts the shared button (replaces SN-11 stub).
 **Consequência**: Unlocks SN-14 override counts and SN-15 Passport history;
-SN-08/SN-11 wire the shared button. Contract: `docs/slice-n/SN-13-contract.md`.
+SN-08 wires the shared button into POS. Contract: `docs/slice-n/SN-13-contract.md`.

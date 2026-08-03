@@ -2,7 +2,7 @@
 
 **Issue**: [#79](https://github.com/matteusmanoel/repetitpetit/issues/79)  
 **Depends on**: SN-01 (`override_events`), SN-02 (hold release), SN-05, SN-06 (`assertOverrideAllowed`)  
-**Decisions**: D62, D72, D83, D84  
+**Decisions**: D62, D72, D83, D85  
 **Migration**: `supabase/migrations/20260803150000_execute_override_action.sql`  
 **(Orchestrator must apply remotely after merge — cloud agents do not apply.)**
 
@@ -32,7 +32,7 @@
 | `isOverrideActionVisible` | `features/override/visibility.ts` | UI visibility helper |
 | `OverrideActionButton` | `components/admin/OverrideActionButton.tsx` | Reusable dialog |
 
-**Module choice (D84):** lives in `features/override/` next to the SN-06 gate — not `features/pos/override.ts`.
+**Module choice (D85):** lives in `features/override/` next to the SN-06 gate — not `features/pos/override.ts`.
 
 ### Result shape
 

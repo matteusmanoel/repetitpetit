@@ -2,6 +2,9 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
   buildPassportUrl,
+  overridePath,
+  posSellPath,
+  productEditPath,
   productLabelPdfPath,
   productLabelPrintPath,
 } from "@/lib/qr/passport-url";
@@ -36,6 +39,12 @@ describe("product label paths", () => {
     expect(productLabelPrintPath("abc-123")).toBe(
       "/admin/produto/abc-123/etiqueta",
     );
+  });
+
+  it("builds Passport follow-on deep links (SN-11 stubs)", () => {
+    expect(posSellPath("abc-123")).toBe("/admin/pos?product=abc-123");
+    expect(overridePath("abc-123")).toBe("/admin/override?product=abc-123");
+    expect(productEditPath("abc-123")).toBe("/admin/produtos/abc-123");
   });
 });
 

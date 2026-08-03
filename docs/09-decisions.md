@@ -1537,3 +1537,25 @@ status paths (SN-02/SN-03).
 **Consequência**: Migration
 `supabase/migrations/20260803130000_rp_staff_code_seq.sql`. Orchestrator applies
 remote + regenerates types after merge. "Reimprimir" UI stub waits for SN-10.
+
+---
+
+## D79 — SN-04: Hold checkout cutover; keep cookie `rp_cart_session`
+
+**Data**: 2026-08-03
+**Contexto**: SN-04 replaces cart-reserve UX with Hold Session (`Comprar Agora` →
+continue shopping → single payment). Cookie rename (`rp_hold_session`) was optional.
+**Decisão**: (1) Keep browser cookie name **`rp_cart_session`** as
+`hold_sessions.session_id` — avoids breaking existing browsers; no migration.
+(2) Client/API `holdSessionId` means **`hold_sessions.id`** (UUID row); cookie is
+the browser session key. (3) PDP CTA calls `POST /api/hold/reserve`; CartSheet
+hydrates via `GET /api/hold/session`; countdown is session-level `expires_at`.
+(4) `createOrderAction` requires `holdSessionId`, validates active hold + same
+cookie, derives `order_items` from `hold_items` + `products.price`, then
+`convert_hold_session` (not sold). (5) MP preference metadata includes
+`hold_session_id`; on `approved`, mark `sold` + `sold_channel=online` via
+temporary `features/inventory/mark-sold-online` (TODO SN-05 centralization);
+do not re-convert if already `converted`. (6) Legacy `/api/cart/*` remains for
+dual-read safety; primary UX is Hold.
+**Consequência**: No new Supabase migration for SN-04. Orchestrator has nothing
+to apply remotely for this issue.

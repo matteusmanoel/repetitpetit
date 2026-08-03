@@ -4,12 +4,13 @@ import { CheckIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/features/cart/store";
 import type { ReservationView } from "@/features/catalog/types";
 
-/** Duração visual do estado "Adicionado ✓" antes de virar "Ver carrinho" (T6). */
+/** Duração visual do estado "Reservada ✓" antes de virar "Ver reservas" (T6). */
 const ADDED_FEEDBACK_MS = 1500;
 
 type AddToCartButtonProps = {
@@ -27,7 +28,7 @@ type UiState =
   | { status: "success"; expiresAt: string };
 
 /**
- * CTA full-width que chama `POST /api/cart/reserve` e popula o store do carrinho (T14).
+ * CTA full-width "Comprar Agora" → `POST /api/hold/reserve` (SN-04 / D61).
  */
 export function AddToCartButton({
   productId,
@@ -58,61 +59,81 @@ export function AddToCartButton({
       : reservation;
 
   const reservedByOther = effectiveReservation.kind === "other";
-  const inOwnCart = effectiveReservation.kind === "own" || hasProduct;
+  const inOwnHold = effectiveReservation.kind === "own" || hasProduct;
 
   async function handleReserve() {
     setUi({ status: "idle" });
 
     try {
-      const response = await fetch("/api/cart/reserve", {
+      const response = await fetch("/api/hold/reserve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId }),
       });
 
       const payload = (await response.json().catch(() => null)) as {
-        reservation?: {
-          id: string;
-          expires_at: string;
-          product_id: string;
-        };
+        holdSessionId?: string;
+        expiresAt?: string;
+        productId?: string;
         message?: string;
         error?: string;
       } | null;
 
+      if (response.status === 409 && payload?.error === "limit_reached") {
+        toast.message("Você já tem 5 peças reservadas");
+        setUi({
+          status: "error",
+          message: "Você já tem 5 peças reservadas",
+        });
+        return;
+      }
+
       if (response.status === 409) {
+        const message =
+          payload?.message ?? "Esta peça não está mais disponível.";
+        toast.message(message);
+        setUi({ status: "error", message });
+        // Don't refresh: after hold, anon RLS hides status=hold products.
+        return;
+      }
+
+      if (
+        !response.ok ||
+        !payload?.holdSessionId ||
+        !payload.expiresAt
+      ) {
         setUi({
           status: "error",
           message:
-            payload?.message ??
-            "Esta peça já foi reservada por outro comprador. Tente outra peça.",
-        });
-        startTransition(() => router.refresh());
-        return;
-      }
-
-      if (!response.ok || !payload?.reservation?.expires_at || !payload.reservation.id) {
-        setUi({
-          status: "error",
-          message: payload?.message ?? "Não foi possível reservar a peça. Tente de novo.",
+            payload?.message ?? "Não foi possível reservar a peça. Tente de novo.",
         });
         return;
       }
 
-      addItem({
-        productId,
-        name,
-        slug,
-        price,
-        coverImageUrl,
-        quantity: 1,
-        reservationId: payload.reservation.id,
-        expiresAt: payload.reservation.expires_at,
-      });
+      addItem(
+        {
+          productId,
+          name,
+          slug,
+          price,
+          coverImageUrl,
+          quantity: 1,
+          reservationId: payload.holdSessionId,
+          expiresAt: payload.expiresAt,
+        },
+        {
+          holdSessionId: payload.holdSessionId,
+          expiresAt: payload.expiresAt,
+        },
+      );
 
-      setUi({ status: "success", expiresAt: payload.reservation.expires_at });
+      setUi({ status: "success", expiresAt: payload.expiresAt });
       setJustAdded(true);
-      justAddedTimeoutRef.current = setTimeout(() => setJustAdded(false), ADDED_FEEDBACK_MS);
+      justAddedTimeoutRef.current = setTimeout(
+        () => setJustAdded(false),
+        ADDED_FEEDBACK_MS,
+      );
+      // Soft refresh for catalog/related only — avoid PDP notFound on hold.
       startTransition(() => router.refresh());
     } catch {
       setUi({
@@ -126,7 +147,7 @@ export function AddToCartButton({
     ? "pending"
     : justAdded
       ? "added"
-      : inOwnCart
+      : inOwnHold
         ? "own"
         : reservedByOther
           ? "reserved"
@@ -140,7 +161,7 @@ export function AddToCartButton({
         className="h-13 w-full overflow-hidden rounded-full text-base font-medium"
         disabled={reservedByOther || isPending}
         onClick={() => {
-          if (inOwnCart) {
+          if (inOwnHold) {
             openCart();
             return;
           }
@@ -159,16 +180,16 @@ export function AddToCartButton({
             {justAdded ? (
               <>
                 <CheckIcon className="size-4" aria-hidden />
-                Adicionado
+                Reservada
               </>
             ) : isPending ? (
               "Reservando…"
-            ) : inOwnCart ? (
-              "Ver carrinho"
+            ) : inOwnHold ? (
+              "Ver reservas"
             ) : reservedByOther ? (
               "Indisponível no momento"
             ) : (
-              "Adicionar ao carrinho"
+              "Comprar Agora"
             )}
           </motion.span>
         </AnimatePresence>

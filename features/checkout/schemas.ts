@@ -69,8 +69,9 @@ export const checkoutAddressSchema = z.object({
 });
 
 /**
- * Payload do checkout (T15). Sem gift_message / Stripe.
- * Preços e frete são recalculados no server — o client só envia IDs.
+ * Payload do checkout (SN-04 / T15). Sem gift_message / Stripe.
+ * `holdSessionId` é obrigatório; `order_items` vêm de `hold_items` no server
+ * (preços de `products` — D13). `productIds` do client é ignorado na action.
  */
 export const createOrderSchema = z
   .object({
@@ -85,9 +86,10 @@ export const createOrderSchema = z
       error: "Escolha retirada ou entrega.",
     }),
     address: checkoutAddressSchema.optional(),
-    productIds: z
-      .array(z.uuid("productId inválido."))
-      .min(1, "Seu carrinho está vazio."),
+    /** `hold_sessions.id` — validado contra cookie + hold ativa (SN-04). */
+    holdSessionId: z.uuid("holdSessionId inválido."),
+    /** Opcional / legado UI — não confiar para inventário nem preço. */
+    productIds: z.array(z.uuid("productId inválido.")).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.fulfillmentType === "delivery" && !data.address) {

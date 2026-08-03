@@ -29,8 +29,8 @@ export function CartTrigger({ className }: CartTriggerProps) {
       className={cn("relative size-11", className)}
       aria-label={
         count > 0
-          ? `Abrir carrinho, ${count} ${count === 1 ? "peça" : "peças"}`
-          : "Abrir carrinho"
+          ? `Abrir reservas, ${count} ${count === 1 ? "peça" : "peças"}`
+          : "Abrir reservas"
       }
       onClick={openCart}
     >

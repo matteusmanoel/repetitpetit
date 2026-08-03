@@ -41,8 +41,8 @@ export default async function AdminDashboardPage() {
           Painel administrativo
         </h1>
         <p className="text-sm text-muted-foreground">
-          Visão do acervo e da fila de fulfillment. Use os atalhos para
-          gerenciar catálogo, categorias e banners.
+          Visão do acervo, holds ativos e da fila de fulfillment. Use os
+          atalhos para gerenciar catálogo, categorias e banners.
         </p>
       </div>
 

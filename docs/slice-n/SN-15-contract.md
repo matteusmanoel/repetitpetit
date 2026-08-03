@@ -2,7 +2,7 @@
 
 **Issue**: [#81](https://github.com/matteusmanoel/repetitpetit/issues/81)  
 **Depends on**: SN-01, SN-02, SN-05, SN-07, SN-09, SN-11, SN-13  
-**Decisions**: D65, D72, D73, D84, **D86**  
+**Decisions**: D65, D72, D73, D84, **D88**  
 **Migration**: `supabase/migrations/20260803160000_product_status_events.sql`  
 **(Orchestrator must apply remotely after merge — cloud agents do not apply.)**
 
@@ -31,7 +31,7 @@
 
 ---
 
-## Emitter strategy (D86)
+## Emitter strategy (D88)
 
 Prefer **SQL hooks inside existing inventory RPCs** so hold/sale/override stay atomic with the status change. Activation stays in TypeScript because `staff_code` assignment is outside `apply_inventory_transition`.
 
@@ -49,6 +49,6 @@ Do **not** scatter client inserts; Passport reads via service role loader only.
 
 ## Forbidden
 
-1. Extending `order_events` with `product_id` for this trail (rejected — D86)
+1. Extending `order_events` with `product_id` for this trail (rejected — D88)
 2. Applying this migration remotely from Cloud Agents
 3. Building a compliance/SIEM platform on top of these rows

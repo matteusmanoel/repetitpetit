@@ -1,4 +1,4 @@
--- SN-15 — Product status history for Garment Passport (D72 / D86)
+-- SN-15 — Product status history for Garment Passport (D72 / D88)
 -- Issue: #81
 --
 -- Option A: dedicated `product_status_events` (not order_events).
@@ -35,7 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_product_status_events_product_created
   ON public.product_status_events (product_id, created_at ASC);
 
 COMMENT ON TABLE public.product_status_events IS
-  'Minimal Peça status timeline for Passport ops/support/debug — not compliance (D72/D86).';
+  'Minimal Peça status timeline for Passport ops/support/debug — not compliance (D72/D88).';
 
 ALTER TABLE public.product_status_events ENABLE ROW LEVEL SECURITY;
 
@@ -807,4 +807,4 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.execute_override_action(uuid, uuid, text, text) IS
-  'SN-13: atomic Override — SN-02 release with SN-15 override event, cancel pending online + override_events (D72/D86).';
+  'SN-13: atomic Override — SN-02 release with SN-15 override event, cancel pending online + override_events (D72/D88).';

@@ -24,7 +24,7 @@ export type PassportSale = {
   paymentMethod: string | null;
 };
 
-/** One row in the Passport status timeline (SN-15 / D86). */
+/** One row in the Passport status timeline (SN-15 / D88). */
 export type PassportHistoryEvent = {
   id: string;
   createdAt: string;

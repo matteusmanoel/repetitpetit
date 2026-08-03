@@ -1700,7 +1700,56 @@ SN-08 wires the shared button into POS. Contract: `docs/slice-n/SN-13-contract.m
 
 ---
 
-## D86 — SN-15: `product_status_events` (Option A) + SQL RPC emitters
+## D86 — SN-08: POS UI scan-first com Override + create/confirm SN-07
+
+**Data**: 2026-08-03
+**Contexto**: SN-07 entregou `createStoreOrderAction` / `confirmStoreSaleAction`
+(D82); SN-11 deep-linka Vender → `/admin/pos?product=<id>` (D84); SN-13
+oferece `OverrideActionButton` + `executeOverrideActionFromAdmin` (D85). Falta
+a UI de balcão mobile-first (D73 scan-first, D62 override, D71 paid→sold).
+**Decisão**: (1) Rota real `app/admin/(protected)/pos` substitui o stub; mantém
+contrato `?product=<uuid>` do Passaporte. (2) `lookupProductForPos` em
+`features/pos/lookup-product.ts` resolve por `staff_code` (RP-…) **ou** `id`
+(service role), devolve hold ativo (countdown / minutos restantes) e flags de
+pedido online `pending_payment` / pago. (3) Gate de UI: `available` → toggle
+Dinheiro/Cartão/Pix (`cash` / `card_local` / `pix_local`) → Confirmar venda;
+`hold` / `pending_payment` → aviso + `OverrideActionButton` antes de vender;
+`sold`/`paid` e `inactive` → bloqueio com cópia clara, sem ação de venda.
+(4) Confirmação chama `completePosSaleFromAdmin` = create + confirm SN-07 em
+sequência; staff id da sessão admin. (5) Sucesso mostra card com
+`orders.public_code`. (6) Sem migration — reusa schema/actions existentes.
+**Consequência**: Unlock smoke de balcão e contagens SN-14; Passaporte continua
+ponto de entrada do QR; Override auditado permanece em SN-13.
+
+---
+
+## D87 — SN-14: Dashboard KPIs via `hold_sessions` + Realtime inventário no provider
+
+**Data**: 2026-08-03
+**Contexto**: Issue #80 / SN-14. D40 contava "Reservadas" em `cart_reservations`;
+D66 define Hold Session como verdade. D47 assina `orders` no
+`FulfillmentQueueProvider`; o painel precisa refletir holds ativos, holds
+expirando (<5 min), vendas loja e overrides do dia, sem migration nova.
+**Decisão**: (1) `getAdminDashboardKpis` (service role, D40) passa a contar
+`hold_sessions WHERE status = 'active' AND expires_at > now()` como
+**Holds ativos** — não `cart_reservations` nem `products.status = hold`.
+(2) Novos KPIs: `holdsExpiringSoon` (active + `expires_at <= now+5min`),
+`storeOrdersToday` (`orders.channel = 'store'` no dia civil BRT),
+`overridesToday` (`override_events` no dia BRT). Helpers puros em
+`features/admin/dashboard/kpi-helpers.ts`. (3) UI `/admin`: tile renomeado
+"Holds ativos"; seção "Hold e loja" com "Expirando em breve" (âmbar se > 0),
+"Vendas loja hoje", "Overrides hoje". (4) Realtime: mesmo canal
+`fulfillment-queue` ganha `products` UPDATE (cache em memória hold/available;
+`sold` remove) + `hold_sessions` `*` → `router.refresh()` só em `/admin` para
+KPIs. Handlers best-effort (não derrubam a fila). **Sem migration** neste
+ticket — `hold_sessions` já está na publication (SN-01); entrega de eventos
+`products` depende da publication/RLS já existentes no projeto remoto.
+**Consequência**: KPI alinhado a D66; POS/Passport futuros podem ler
+`productStatusCache` do provider. Catálogo público / listing não muda.
+
+---
+
+## D88 — SN-15: `product_status_events` (Option A) + SQL RPC emitters
 
 **Data**: 2026-08-03
 **Contexto**: Passport needs a minimal Peça lifecycle trail (D72 ops audit, D65

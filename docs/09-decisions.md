@@ -1697,3 +1697,28 @@ Minimal reusable dialog only — full POS is SN-08. (9) `/admin/override` deep
 link from Passport hosts the shared button (replaces SN-11 stub).
 **Consequência**: Unlocks SN-14 override counts and SN-15 Passport history;
 SN-08 wires the shared button into POS. Contract: `docs/slice-n/SN-13-contract.md`.
+
+---
+
+## D86 — SN-15: `product_status_events` (Option A) + SQL RPC emitters
+
+**Data**: 2026-08-03
+**Contexto**: Passport needs a minimal Peça lifecycle trail (D72 ops audit, D65
+sale channel, D73/D84 Passport). Extending `order_events` with optional
+`product_id` would mix order workflow with inventory projection history.
+**Decisão**: (1) **Option A** — dedicated `product_status_events` (not Option B
+on `order_events`). (2) Columns: `from_status`, `to_status`, `actor_type`
+(`admin|system|customer`), `actor_id`, `context`, `order_id`, optional `notes`
+(override reason / RP code / hold label). (3) RLS: **service_role only** — no
+anon/authenticated policies (stricter than `override_events` admin SELECT).
+(4) Emitters prefer **SQL hooks** inside SN-02/SN-05/SN-13 RPCs so the event
+commits with the status change; activation emits from TS
+(`activateProductAction` → `emit_product_status_event`) because `staff_code`
+assignment is outside inventory RPCs. (5) Override hold→available calls
+`_finalize_hold_session(..., context=override, actor=admin)` so the timeline
+shows Override (not a generic release). (6) Passport collapsible Histórico +
+sale snippet (channel / date / order / payment). Contract:
+`docs/slice-n/SN-15-contract.md`.
+**Consequência**: Migration
+`supabase/migrations/20260803160000_product_status_events.sql` — orchestrator
+applies remotely + regenerates types after merge. Cloud agents do not apply.

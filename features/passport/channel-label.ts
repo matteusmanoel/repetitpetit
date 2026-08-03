@@ -4,7 +4,7 @@ export function saleChannelLabel(channel: string): string {
     case "online":
       return "Online";
     case "store":
-      return "Loja";
+      return "Loja física";
     default:
       return channel;
   }

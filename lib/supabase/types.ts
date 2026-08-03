@@ -729,6 +729,60 @@ export type Database = {
           },
         ]
       }
+      product_status_events: {
+        Row: {
+          actor_id: string | null
+          actor_type: string
+          context: string | null
+          created_at: string
+          from_status: string | null
+          id: string
+          notes: string | null
+          order_id: string | null
+          product_id: string
+          to_status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_type: string
+          context?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          product_id: string
+          to_status: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_type?: string
+          context?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          product_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_status_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_status_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -990,8 +1044,28 @@ export type Database = {
     }
     Functions: {
       _finalize_hold_session: {
-        Args: { p_final_status: string; p_hold_session_id: string }
+        Args: {
+          p_actor_id?: string
+          p_actor_type?: string
+          p_event_context?: string
+          p_final_status: string
+          p_hold_session_id: string
+          p_notes?: string
+        }
         Returns: undefined
+      }
+      emit_product_status_event: {
+        Args: {
+          p_actor_id?: string
+          p_actor_type: string
+          p_context?: string
+          p_from_status: string
+          p_notes?: string
+          p_order_id?: string
+          p_product_id: string
+          p_to_status: string
+        }
+        Returns: string
       }
       apply_inventory_transition: {
         Args: {

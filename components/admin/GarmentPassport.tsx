@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import { PassportHoldCountdown } from "@/components/admin/PassportHoldCountdown";
 import { PassportQuickActions } from "@/components/admin/PassportQuickActions";
@@ -12,6 +13,8 @@ import {
   holdSessionBrowserLabel,
   saleChannelLabel,
 } from "@/features/passport/channel-label";
+import { PassportHistory } from "@/features/passport/components/PassportHistory";
+import { paymentMethodLabel } from "@/features/passport/format-history";
 import { getPassportQuickActions } from "@/features/passport/quick-actions";
 import type { PassportData } from "@/features/passport/types";
 import { cn } from "@/lib/utils";
@@ -59,7 +62,7 @@ function formatSoldAt(iso: string): string {
  * Status bar + quick actions stay above the fold at 375px.
  */
 export function GarmentPassport({ data }: Props) {
-  const { product, hold, sale } = data;
+  const { product, hold, sale, history } = data;
   const staffCode = product.staff_code ?? "—";
   const primaryImage =
     product.product_images[0]?.image_url ?? product.cover_image_url;
@@ -187,27 +190,38 @@ export function GarmentPassport({ data }: Props) {
         </section>
       ) : null}
 
-      {/* Sale history */}
+      {/* Sale detail (D65) */}
       {product.status === "sold" ? (
         <section
           id="passport-sale"
           className="scroll-mt-4 rounded-xl border border-border bg-card px-4 py-3"
         >
           <h2 className="text-sm font-semibold text-foreground">
-            Histórico de venda
+            Detalhe da venda
           </h2>
           {sale ? (
             <dl className="mt-2 grid gap-1.5 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Pedido</dt>
                 <dd className="font-mono font-medium text-foreground">
-                  {sale.publicCode}
+                  <Link
+                    href="/admin/pedidos"
+                    className="underline-offset-2 hover:underline"
+                  >
+                    {sale.publicCode}
+                  </Link>
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Canal</dt>
                 <dd className="text-foreground">
                   {saleChannelLabel(sale.channel)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">Pagamento</dt>
+                <dd className="text-foreground">
+                  {paymentMethodLabel(sale.paymentMethod)}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">
@@ -224,6 +238,11 @@ export function GarmentPassport({ data }: Props) {
           )}
         </section>
       ) : null}
+
+      {/* Status timeline (SN-15) */}
+      <section aria-label="Histórico de status" className="pb-2">
+        <PassportHistory events={history} />
+      </section>
     </div>
   );
 }

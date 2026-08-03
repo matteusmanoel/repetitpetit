@@ -1623,3 +1623,28 @@ channel: 'store' })` (SN-05). (3) Hold: após sold, finaliza sessões ainda
 **Consequência**: Server actions em `features/pos/*`. Unlock SN-08 UI, SN-14
 dashboard, SN-15 histórico. SN-13 Override continua o caminho formal para
 quebrar hold online antes da venda quando a operação exigir auditoria completa.
+
+---
+
+## D83 — SN-06: Paid online priority — override block + late webhook reconcile
+
+**Data**: 2026-08-03
+**Contexto**: D62 makes paid online untouchable and requires late MP webhooks after
+Override to reconcile (cancel/refund), never mark the Peça sold. D46/D50 already
+give `already_paid` idempotency + sold repair on retry. SN-05 owns sold via
+`markProductsSoldForOrder`. SN-13 Override UI may land in parallel.
+**Decisão**: (1) Pure `assertOverrideAllowed` in `features/override/` returns
+`{ ok: false, reason: "already_paid" }` for `paid` and post-payment fulfillment
+statuses; SN-13 **must** call it inside the same transaction as Override
+(`SELECT … FOR UPDATE` on product + order) — no Override UI in this ticket.
+(2) `applyMercadoPagoPaymentStatus`: when order is `cancelled` and MP maps to
+`paid`, call `reconcileLatePayment` → outcome `reconciled_after_override`
+(or `noop` if already reconciled). (3) `reconcileLatePayment`: payments row →
+`cancelled` + note in `raw_payload_json`; default **stub** MP Refunds API with
+clear `console.warn` (injectable real `createMercadoPagoRefund`); insert
+`order_events.late_webhook_reconciled` (`actor_type = system`); stub customer
+notify log; **never** call `markProductsSoldForOrder`. (4) Keep `already_paid`
+path for paid→paid (D46/D50). (5) No migration.
+**Consequência**: Unlocks SN-13 Override action to consume the gate; late webhooks
+cannot resurrect cancelled claims into sold inventory. Live MP refund homolog is
+orchestrator/HITL — not Cloud Agent scope.

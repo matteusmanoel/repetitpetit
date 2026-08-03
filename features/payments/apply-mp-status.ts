@@ -2,6 +2,7 @@ import "server-only";
 
 import { convertHoldSession } from "@/features/cart/hold-session";
 import { markProductsSoldForOrder } from "@/features/inventory/apply-transition";
+import { reconcileLatePayment } from "@/features/payments/reconcile-late-payment";
 import type { MercadoPagoPayment } from "@/lib/mercado-pago/fetch-payment";
 import {
   isOrderPastPendingPayment,
@@ -15,7 +16,12 @@ type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 export type ApplyMpStatusSuccess = {
   ok: true;
-  outcome: "applied_paid" | "already_paid" | "payment_updated" | "noop";
+  outcome:
+    | "applied_paid"
+    | "already_paid"
+    | "payment_updated"
+    | "noop"
+    | "reconciled_after_override";
   orderId: string;
   publicCode: string;
   paymentStatus: PaymentStatus;
@@ -31,11 +37,13 @@ export type ApplyMpStatusFailure = {
 export type ApplyMpStatusResult = ApplyMpStatusSuccess | ApplyMpStatusFailure;
 
 /**
- * Aplica status do pagamento MP no pedido (service role — D13 / D46).
+ * Aplica status do pagamento MP no pedido (service role — D13 / D46 / D81).
  *
  * Idempotente: `paid → paid` retorna `already_paid` sem segundo
  * `order_events`, mas ainda garante `products.status = sold` (retry após
  * falha parcial no webhook).
+ *
+ * Pedido `cancelled` + MP approved → `reconcileLatePayment` (nunca sold).
  */
 export async function applyMercadoPagoPaymentStatus(
   payment: MercadoPagoPayment,
@@ -84,7 +92,29 @@ export async function applyMercadoPagoPaymentStatus(
     };
   }
 
-  // Pedido terminal (cancelled/expired): só espelha payment_status / mp ids.
+  // Late webhook after Override / admin cancel — reconcile, never mark sold (D62/D81).
+  if (mapped === "paid" && order.status === "cancelled") {
+    const reconciled = await reconcileLatePayment(order, payment, { supabase });
+    if (!reconciled.ok) {
+      return {
+        ok: false,
+        error: reconciled.error,
+        code: "db",
+      };
+    }
+
+    return {
+      ok: true,
+      outcome:
+        reconciled.outcome === "noop" ? "noop" : "reconciled_after_override",
+      orderId: reconciled.orderId,
+      publicCode: reconciled.publicCode,
+      paymentStatus: "cancelled",
+      orderStatus: "cancelled",
+    };
+  }
+
+  // Pedido terminal (cancelled non-approved / expired): só espelha payment fields.
   if (order.status === "cancelled" || order.status === "expired") {
     const nowIso = new Date().toISOString();
     await supabase

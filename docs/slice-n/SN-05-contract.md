@@ -2,7 +2,7 @@
 
 **Issue**: [#71](https://github.com/matteusmanoel/repetitpetit/issues/71)  
 **Depends on**: SN-01 (schema), SN-02 (Hold Session RPCs)  
-**Decisions**: D65, D66, D67, D71, D75, D79  
+**Decisions**: D65, D66, D67, D71, D75, D80  
 **Migration**: `supabase/migrations/20260803140000_inventory_apply_transition.sql`  
 **(Orchestrator must apply remotely after merge — cloud agents do not apply.)**
 

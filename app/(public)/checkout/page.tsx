@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { CheckoutForm } from "@/features/checkout/components/CheckoutForm";
 import { getCheckoutPageData } from "@/features/checkout/data";
@@ -24,7 +25,15 @@ export default async function CheckoutPage() {
         </p>
       </header>
 
-      <CheckoutForm pageData={pageData} />
+      <Suspense
+        fallback={
+          <div className="rounded-2xl border border-border px-4 py-10 text-center text-sm text-muted-foreground">
+            Carregando seu checkout…
+          </div>
+        }
+      >
+        <CheckoutForm pageData={pageData} />
+      </Suspense>
     </div>
   );
 }

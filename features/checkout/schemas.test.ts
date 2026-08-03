@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { createOrderSchema } from "@/features/checkout/schemas";
 
+const holdSessionId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
 const base = {
   fullName: "Maria Silva",
   phone: "45999999999",
   email: "maria@exemplo.com",
-  productIds: ["11111111-1111-4111-8111-111111111111"],
+  holdSessionId,
 };
 
 describe("createOrderSchema", () => {
@@ -18,12 +20,29 @@ describe("createOrderSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("exige holdSessionId", () => {
+    const result = createOrderSchema.safeParse({
+      fullName: base.fullName,
+      phone: base.phone,
+      email: base.email,
+      fulfillmentType: "pickup",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((issue) =>
+          issue.path.includes("holdSessionId"),
+        ),
+      ).toBe(true);
+    }
+  });
+
   it("exige e-mail no checkout", () => {
     const result = createOrderSchema.safeParse({
       fullName: base.fullName,
       phone: base.phone,
       email: "",
-      productIds: base.productIds,
+      holdSessionId,
       fulfillmentType: "pickup",
     });
     expect(result.success).toBe(false);
@@ -82,6 +101,7 @@ describe("createOrderSchema", () => {
       expect(result.data.address?.state).toBe("PR");
       expect(result.data.address?.postalCode).toBe("85851000");
       expect(result.data.email).toBe("maria@exemplo.com");
+      expect(result.data.holdSessionId).toBe(holdSessionId);
     }
   });
 

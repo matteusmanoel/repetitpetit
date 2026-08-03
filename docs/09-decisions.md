@@ -1540,12 +1540,33 @@ remote + regenerates types after merge. "Reimprimir" UI stub waits for SN-10.
 
 ---
 
-## D79 — SN-05: Inventory state machine owns sold/inactive; hold stays SN-02
+## D79 — SN-04: Hold checkout cutover; keep cookie `rp_cart_session`
+
+**Data**: 2026-08-03
+**Contexto**: SN-04 replaces cart-reserve UX with Hold Session (`Comprar Agora` →
+continue shopping → single payment). Cookie rename (`rp_hold_session`) was optional.
+**Decisão**: (1) Keep browser cookie name **`rp_cart_session`** as
+`hold_sessions.session_id` — avoids breaking existing browsers; no migration.
+(2) Client/API `holdSessionId` means **`hold_sessions.id`** (UUID row); cookie is
+the browser session key. (3) PDP CTA calls `POST /api/hold/reserve`; CartSheet
+hydrates via `GET /api/hold/session`; countdown is session-level `expires_at`.
+(4) `createOrderAction` requires `holdSessionId`, validates active hold + same
+cookie, derives `order_items` from `hold_items` + `products.price`, then
+`convert_hold_session` (not sold). (5) MP preference metadata includes
+`hold_session_id`; on `approved`, convert hold if needed then mark sold via
+SN-05 inventory machine (D80). (6) Legacy `/api/cart/*` remains for dual-read
+safety; primary UX is Hold.
+**Consequência**: No new Supabase migration for SN-04. Orchestrator has nothing
+to apply remotely for this issue.
+
+---
+
+## D80 — SN-05: Inventory state machine owns sold/inactive; hold stays SN-02
 
 **Data**: 2026-08-03
 **Contexto**: Wave 3 needs one place for `products.status` transitions so webhook,
 POS paid, and admin inactive paths do not scatter bare UPDATEs. SN-02 already
-owns available↔hold atomically.
+owns available↔hold atomically. SN-04 temporarily used `mark-sold-online`.
 **Decisão**: (1) Pure `planTransition` covers the Slice N transition union
 (including available↔hold for validation). (2) Runtime available↔hold **must**
 call SN-02 RPCs — never bare status UPDATE. (3) SN-05 owns `hold|available → sold`

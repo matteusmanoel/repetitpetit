@@ -1,5 +1,6 @@
 import "server-only";
 
+import { convertHoldSession } from "@/features/cart/hold-session";
 import { markProductsSoldForOrder } from "@/features/inventory/apply-transition";
 import type { MercadoPagoPayment } from "@/lib/mercado-pago/fetch-payment";
 import {
@@ -345,12 +346,20 @@ async function ensureOrderProductsSold(
 
 /**
  * SN-05 — paid → sold via inventory state machine (hold→sold or available→sold).
- * Channel online for Mercado Pago checkout (D65 / D71).
+ * Channel online for Mercado Pago checkout (D65 / D71 / D80).
+ * SN-04: ensure convert_hold_session once before sold if still active.
  */
 async function markProductsSoldAndClearReservations(
   orderId: string,
   productIds: string[],
 ): Promise<ApplyMpStatusResult | { ok: true }> {
+  if (productIds.length === 0) {
+    return { ok: true };
+  }
+
+  const supabase = createServiceSupabaseClient();
+  await ensureHoldConvertedForOrder(supabase, orderId);
+
   const result = await markProductsSoldForOrder({
     orderId,
     productIds,
@@ -367,6 +376,72 @@ async function markProductsSoldAndClearReservations(
   }
 
   return { ok: true };
+}
+
+/**
+ * SN-04 prep: if createOrderAction somehow skipped convert, convert once.
+ * Never converts again when status is already `converted`.
+ */
+async function ensureHoldConvertedForOrder(
+  supabase: ReturnType<typeof createServiceSupabaseClient>,
+  orderId: string,
+): Promise<void> {
+  const { data: byOrder, error: byOrderError } = await supabase
+    .from("hold_sessions")
+    .select("session_id, status")
+    .eq("checkout_order_id", orderId)
+    .maybeSingle();
+
+  if (byOrderError) {
+    console.error("ensureHoldConvertedForOrder lookup:", byOrderError);
+  }
+
+  if (byOrder?.status === "converted") {
+    return;
+  }
+
+  if (byOrder?.status === "active" && byOrder.session_id) {
+    try {
+      await convertHoldSession(byOrder.session_id, orderId);
+    } catch (convertError) {
+      console.error("ensureHoldConvertedForOrder convert:", convertError);
+    }
+    return;
+  }
+
+  // Fallback: hold_session_id stored on pricing_snapshot at order create (SN-04).
+  const { data: orderRow } = await supabase
+    .from("orders")
+    .select("pricing_snapshot_json")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  const snapshot = orderRow?.pricing_snapshot_json;
+  const holdSessionId =
+    snapshot &&
+    typeof snapshot === "object" &&
+    !Array.isArray(snapshot) &&
+    typeof (snapshot as { hold_session_id?: unknown }).hold_session_id === "string"
+      ? (snapshot as { hold_session_id: string }).hold_session_id
+      : null;
+
+  if (!holdSessionId) return;
+
+  const { data: byId } = await supabase
+    .from("hold_sessions")
+    .select("session_id, status")
+    .eq("id", holdSessionId)
+    .maybeSingle();
+
+  if (!byId || byId.status === "converted") return;
+
+  if (byId.status === "active") {
+    try {
+      await convertHoldSession(byId.session_id, orderId);
+    } catch (convertError) {
+      console.error("ensureHoldConvertedForOrder convert by id:", convertError);
+    }
+  }
 }
 
 async function upsertPaymentRow(

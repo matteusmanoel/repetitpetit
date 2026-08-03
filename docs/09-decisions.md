@@ -1578,3 +1578,23 @@ call SN-02 RPCs — never bare status UPDATE. (3) SN-05 owns `hold|available →
 **Consequência**: Migration
 `supabase/migrations/20260803140000_inventory_apply_transition.sql` — orchestrator
 applies after merge. Unlocks SN-06 reconcile and SN-07 POS paid→sold consumers.
+
+---
+
+## D81 — SN-10: QR Passport URL + PDF/thermal label (no price, no migration)
+
+**Data**: 2026-08-03
+**Contexto**: D73/D64 define QR permanente na ativação; SN-09 already assigns
+`staff_code`. SN-11 Passport page may still 404 — QR must still encode the deep
+link. Need printable artifact without thermal printer dependency.
+**Decisão**: (1) QR content =
+`{NEXT_PUBLIC_SITE_URL}/admin/passport/{staff_code}` (D16 site URL). (2) Server-only
+`qrcode` (SVG/PNG) + `@react-pdf/renderer` PDF at
+`GET /admin/produto/[id]/label.pdf` (`requireAdminSession`, requires
+`staff_code`). (3) HTML thermal label via `ProductLabel` + `@media print` 58mm
+CSS; print page `/admin/produto/[id]/etiqueta`. (4) Labels **never** include
+price (D73). (5) `qrcode` and `@react-pdf/renderer` in `serverExternalPackages`.
+(6) Admin “Reimprimir” / “Imprimir Etiqueta” wired after activation; no DB
+migration.
+**Consequência**: Unlocks SN-11 Passport deep-link contract. Cloud agents must
+not change QR payload shape without a new decision.

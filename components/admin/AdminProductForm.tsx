@@ -48,6 +48,10 @@ import {
   type ProductImageInput,
 } from "@/features/admin/product-schemas";
 import type { CategoryOption, ProductWithImages } from "@/features/admin/product-types";
+import {
+  productLabelPdfPath,
+  productLabelPrintPath,
+} from "@/lib/qr/passport-url";
 
 type Props = {
   mode: "create" | "edit";
@@ -411,6 +415,24 @@ export function AdminProductForm({ mode, product, categories }: Props) {
         <Button type="button" variant="outline" size="sm" asChild>
           <Link href="/admin/produtos">Cancelar</Link>
         </Button>
+        {mode === "edit" && product?.staff_code ? (
+          <>
+            <Button type="button" variant="secondary" size="sm" asChild>
+              <a
+                href={productLabelPdfPath(product.id)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Imprimir Etiqueta
+              </a>
+            </Button>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link href={productLabelPrintPath(product.id)}>
+                Imprimir térmica
+              </Link>
+            </Button>
+          </>
+        ) : null}
         {mode === "edit" && product && product.status !== "inactive" ? (
           <Button
             type="button"
@@ -423,6 +445,15 @@ export function AdminProductForm({ mode, product, categories }: Props) {
           </Button>
         ) : null}
       </div>
+      {mode === "edit" && product?.staff_code ? (
+        <p className="text-xs text-muted-foreground">
+          Código de chão:{" "}
+          <span className="font-semibold text-foreground">
+            {product.staff_code}
+          </span>
+          . Etiqueta sem preço (PDF ou térmica).
+        </p>
+      ) : null}
 
       <Dialog open={confirmDeactivateOpen} onOpenChange={setConfirmDeactivateOpen}>
         <DialogContent>

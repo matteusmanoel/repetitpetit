@@ -172,3 +172,86 @@
     @apply font-heading;
   }
 }
+
+/* SN-10 — thermal label (58mm). Only `.label-print` survives print. */
+.label-print {
+  display: flex;
+  width: 54mm;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5mm;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: #111;
+  text-align: center;
+}
+
+.label-print__store {
+  margin: 0;
+  font-size: 8pt;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.label-print__qr {
+  display: flex;
+  width: 28mm;
+  height: 28mm;
+  align-items: center;
+  justify-content: center;
+}
+
+.label-print__qr svg {
+  width: 100%;
+  height: 100%;
+}
+
+.label-print__code {
+  margin: 0;
+  font-size: 12pt;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.label-print__name {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8pt;
+  line-height: 1.15;
+}
+
+.label-print__size {
+  margin: 0;
+  font-size: 8pt;
+  line-height: 1.1;
+}
+
+@media print {
+  @page {
+    size: 58mm 40mm;
+    margin: 2mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .label-print,
+  .label-print * {
+    visibility: visible;
+  }
+
+  .label-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 54mm;
+  }
+
+  .label-print-controls {
+    display: none !important;
+  }
+}

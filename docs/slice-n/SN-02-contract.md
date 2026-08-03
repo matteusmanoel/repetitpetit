@@ -110,7 +110,7 @@ File: `features/cart/hold-session.ts`
 | `POST /api/cart/reserve` | Legacy dual-read until SN-04 cutover |
 | `POST /api/cart/release` | Legacy dual-read until SN-04 cutover |
 
-Browser cookie `rp_cart_session` remains the Hold Session `session_id` until SN-04 UX rename.
+Browser cookie `rp_cart_session` remains the Hold Session `session_id` (SN-04 / D79 — no rename).
 
 ---
 

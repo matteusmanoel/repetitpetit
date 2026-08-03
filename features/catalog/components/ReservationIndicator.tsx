@@ -60,7 +60,7 @@ function OwnReservationStatus({ expiresAt }: { expiresAt: string }) {
       role="status"
       className="rounded-lg bg-secondary/15 px-3 py-2.5 text-sm font-medium text-foreground"
     >
-      No seu carrinho — {minutes}min restantes
+      Reservada para você — {minutes}min restantes
     </p>
   );
 }

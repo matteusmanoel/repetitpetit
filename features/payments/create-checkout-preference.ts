@@ -22,12 +22,18 @@ export type CreateCheckoutPreferenceResult =
   | CreateCheckoutPreferenceSuccess
   | CreateCheckoutPreferenceFailure;
 
+export type CreateCheckoutPreferenceOptions = {
+  /** `hold_sessions.id` — metadata para reconciliação no webhook (SN-04/SN-06). */
+  holdSessionId?: string | null;
+};
+
 /**
  * Cria preferência Checkout Pro a partir de `order_items` (D08 / D13).
  * Persiste `orders.mp_preference_id` + linha `payments` via service role.
  */
 export async function createCheckoutPreferenceForOrder(
   orderId: string,
+  options: CreateCheckoutPreferenceOptions = {},
 ): Promise<CreateCheckoutPreferenceResult> {
   const supabase = createServiceSupabaseClient();
 
@@ -116,6 +122,9 @@ export async function createCheckoutPreferenceForOrder(
       metadata: {
         order_id: order.id,
         public_code: order.public_code,
+        ...(options.holdSessionId
+          ? { hold_session_id: options.holdSessionId }
+          : {}),
       },
     });
 

@@ -9,10 +9,10 @@ import {
 import { reserveHoldItem } from "@/features/cart/hold-session";
 
 /**
- * `POST /api/hold/reserve` — SN-02 Hold Session reserve primitive.
+ * `POST /api/hold/reserve` — SN-02 Hold Session reserve primitive (SN-04 UX).
  *
  * Body JSON: `{ "productId": "<uuid>" }`
- * Cookie: `rp_cart_session` (reused as Hold Session browser id until SN-04 rename).
+ * Cookie: `rp_cart_session` kept as browser Hold Session id (D79).
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);

@@ -51,7 +51,7 @@ export type CreateOrderSuccess = {
 export type CreateOrderFailure = {
   success: false;
   error: string;
-  /** Reserva expirada / peça indisponível — cliente deve limpar o carrinho. */
+  /** Hold expirada / inválida — cliente deve limpar o espelho local. */
   code?:
     | "reservation_expired"
     | "empty_cart"

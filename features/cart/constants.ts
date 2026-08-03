@@ -1,4 +1,7 @@
-/** Cookie anônimo que identifica a sessão de carrinho (docs/04-data-model.md). */
+/**
+ * Cookie anônimo do browser (= `hold_sessions.session_id`).
+ * SN-04 / D79: keep name `rp_cart_session` (no rename to `rp_hold_session`).
+ */
 export const CART_SESSION_COOKIE = "rp_cart_session";
 
 /**

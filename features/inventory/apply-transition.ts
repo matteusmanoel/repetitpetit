@@ -135,9 +135,10 @@ async function applyViaRpc(
     p_product_id: productId,
     p_from: transition.from,
     p_to: transition.to,
-    p_sold_channel: soldChannel,
-    p_hold_session_id: holdSessionId,
-    p_order_id: orderId,
+    // Generated RPC args use `string | undefined` (not null).
+    p_sold_channel: soldChannel ?? undefined,
+    p_hold_session_id: holdSessionId ?? undefined,
+    p_order_id: orderId ?? undefined,
   });
 
   if (error) {

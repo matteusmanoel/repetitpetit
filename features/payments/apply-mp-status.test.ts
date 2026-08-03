@@ -101,7 +101,7 @@ describe("applyMercadoPagoPaymentStatus (SN-06)", () => {
   });
 
   it("paid + approved (double webhook) → already_paid idempotent", async () => {
-    from.mockImplementation((table: string) => {
+    from.mockImplementation(((table: string) => {
       if (table === "orders") {
         return {
           select: () => ({
@@ -148,7 +148,7 @@ describe("applyMercadoPagoPaymentStatus (SN-06)", () => {
         };
       }
       return { select, update, insert };
-    });
+    }) as typeof from);
 
     markProductsSoldForOrder.mockResolvedValue({ ok: true });
 

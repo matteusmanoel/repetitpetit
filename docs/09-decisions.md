@@ -1697,3 +1697,29 @@ Minimal reusable dialog only — full POS is SN-08. (9) `/admin/override` deep
 link from Passport hosts the shared button (replaces SN-11 stub).
 **Consequência**: Unlocks SN-14 override counts and SN-15 Passport history;
 SN-08 wires the shared button into POS. Contract: `docs/slice-n/SN-13-contract.md`.
+
+---
+
+## D86 — SN-14: Dashboard KPIs via `hold_sessions` + Realtime inventário no provider
+
+**Data**: 2026-08-03
+**Contexto**: Issue #80 / SN-14. D40 contava "Reservadas" em `cart_reservations`;
+D66 define Hold Session como verdade. D47 assina `orders` no
+`FulfillmentQueueProvider`; o painel precisa refletir holds ativos, holds
+expirando (<5 min), vendas loja e overrides do dia, sem migration nova.
+**Decisão**: (1) `getAdminDashboardKpis` (service role, D40) passa a contar
+`hold_sessions WHERE status = 'active' AND expires_at > now()` como
+**Holds ativos** — não `cart_reservations` nem `products.status = hold`.
+(2) Novos KPIs: `holdsExpiringSoon` (active + `expires_at <= now+5min`),
+`storeOrdersToday` (`orders.channel = 'store'` no dia civil BRT),
+`overridesToday` (`override_events` no dia BRT). Helpers puros em
+`features/admin/dashboard/kpi-helpers.ts`. (3) UI `/admin`: tile renomeado
+"Holds ativos"; seção "Hold e loja" com "Expirando em breve" (âmbar se > 0),
+"Vendas loja hoje", "Overrides hoje". (4) Realtime: mesmo canal
+`fulfillment-queue` ganha `products` UPDATE (cache em memória hold/available;
+`sold` remove) + `hold_sessions` `*` → `router.refresh()` só em `/admin` para
+KPIs. Handlers best-effort (não derrubam a fila). **Sem migration** neste
+ticket — `hold_sessions` já está na publication (SN-01); entrega de eventos
+`products` depende da publication/RLS já existentes no projeto remoto.
+**Consequência**: KPI alinhado a D66; POS/Passport futuros podem ler
+`productStatusCache` do provider. Catálogo público / listing não muda.

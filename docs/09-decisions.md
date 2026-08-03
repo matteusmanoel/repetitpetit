@@ -1500,3 +1500,22 @@ only calls `_finalize_hold_session(..., 'expired')`. (2) Primary schedule:
 `docs/slice-n/SN-03-contract.md`.
 **Consequência**: TTL enforcement is system-owned without a second inventory path.
 Cloud agents must not reimplement expire mutation logic.
+
+---
+
+## D77 — SN-09: RP activation via `next_rp_staff_code` + admin action
+
+**Data**: 2026-08-03
+**Contexto**: D64 requires permanent `RP-…` only at floor activation; Wave 2 needs
+the generator before QR (SN-10) / Passport (SN-11).
+**Decisão**: (1) Sequence `rp_staff_code_seq` + SQL `next_rp_staff_code()` →
+`RP-XXXXXX` (6 digits), `service_role` only. (2) `activateProductAction` assigns
+`staff_code` once, sets `status = available` when activating/re-activating from
+`inactive`, rejects `sold`/`hold`. (3) Backfill in the same migration for
+`available|hold|sold` rows missing a code; `inactive` without code waits for
+explicit activation. (4) No `product_status_events` yet — deferred to SN-15;
+activation does not write `order_events`. (5) Does **not** touch hold/release
+status paths (SN-02/SN-03).
+**Consequência**: Migration
+`supabase/migrations/20260803130000_rp_staff_code_seq.sql`. Orchestrator applies
+remote + regenerates types after merge. "Reimprimir" UI stub waits for SN-10.

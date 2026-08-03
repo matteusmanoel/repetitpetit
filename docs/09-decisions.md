@@ -1553,9 +1553,28 @@ hydrates via `GET /api/hold/session`; countdown is session-level `expires_at`.
 (4) `createOrderAction` requires `holdSessionId`, validates active hold + same
 cookie, derives `order_items` from `hold_items` + `products.price`, then
 `convert_hold_session` (not sold). (5) MP preference metadata includes
-`hold_session_id`; on `approved`, mark `sold` + `sold_channel=online` via
-temporary `features/inventory/mark-sold-online` (TODO SN-05 centralization);
-do not re-convert if already `converted`. (6) Legacy `/api/cart/*` remains for
-dual-read safety; primary UX is Hold.
+`hold_session_id`; on `approved`, convert hold if needed then mark sold via
+SN-05 inventory machine (D80). (6) Legacy `/api/cart/*` remains for dual-read
+safety; primary UX is Hold.
 **Consequência**: No new Supabase migration for SN-04. Orchestrator has nothing
 to apply remotely for this issue.
+
+---
+
+## D80 — SN-05: Inventory state machine owns sold/inactive; hold stays SN-02
+
+**Data**: 2026-08-03
+**Contexto**: Wave 3 needs one place for `products.status` transitions so webhook,
+POS paid, and admin inactive paths do not scatter bare UPDATEs. SN-02 already
+owns available↔hold atomically. SN-04 temporarily used `mark-sold-online`.
+**Decisão**: (1) Pure `planTransition` covers the Slice N transition union
+(including available↔hold for validation). (2) Runtime available↔hold **must**
+call SN-02 RPCs — never bare status UPDATE. (3) SN-05 owns `hold|available → sold`
+(+ `sold_channel`), `available ↔ inactive`, via SQL
+`apply_inventory_transition` (`SELECT … FOR UPDATE`, hold_items cleanup on sold).
+(4) `apply-mp-status` and admin deactivate/reactivate route through
+`applyInventoryTransition` / `markProductsSoldForOrder`. (5) Contract:
+`docs/slice-n/SN-05-contract.md`.
+**Consequência**: Migration
+`supabase/migrations/20260803140000_inventory_apply_transition.sql` — orchestrator
+applies after merge. Unlocks SN-06 reconcile and SN-07 POS paid→sold consumers.

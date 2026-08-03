@@ -13,6 +13,7 @@ import {
   type ProductActionState,
   type ProductFormInput,
 } from "@/features/admin/product-schemas";
+import { applyInventoryTransition } from "@/features/inventory/apply-transition";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
 import type { Database } from "@/lib/supabase/types";
 
@@ -135,13 +136,14 @@ export async function createProductAction(
 
 /**
  * Atualiza um produto existente + sincroniza `product_images` (replace set).
+ * Mudanças de status sold/inactive passam por SN-05; hold é rejeitado (SN-02).
  */
 export async function updateProductAction(
   productId: string,
   _prevState: ProductActionState,
   formData: FormData,
 ): Promise<ProductActionState> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   if (!productId) {
     return { error: "Produto inválido." };
@@ -151,11 +153,76 @@ export async function updateProductAction(
   if (!parsed.success) return parsed.state;
 
   const supabase = createServiceSupabaseClient();
+  const { data: existing, error: loadError } = await supabase
+    .from("products")
+    .select("id, status, slug")
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (loadError) {
+    return {
+      error: `Não foi possível carregar o produto: ${loadError.message}`,
+    };
+  }
+
+  if (!existing) {
+    return { error: "Produto não encontrado." };
+  }
+
+  const nextStatus = parsed.data.status;
+  if (nextStatus !== existing.status) {
+    if (nextStatus === "hold" || existing.status === "hold") {
+      return {
+        error:
+          "Status hold é gerenciado pela Hold Session (SN-02). Use reserva/liberação.",
+      };
+    }
+
+    if (existing.status === "sold" || nextStatus === "sold") {
+      return {
+        error:
+          "Status sold é terminal e só muda via pagamento confirmado (SN-05).",
+      };
+    }
+
+    if (existing.status === "available" && nextStatus === "inactive") {
+      const transition = await applyInventoryTransition(productId, {
+        from: "available",
+        to: "inactive",
+        context: { staffId: session.admin.id },
+      });
+      if (!transition.ok) {
+        return {
+          error: `Não foi possível alterar o status (${transition.reason}).`,
+        };
+      }
+    } else if (existing.status === "inactive" && nextStatus === "available") {
+      const transition = await applyInventoryTransition(productId, {
+        from: "inactive",
+        to: "available",
+        context: { staffId: session.admin.id },
+      });
+      if (!transition.ok) {
+        return {
+          error: `Não foi possível alterar o status (${transition.reason}).`,
+        };
+      }
+    } else {
+      return { error: "Transição de status não permitida por este formulário." };
+    }
+  }
+
   const row = toProductRow(parsed.data);
+  // Status already applied via SN-05 when changed — avoid bare status UPDATE.
+  const updatePayload: Database["public"]["Tables"]["products"]["Update"] = {
+    ...row,
+    updated_at: new Date().toISOString(),
+  };
+  delete updatePayload.status;
 
   const { data: updated, error } = await supabase
     .from("products")
-    .update({ ...row, updated_at: new Date().toISOString() })
+    .update(updatePayload)
     .eq("id", productId)
     .select("id, slug")
     .maybeSingle();
@@ -190,39 +257,60 @@ export async function updateProductAction(
 }
 
 /**
- * Soft-delete operacional: `status = 'inactive'` — some do catálogo público
- * (RLS: anon só vê `available`) sem apagar a linha nem as imagens.
+ * Soft-delete operacional: `available → inactive` via SN-05 (D67).
+ * Some do catálogo público sem apagar a linha nem as imagens.
  */
 export async function deactivateProductAction(
   productId: string,
 ): Promise<ProductActionState> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   if (!productId) {
     return { error: "Produto inválido." };
   }
 
   const supabase = createServiceSupabaseClient();
-
-  const { data, error } = await supabase
+  const { data: product, error: loadError } = await supabase
     .from("products")
-    .update({
-      status: "inactive",
-      updated_at: new Date().toISOString(),
-    })
+    .select("id, slug, status")
     .eq("id", productId)
-    .select("id, slug")
     .maybeSingle();
 
-  if (error) {
-    return { error: `Não foi possível desativar o produto: ${error.message}` };
+  if (loadError) {
+    return {
+      error: `Não foi possível carregar o produto: ${loadError.message}`,
+    };
   }
 
-  if (!data) {
+  if (!product) {
     return { error: "Produto não encontrado." };
   }
 
-  revalidateProductPaths(data.slug);
+  if (product.status === "inactive") {
+    revalidateProductPaths(product.slug);
+    redirect("/admin/produtos");
+  }
+
+  if (product.status !== "available") {
+    return {
+      error:
+        "Só é possível desativar peças disponíveis. Libere hold ou use o fluxo correto de inventário.",
+    };
+  }
+
+  const transition = await applyInventoryTransition(productId, {
+    from: "available",
+    to: "inactive",
+    context: { staffId: session.admin.id },
+  });
+
+  if (!transition.ok) {
+    return {
+      error: `Não foi possível desativar o produto (${transition.reason}).`,
+    };
+  }
+
+  revalidateProductPaths(product.slug);
   redirect("/admin/produtos");
 }
 
@@ -236,7 +324,7 @@ export async function deactivateProductAction(
 export async function activateProductAction(
   productId: string,
 ): Promise<ActivateProductResult> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   if (!productId) {
     return { ok: false, error: "Produto inválido." };
@@ -269,19 +357,17 @@ export async function activateProductAction(
 
   if (plan.kind === "idempotent") {
     if (plan.setAvailable) {
-      const { error: reactivateError } = await supabase
-        .from("products")
-        .update({
-          status: "available",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", productId)
-        .eq("staff_code", plan.staffCode);
+      // SN-05 owns inactive → available
+      const transition = await applyInventoryTransition(productId, {
+        from: "inactive",
+        to: "available",
+        context: { staffId: session.admin.id },
+      });
 
-      if (reactivateError) {
+      if (!transition.ok) {
         return {
           ok: false,
-          error: `Não foi possível reativar a peça: ${reactivateError.message}`,
+          error: `Não foi possível reativar a peça (${transition.reason}).`,
         };
       }
     }
@@ -314,17 +400,19 @@ export async function activateProductAction(
     };
   }
 
-  // Conditional update: only assign if still null (race-safe; wasted seq ok).
+  const wasInactive = product.status === "inactive";
+
+  // Assign staff_code only (status via SN-05 when inactive → available).
   const { data: updated, error: updateError } = await supabase
     .from("products")
     .update({
       staff_code: nextCode,
-      status: "available",
+      ...(wasInactive ? {} : { status: "available" as const }),
       updated_at: new Date().toISOString(),
     })
     .eq("id", productId)
     .is("staff_code", null)
-    .select("id, staff_code, slug")
+    .select("id, staff_code, slug, status")
     .maybeSingle();
 
   if (updateError) {
@@ -355,6 +443,21 @@ export async function activateProductAction(
       staffCode: raced.staff_code,
       productId: raced.id,
     };
+  }
+
+  if (wasInactive) {
+    const transition = await applyInventoryTransition(productId, {
+      from: "inactive",
+      to: "available",
+      context: { staffId: session.admin.id },
+    });
+
+    if (!transition.ok) {
+      return {
+        ok: false,
+        error: `Código atribuído, mas falhou ao reativar inventário (${transition.reason}).`,
+      };
+    }
   }
 
   revalidateProductPaths(updated.slug);

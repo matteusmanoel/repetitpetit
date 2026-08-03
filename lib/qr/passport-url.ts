@@ -19,3 +19,18 @@ export function productLabelPdfPath(productId: string): string {
 export function productLabelPrintPath(productId: string): string {
   return `/admin/produto/${productId}/etiqueta`;
 }
+
+/** POS sell entry (SN-08 UI completes this stub). */
+export function posSellPath(productId: string): string {
+  return `/admin/pos?product=${encodeURIComponent(productId)}`;
+}
+
+/** Override entry for a held Peça (SN-13 completes this stub). */
+export function overridePath(productId: string): string {
+  return `/admin/override?product=${encodeURIComponent(productId)}`;
+}
+
+/** Admin product edit path (existing form). */
+export function productEditPath(productId: string): string {
+  return `/admin/produtos/${productId}`;
+}

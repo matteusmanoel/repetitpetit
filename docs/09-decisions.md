@@ -1648,3 +1648,25 @@ path for paid→paid (D46/D50). (5) No migration.
 **Consequência**: Unlocks SN-13 Override action to consume the gate; late webhooks
 cannot resurrect cancelled claims into sold inventory. Live MP refund homolog is
 orchestrator/HITL — not Cloud Agent scope.
+
+---
+
+## D84 — SN-11: Garment Passport deep link + status quick actions (no migration)
+
+**Data**: 2026-08-03
+**Contexto**: D81 locked QR payload to `/admin/passport/{staff_code}`; D73/D64
+define scan → staff ficha; SN-09 assigns `staff_code`; SN-10 PDF/print paths
+exist; SN-08 POS UI and SN-13 Override UI still open.
+**Decisão**: (1) Route `app/admin/(protected)/passport/[rpCode]` resolves product
+by `staff_code` (normalized trim/decode/uppercase) via service role;
+`notFound()` if missing. (2) Page shows identity header, status bar (hold
+countdown + browser session label when hold), status-dependent quick actions,
+and sale snippet (`orders.public_code` / channel / date) when sold. (3) Sell →
+`/admin/pos?product=<id>` stub (SN-08); Override → `/admin/override?product=<id>`
+stub (SN-13 consumes `assertOverrideAllowed`); Reprint → SN-10
+`/admin/produto/[id]/label.pdf`; Edit → `/admin/produtos/[id]`; Archive/
+Reativar → existing `deactivateProductAction` / `activateProductAction` (SN-09).
+(4) Data loader `features/passport/data.ts` (`getPassportData`) — no client
+inventory writes. (5) No DB migration.
+**Consequência**: QR scan lands on Passport. SN-08 wires real POS modal into the
+Sell deep link; SN-13 replaces Override stub; SN-15 may enrich history/events.

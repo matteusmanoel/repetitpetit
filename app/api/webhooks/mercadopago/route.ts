@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { applyMercadoPagoPaymentStatus } from "@/features/payments/apply-mp-status";
 import { env } from "@/lib/env";
+import { isMercadoPagoPaymentNotFoundError } from "@/lib/mercado-pago/errors";
 import { fetchMercadoPagoPayment } from "@/lib/mercado-pago/fetch-payment";
 import { validateMercadoPagoWebhookSignature } from "@/lib/mercado-pago/validate-webhook-signature";
 
@@ -123,6 +124,19 @@ export async function POST(request: Request) {
       orderStatus: result.orderStatus,
     });
   } catch (error) {
+    // Dashboard "Simular notificação" uses data.id=123456 — payment does not exist.
+    // Ack 200 so MP marks the URL healthy; real payments always have a real id.
+    if (isMercadoPagoPaymentNotFoundError(error)) {
+      console.warn("Webhook MP: pagamento inexistente na API", {
+        paymentId: error.paymentId,
+      });
+      return NextResponse.json({
+        ok: true,
+        ignored: true,
+        reason: "payment_not_found",
+      });
+    }
+
     const message =
       error instanceof Error ? error.message : "Erro desconhecido no webhook.";
     console.error("Webhook Mercado Pago:", message);

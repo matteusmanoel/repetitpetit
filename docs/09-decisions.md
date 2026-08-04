@@ -1771,3 +1771,24 @@ sale snippet (channel / date / order / payment). Contract:
 **Consequência**: Migration
 `supabase/migrations/20260803160000_product_status_events.sql` — orchestrator
 applies remotely + regenerates types after merge. Cloud agents do not apply.
+
+---
+
+## D89 — Mercado Pago homolog: webhook payment-not-found ack + sandbox detect
+
+**Data**: 2026-08-04
+**Contexto**: Homologação MVP. Credenciais ativas eram `APP_USR-…` de vendedor
+`test_user` (não `TEST-…`). Checkout com conta/cartão real falhava (“Uma das
+partes … é de teste”). Simular notificação no painel MP (`data.id=123456`)
+retornava **500** porque `GET /v1/payments/123456` → 404 e o webhook tratava
+qualquer throw como `processing_failed`.
+**Decisão**: (1) `MercadoPagoPaymentNotFoundError` em fetch de pagamento;
+webhook responde **200** `{ ignored: true, reason: "payment_not_found" }` —
+igual espírito de `order_not_found` (evita retry / falha do simulador). (2)
+Sandbox: `TEST-` prefix **ou** `MERCADOPAGO_SANDBOX=1|true` **ou** probe
+`/users/me` com tag `test_user` (cache por processo) ao criar preferência,
+para preferir `sandbox_init_point` quando existir. (3) Ops: cartões de teste /
+TESTUSER comprador enquanto o seller for teste; doc em `docs/07-setup.md`.
+**Consequência**: Homologação sem misturar prod/test; simulador do painel
+verde; produção real continua falhando alto em erros de processamento
+genuínos.

@@ -4,6 +4,7 @@ import {
   getMercadoPagoConfig,
   MERCADOPAGO_API_BASE,
 } from "@/lib/mercado-pago/config";
+import { MercadoPagoPaymentNotFoundError } from "@/lib/mercado-pago/errors";
 
 export type MercadoPagoPayment = {
   id: string;
@@ -42,6 +43,9 @@ export async function fetchMercadoPagoPayment(
   const raw: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (response.status === 404) {
+      throw new MercadoPagoPaymentNotFoundError(id);
+    }
     const message = extractMpError(raw) ?? `HTTP ${response.status}`;
     throw new Error(`Falha ao buscar pagamento Mercado Pago: ${message}`);
   }

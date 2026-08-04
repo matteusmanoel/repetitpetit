@@ -26,6 +26,7 @@ Referência canônica de nomes: `.env.example` e `lib/env/load-server.ts` + `lib
 | `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` | · | · | · | Checkout / tickets pagamento |
 | `MERCADOPAGO_ACCESS_TOKEN` | · | · | · | Checkout + API server |
 | `MERCADOPAGO_WEBHOOK_SECRET` | · | · | O (prod) | Webhook HMAC; cloud raramente testa webhook externo |
+| `MERCADOPAGO_SANDBOX` | · | · | · | `1`/`true` força sandbox_init_point; APP_USR test também via `/users/me` |
 | `VERCEL_OIDC_TOKEN` | · | — | — | Injetado pelo CLI Vercel localmente; **não** copiar para cloud |
 
 ## Mínimo Cloud Agent (maioria dos tickets UI/admin/catálogo)

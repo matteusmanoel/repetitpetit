@@ -2,7 +2,9 @@
 
 import { MoreHorizontalIcon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,22 +21,64 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { deactivateProductAction } from "@/features/admin/product-actions";
+import {
+  activateProductAction,
+  deactivateProductAction,
+} from "@/features/admin/product-actions";
+import {
+  productLabelPdfPath,
+  productLabelPrintPath,
+} from "@/lib/qr/passport-url";
 
 type Props = {
   productId: string;
   productName: string;
   status: string;
+  staffCode: string | null;
 };
 
 /**
- * Ações da linha da tabela de produtos (T8) — `DropdownMenu` em vez de um
+ * Ações da linha da tabela de produtos (T8 / SN-09) — `DropdownMenu` em vez de um
  * botão solto por ação; "Desativar" abre `Dialog` de confirmação (sem
- * `window.confirm` nativo).
+ * `window.confirm` nativo). "Ativar peça" atribui RP-… uma vez.
  */
-export function AdminProductRowActions({ productId, productName, status }: Props) {
+export function AdminProductRowActions({
+  productId,
+  productName,
+  status,
+  staffCode,
+}: Props) {
+  const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
+
+  const canActivate =
+    !staffCode && (status === "available" || status === "inactive");
+
+  async function handleActivate() {
+    setIsActivating(true);
+    try {
+      const result = await activateProductAction(productId);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      const pdfHref = productLabelPdfPath(result.productId);
+      toast.success(`Peça ativada: ${result.staffCode}`, {
+        action: {
+          label: "Imprimir etiqueta",
+          onClick: () => {
+            window.open(pdfHref, "_blank", "noopener,noreferrer");
+          },
+        },
+      });
+      window.open(pdfHref, "_blank", "noopener,noreferrer");
+      router.refresh();
+    } finally {
+      setIsActivating(false);
+    }
+  }
 
   async function handleDeactivate() {
     setIsDeactivating(true);
@@ -48,34 +92,66 @@ export function AdminProductRowActions({ productId, productName, status }: Props
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <div className="flex items-center justify-end gap-1">
+        {canActivate ? (
           <Button
             type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Ações de ${productName}`}
+            variant="outline"
+            size="sm"
+            disabled={isActivating}
+            onClick={() => void handleActivate()}
           >
-            <MoreHorizontalIcon />
+            {isActivating ? "Ativando..." : "Ativar peça"}
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link href={`/admin/produtos/${productId}`}>Editar</Link>
-          </DropdownMenuItem>
-          {status !== "inactive" ? (
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={(event) => {
-                event.preventDefault();
-                setConfirmOpen(true);
-              }}
+        ) : null}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Ações de ${productName}`}
             >
-              Desativar
+              <MoreHorizontalIcon />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href={`/admin/produtos/${productId}`}>Editar</Link>
             </DropdownMenuItem>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {staffCode ? (
+              <>
+                <DropdownMenuItem asChild>
+                  <a
+                    href={productLabelPdfPath(productId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Reimprimir (PDF)
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={productLabelPrintPath(productId)}>
+                    Imprimir térmica
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            ) : null}
+            {status !== "inactive" ? (
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setConfirmOpen(true);
+                }}
+              >
+                Desativar
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>

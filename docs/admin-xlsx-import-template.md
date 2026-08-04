@@ -46,7 +46,8 @@ são aceitos — ver mapa em `HEADER_ALIASES` no parser.
 `novo`, `seminovo`, `bom_estado`, `com_detalhes`
 
 **status** (`product_status`):
-`available`, `reserved`, `sold`, `inactive`
+`available`, `hold`, `sold`, `inactive`
+(`reserved` still exists in the DB enum for legacy compatibility; do not import it.)
 
 ## Categorias seed (slug)
 

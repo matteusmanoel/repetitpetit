@@ -9,13 +9,14 @@ const phoneSchema = z
     "Informe o telefone com DDD, só números (ex.: 45999999999).",
   );
 
+/** Required at checkout (SN-12 / D69). Normalized like lead emails. */
 const emailSchema = z
-  .union([
-    z.literal(""),
-    z.string().trim().email("Informe um e-mail válido."),
-  ])
-  .optional()
-  .transform((value) => (value && value.length > 0 ? value : undefined));
+  .string({ error: "Informe seu e-mail." })
+  .trim()
+  .toLowerCase()
+  .min(1, "Informe seu e-mail.")
+  .email("Informe um e-mail válido.")
+  .max(254, "E-mail muito longo.");
 
 export const checkoutAddressSchema = z.object({
   recipientName: z
@@ -68,8 +69,9 @@ export const checkoutAddressSchema = z.object({
 });
 
 /**
- * Payload do checkout (T15). Sem gift_message / Stripe.
- * Preços e frete são recalculados no server — o client só envia IDs.
+ * Payload do checkout (SN-04 / T15). Sem gift_message / Stripe.
+ * `holdSessionId` é obrigatório; `order_items` vêm de `hold_items` no server
+ * (preços de `products` — D13). `productIds` do client é ignorado na action.
  */
 export const createOrderSchema = z
   .object({
@@ -84,9 +86,10 @@ export const createOrderSchema = z
       error: "Escolha retirada ou entrega.",
     }),
     address: checkoutAddressSchema.optional(),
-    productIds: z
-      .array(z.uuid("productId inválido."))
-      .min(1, "Seu carrinho está vazio."),
+    /** `hold_sessions.id` — validado contra cookie + hold ativa (SN-04). */
+    holdSessionId: z.uuid("holdSessionId inválido."),
+    /** Opcional / legado UI — não confiar para inventário nem preço. */
+    productIds: z.array(z.uuid("productId inválido.")).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.fulfillmentType === "delivery" && !data.address) {

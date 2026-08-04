@@ -3,6 +3,41 @@ name: code-review
 description: Review a branch or PR against Repeti Petit standards (AGENTS.md, playbook, decisions) and the originating GitHub issue spec. Use after cloud implementation or before merge to develop/main.
 ---
 
+## Mode
+
+**Standard** (default) — single PR or branch. Follow the full process below.
+
+**Wave** — invoked when the user passes a wave name (e.g. `wave: Wave 1`) or a list of PRs (e.g. `prs: #12 #13 #14`). Run Standard review on each PR first, then run the Wave Coherence Check below.
+
+### Wave Coherence Check
+
+After all individual PR reviews are complete:
+
+1. Read `docs/slice-n/WAVES.md` for this wave's gate conditions and contract doc references.
+2. For each contract doc listed (e.g. `docs/slice-n/SN-02-contract.md`): verify no PR in the wave violates the **Forbidden Behaviors** section of that contract.
+3. **Type surface coherence**: do the PRs collectively produce a consistent type surface? Flag any case where two PRs define the same type or symbol differently.
+4. **Migration file ordering**: are migration file names monotonically increasing with no gaps or collisions across the wave's PRs?
+5. **Handoff completeness**: does each PR that touches schema, Supabase types, or MP webhooks have a non-empty "Handoff to orchestrator" section?
+6. Report a **Wave Coherence** section appended to the aggregate report:
+
+```
+## Wave Coherence — Wave N: <name>
+
+| Check | Status | Notes |
+|---|---|---|
+| Contract doc compliance | ✅ / ❌ | |
+| Type surface coherence | ✅ / ❌ | |
+| Migration file ordering | ✅ / ❌ | |
+| Handoff completeness | ✅ / ❌ | |
+| Gate conditions | MET / UNMET / UNKNOWN | |
+
+**Verdict**: WAVE GATE [OPEN / BLOCKED — reason]
+```
+
+If `docs/slice-n/WAVES.md` does not exist: skip gate condition check and append to report: "WAVES.md not found — wave gate status unknown. Run `/wave-plan` before next dispatch."
+
+---
+
 Review changes between a **fixed point** and `HEAD` on two axes: **Standards** and **Spec**.
 
 Issue tracker workflow: `docs/agents/issue-tracker.md`.

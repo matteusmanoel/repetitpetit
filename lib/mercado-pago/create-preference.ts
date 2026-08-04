@@ -8,6 +8,7 @@ import {
   buildPreferenceBody,
   type CreatePreferenceInput,
 } from "@/lib/mercado-pago/preference-body";
+import { resolveMercadoPagoIsSandbox } from "@/lib/mercado-pago/resolve-sandbox";
 
 export type { CreatePreferenceInput, PreferenceItemInput } from "@/lib/mercado-pago/preference-body";
 export { buildPreferenceBody } from "@/lib/mercado-pago/preference-body";
@@ -28,6 +29,10 @@ export async function createMercadoPagoPreference(
 ): Promise<CreatePreferenceResult> {
   const config = getMercadoPagoConfig();
   const body = buildPreferenceBody(input, config.siteUrl, config.storeName);
+  const isSandbox = await resolveMercadoPagoIsSandbox(
+    config.accessToken,
+    config.isSandbox,
+  );
 
   const response = await fetch(`${MERCADOPAGO_API_BASE}/checkout/preferences`, {
     method: "POST",
@@ -58,7 +63,7 @@ export async function createMercadoPagoPreference(
   }
 
   const checkoutUrl =
-    config.isSandbox && sandboxInitPoint ? sandboxInitPoint : initPoint;
+    isSandbox && sandboxInitPoint ? sandboxInitPoint : initPoint;
 
   return {
     preferenceId,

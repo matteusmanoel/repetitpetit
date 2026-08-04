@@ -6,9 +6,10 @@
 -- Status do produto
 CREATE TYPE product_status AS ENUM (
   'available',    -- visível no catálogo, disponível para compra
-  'reserved',     -- reservado no carrinho (TTL ativo)
+  'reserved',     -- legado (D40 nunca usou; mantido até cleanup)
   'sold',         -- vendido, não aparece no catálogo
-  'inactive'      -- oculto pelo admin (sem remover)
+  'inactive',     -- oculto pelo admin (sem remover)
+  'hold'          -- projeção de Hold Session ativa (D66/D67; SN-01)
 );
 
 -- Condição do produto (brechó)

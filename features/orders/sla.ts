@@ -18,6 +18,8 @@ export function resolveSlaText(
       return "Entrega em até 24 horas úteis";
     case "correios":
       return "Postado em até 1 dia útil após confirmação do pagamento";
+    case "store_counter":
+      return "Retirada imediata no balcão";
     default: {
       const _exhaustive: never = fulfillmentType;
       return _exhaustive;

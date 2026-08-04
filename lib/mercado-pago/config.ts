@@ -9,9 +9,19 @@ export type MercadoPagoConfig = {
   publicKey: string | undefined;
   siteUrl: string;
   storeName: string;
-  /** Preferências de teste usam `sandbox_init_point`. */
+  /**
+   * Prefer `sandbox_init_point` when creating Checkout Pro preferences.
+   * Sync signal only: `TEST-` token prefix or `MERCADOPAGO_SANDBOX=1|true`.
+   * APP_USR test sellers are detected asynchronously in preference create
+   * via `/users/me` (`resolveMercadoPagoIsSandbox`).
+   */
   isSandbox: boolean;
 };
+
+function readSandboxFlag(): boolean {
+  const raw = process.env.MERCADOPAGO_SANDBOX?.trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
+}
 
 /**
  * Valida e retorna credenciais Mercado Pago no momento do uso (D16).
@@ -40,6 +50,6 @@ export function getMercadoPagoConfig(): MercadoPagoConfig {
     publicKey: env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY,
     siteUrl,
     storeName: env.NEXT_PUBLIC_STORE_NAME,
-    isSandbox: accessToken.startsWith("TEST-"),
+    isSandbox: accessToken.startsWith("TEST-") || readSandboxFlag(),
   };
 }

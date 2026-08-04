@@ -9,10 +9,8 @@ import {
 } from "@/features/cart";
 
 /**
- * `POST /api/cart/release` — libera a reserva da sessão para um produto
- * (docs/03-architecture.md).
- *
- * Body JSON: `{ "productId": "<uuid>" }`
+ * `POST /api/cart/release` — legacy cart release (cart_reservations).
+ * Prefer `POST /api/hold/release` (SN-02). Remains until SN-04 cutover.
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);

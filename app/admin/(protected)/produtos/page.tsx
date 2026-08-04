@@ -103,6 +103,7 @@ export default async function AdminProductsPage({
               <TableRow>
                 <TableHead className="w-14">Foto</TableHead>
                 <TableHead>Nome</TableHead>
+                <TableHead className="hidden sm:table-cell">Código</TableHead>
                 <TableHead className="hidden sm:table-cell">Marca</TableHead>
                 <TableHead>Preço</TableHead>
                 <TableHead>Status</TableHead>
@@ -134,7 +135,15 @@ export default async function AdminProductsPage({
                       <span className="text-xs text-muted-foreground">
                         {product.size_label}
                       </span>
+                      {product.staff_code ? (
+                        <span className="font-mono text-xs text-muted-foreground sm:hidden">
+                          {product.staff_code}
+                        </span>
+                      ) : null}
                     </div>
+                  </TableCell>
+                  <TableCell className="hidden font-mono text-xs text-muted-foreground sm:table-cell">
+                    {product.staff_code ?? "—"}
                   </TableCell>
                   <TableCell className="hidden text-muted-foreground sm:table-cell">
                     {product.brand ?? "—"}
@@ -150,6 +159,7 @@ export default async function AdminProductsPage({
                       productId={product.id}
                       productName={product.name}
                       status={product.status}
+                      staffCode={product.staff_code}
                     />
                   </TableCell>
                 </TableRow>

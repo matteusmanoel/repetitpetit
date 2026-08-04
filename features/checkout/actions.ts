@@ -1,9 +1,18 @@
 "use server";
 
+import {
+  convertHoldSession,
+  getHoldSession,
+} from "@/features/cart/hold-session";
 import { peekCartSessionId } from "@/features/cart/session";
 import { nextPublicCode } from "@/features/checkout/public-code";
+import { planCustomerResolve } from "@/features/checkout/resolve-customer";
 import { createOrderSchema } from "@/features/checkout/schemas";
 import type { CreateOrderResult } from "@/features/checkout/types";
+import {
+  interpretConvertHoldResult,
+  planHoldCheckoutGate,
+} from "@/features/checkout/validate-hold";
 import { createCheckoutPreferenceForOrder } from "@/features/payments/create-checkout-preference";
 import type { Json } from "@/lib/supabase/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
@@ -17,13 +26,13 @@ function normalizeCity(city: string): string {
 }
 
 /**
- * Cria pedido `pending_payment` a partir do carrinho reservado (T15 / D13)
+ * Cria pedido `pending_payment` a partir da Hold Session (SN-04 / D61 / D66)
  * e inicia Checkout Pro (T16 / D08) com preferência a partir de `order_items`.
  *
- * - Recalcula preços a partir de `products` (nunca confia no client).
- * - Valida reservas ativas da sessão (`cart_reservations`).
- * - Reusa `customers` por telefone.
- * - Cria preferência MP, grava `mp_preference_id` e retorna `initPoint`.
+ * - Valida Hold Session ativa + cookie da mesma sessão.
+ * - Deriva `order_items` de `hold_items` + `products.price` (nunca confia no client).
+ * - Após criar o pedido: `convert_hold_session` (produtos permanecem `hold` — não sold).
+ * - Reusa `customers` por e-mail, depois telefone (SN-12 / D69).
  */
 export async function createOrderAction(
   raw: unknown,
@@ -36,48 +45,38 @@ export async function createOrderAction(
   }
 
   const data = parsed.data;
-  const sessionId = await peekCartSessionId();
+  const browserSessionId = await peekCartSessionId();
+  let snapshot: Awaited<ReturnType<typeof getHoldSession>> = null;
 
-  if (!sessionId) {
+  try {
+    if (browserSessionId) {
+      snapshot = await getHoldSession(browserSessionId);
+    }
+  } catch (error) {
+    console.error("Falha ao carregar Hold Session no checkout:", error);
     return {
       success: false,
-      error:
-        "Sua sessão de carrinho expirou. Adicione as peças novamente ao carrinho.",
-      code: "reservation_expired",
+      error: "Não foi possível validar sua reserva. Tente novamente.",
     };
   }
 
-  const uniqueProductIds = [...new Set(data.productIds)];
+  const gate = planHoldCheckoutGate({
+    holdSessionId: data.holdSessionId,
+    browserSessionId,
+    snapshot,
+  });
+
+  if (!gate.ok) {
+    return {
+      success: false,
+      error: gate.error,
+      code: gate.code,
+    };
+  }
+
+  const uniqueProductIds = gate.productIds;
   const supabase = createServiceSupabaseClient();
   const nowIso = new Date().toISOString();
-
-  const { data: reservations, error: reservationError } = await supabase
-    .from("cart_reservations")
-    .select("id, product_id, expires_at")
-    .eq("session_id", sessionId)
-    .in("product_id", uniqueProductIds)
-    .gt("expires_at", nowIso);
-
-  if (reservationError) {
-    console.error("Falha ao validar reservas:", reservationError);
-    return {
-      success: false,
-      error: "Não foi possível validar suas reservas. Tente novamente.",
-    };
-  }
-
-  const reservedIds = new Set(
-    (reservations ?? []).map((row) => row.product_id),
-  );
-
-  if (reservedIds.size !== uniqueProductIds.length) {
-    return {
-      success: false,
-      error:
-        "Uma ou mais peças do carrinho não estão mais reservadas. Atualize o carrinho e tente de novo.",
-      code: "reservation_expired",
-    };
-  }
 
   const { data: products, error: productsError } = await supabase
     .from("products")
@@ -93,11 +92,11 @@ export async function createOrderAction(
   }
 
   for (const product of products) {
-    // Reserva vive em cart_reservations; products.status permanece available (D40).
-    if (product.status !== "available") {
+    // Hold Session: projeção `hold` até pagamento (D66 / SN-02).
+    if (product.status !== "hold") {
       return {
         success: false,
-        error: `A peça "${product.name}" não está mais disponível.`,
+        error: `A peça "${product.name}" não está mais reservada.`,
         code: "reservation_expired",
       };
     }
@@ -215,30 +214,50 @@ export async function createOrderAction(
 
   const total = subtotal + shippingAmount;
 
-  // ── customer: reuse by phone ────────────────────────────────────────────
-  const { data: existingCustomer, error: customerLookupError } = await supabase
-    .from("customers")
-    .select("id")
-    .eq("phone", data.phone)
-    .maybeSingle();
+  // ── customer: email first, then phone (SN-12); always linked on online orders ─
+  const [emailLookup, phoneLookup] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("id, full_name, phone, email")
+      .eq("email", data.email)
+      .maybeSingle(),
+    supabase
+      .from("customers")
+      .select("id, full_name, phone, email")
+      .eq("phone", data.phone)
+      .maybeSingle(),
+  ]);
 
-  if (customerLookupError) {
-    console.error("Falha ao buscar customer:", customerLookupError);
+  if (emailLookup.error || phoneLookup.error) {
+    console.error("Falha ao buscar customer:", emailLookup.error ?? phoneLookup.error);
     return {
       success: false,
       error: "Não foi possível salvar seus dados. Tente novamente.",
     };
   }
 
+  const plan = planCustomerResolve(
+    {
+      fullName: data.fullName,
+      phone: data.phone,
+      email: data.email,
+    },
+    emailLookup.data,
+    phoneLookup.data,
+  );
+
+  if (plan.action === "reuse" && plan.warn) {
+    console.warn("[checkout/customer]", plan.warn);
+  }
+
   let customerId: string;
 
-  if (existingCustomer) {
-    customerId = existingCustomer.id;
+  if (plan.action === "reuse") {
+    customerId = plan.customerId;
     const { error: updateError } = await supabase
       .from("customers")
       .update({
-        full_name: data.fullName,
-        email: data.email ?? null,
+        ...plan.updates,
         updated_at: nowIso,
       })
       .eq("id", customerId);
@@ -253,11 +272,7 @@ export async function createOrderAction(
   } else {
     const { data: createdCustomer, error: createCustomerError } = await supabase
       .from("customers")
-      .insert({
-        full_name: data.fullName,
-        phone: data.phone,
-        email: data.email ?? null,
-      })
+      .insert(plan.insert)
       .select("id")
       .single();
 
@@ -272,8 +287,13 @@ export async function createOrderAction(
     customerId = createdCustomer.id;
   }
 
-  // ── address (delivery only) ─────────────────────────────────────────────
-  let addressSnapshot: Json | null = null;
+  const contactSnapshot = {
+    full_name: data.fullName,
+    phone: data.phone,
+    email: data.email,
+  };
+
+  let addressSnapshot: Json = { contact: contactSnapshot };
 
   if (data.fulfillmentType === "delivery" && data.address) {
     const addr = data.address;
@@ -299,6 +319,7 @@ export async function createOrderAction(
     }
 
     addressSnapshot = {
+      contact: contactSnapshot,
       recipient_name: addr.recipientName,
       street: addr.street,
       number: addr.number,
@@ -311,7 +332,6 @@ export async function createOrderAction(
     };
   }
 
-  // ── public_code + order ─────────────────────────────────────────────────
   const year = new Date().getFullYear();
   const { data: latestOrder } = await supabase
     .from("orders")
@@ -336,6 +356,7 @@ export async function createOrderAction(
       subtotal,
       shipping_amount: shippingAmount,
       total,
+      hold_session_id: gate.holdSessionId,
     };
 
     const { data: orderRow, error: orderError } = await supabase
@@ -406,7 +427,35 @@ export async function createOrderAction(
     };
   }
 
-  const payment = await createCheckoutPreferenceForOrder(orderId);
+  // Convert Hold Session → linked order (products stay hold until paid).
+  let convertResult;
+  try {
+    convertResult = await convertHoldSession(gate.browserSessionId, orderId);
+  } catch (error) {
+    console.error("Falha ao converter Hold Session:", error);
+    await supabase.from("order_items").delete().eq("order_id", orderId);
+    await supabase.from("orders").delete().eq("id", orderId);
+    return {
+      success: false,
+      error: "Não foi possível converter a reserva em pedido. Tente novamente.",
+      code: "reservation_expired",
+    };
+  }
+
+  const convertGate = interpretConvertHoldResult(convertResult);
+  if (!convertGate.ok) {
+    await supabase.from("order_items").delete().eq("order_id", orderId);
+    await supabase.from("orders").delete().eq("id", orderId);
+    return {
+      success: false,
+      error: convertGate.error,
+      code: convertGate.code,
+    };
+  }
+
+  const payment = await createCheckoutPreferenceForOrder(orderId, {
+    holdSessionId: gate.holdSessionId,
+  });
 
   if (!payment.success) {
     return {

@@ -7,17 +7,27 @@ import {
 
 /**
  * Plano de transição puro (espelha a política de apply-mp-status.ts)
- * — testável sem Supabase / server-only.
+ * — testável sem Supabase / server-only. Inclui SN-06 late reconcile (D83).
  */
 function planApply(input: {
   orderStatus: Parameters<typeof isOrderPastPendingPayment>[0];
   paymentStatus: ReturnType<typeof mapMercadoPagoPaymentStatus>;
   mpStatus: string;
-}): "applied_paid" | "already_paid" | "payment_updated" | "noop" {
+  alreadyReconciled?: boolean;
+}):
+  | "applied_paid"
+  | "already_paid"
+  | "payment_updated"
+  | "noop"
+  | "reconciled_after_override" {
   const mapped = mapMercadoPagoPaymentStatus(input.mpStatus);
 
   if (mapped === "paid" && isOrderPastPendingPayment(input.orderStatus)) {
     return "already_paid";
+  }
+
+  if (mapped === "paid" && input.orderStatus === "cancelled") {
+    return input.alreadyReconciled ? "noop" : "reconciled_after_override";
   }
 
   if (mapped === "paid" && input.orderStatus === "pending_payment") {
@@ -78,6 +88,27 @@ describe("apply-mp-status transition plan", () => {
         orderStatus: "pending_payment",
         paymentStatus: "pending",
         mpStatus: "pending",
+      }),
+    ).toBe("noop");
+  });
+
+  it("cancelled + approved → reconciled_after_override (SN-06)", () => {
+    expect(
+      planApply({
+        orderStatus: "cancelled",
+        paymentStatus: "pending",
+        mpStatus: "approved",
+      }),
+    ).toBe("reconciled_after_override");
+  });
+
+  it("cancelled already reconciled + approved → noop", () => {
+    expect(
+      planApply({
+        orderStatus: "cancelled",
+        paymentStatus: "cancelled",
+        mpStatus: "approved",
+        alreadyReconciled: true,
       }),
     ).toBe("noop");
   });

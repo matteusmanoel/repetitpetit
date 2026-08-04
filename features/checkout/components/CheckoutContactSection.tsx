@@ -63,12 +63,13 @@ export function CheckoutContactSection({
         />
       </Field>
 
-      <Field label="E-mail (opcional)" htmlFor="email" error={errors.email}>
+      <Field label="E-mail" htmlFor="email" error={errors.email}>
         <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
+          required
           value={values.email}
           onChange={(event) => onChange("email", event.target.value)}
           placeholder="seuemail@exemplo.com"

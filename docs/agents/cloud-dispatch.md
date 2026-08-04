@@ -48,6 +48,47 @@ You have **no prior conversation** — everything needed is below or in the repo
 <anything the issue excludes>
 ```
 
+## One-shot group prompt skeleton
+
+Use when dispatching tickets tagged `[one-shot-recommended]` as a single grouped agent.
+
+````markdown
+You implement a **tightly coupled group of tickets** in Repeti Petit (GitHub: matteusmanoel/repetitpetit) in a single continuous session.
+Do NOT stop between tickets. Implement them in the order listed below, committing after each one.
+You have **no prior conversation** — everything needed is below or in the repo.
+
+## Tickets in this group
+#<P> — <title P>
+#<Q> — <title Q>
+[#<R> — <title R>]
+
+<paste each issue body, clearly separated>
+
+## Contract docs to read before any file
+<list paths from WAVES.md — e.g. docs/slice-n/SN-02-contract.md>
+
+## Shared resources you will write
+<migration zone, feature folder, RPC surface — from WAVES.md ownership matrix>
+
+## Implementation order
+1. #<P> — implement fully, then commit: `git commit -m "feat: <P title> (#P)"`
+2. #<Q> — implement fully, then commit: `git commit -m "feat: <Q title> (#Q)"`
+[3. #<R> — ...]
+
+## Completion criterion
+All tickets committed. The contract surface defined in <contract doc> is satisfied as a whole.
+Run `pnpm typecheck && pnpm lint && pnpm build && pnpm test` once after the last commit.
+
+## PR instructions
+Open one PR per ticket (cross-referencing the others) OR one combined PR — match existing project convention.
+Each PR body must include `Closes #<N>` and a "Handoff to orchestrator" section.
+
+## Hard rules
+- pnpm only; PR to `develop`; branch `feature/<P>-<Q>-<slug>`
+- No Co-authored-by Cursor
+- PT-BR UI; mobile 375px
+````
+
 ## Parallelism rules
 
 1. Only dispatch issues with **all blockers closed/merged**.

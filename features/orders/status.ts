@@ -43,6 +43,8 @@ export function getFulfillmentLabel(type: FulfillmentType): string {
       return "Entrega local";
     case "correios":
       return "Envio pelos Correios";
+    case "store_counter":
+      return "Venda no balcão";
     default: {
       const _exhaustive: never = type;
       return _exhaustive;

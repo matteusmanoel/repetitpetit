@@ -1,43 +1,66 @@
 import Link from "next/link";
 
 import type { AdminDashboardKpis } from "@/features/admin/dashboard/types";
+import { cn } from "@/lib/utils";
 
 type KpiItem = {
   label: string;
   hint: string;
   value: number;
   href?: string;
+  /** Destaque âmbar quando value > 0 (ex.: holds expirando). */
+  warnWhenPositive?: boolean;
 };
 
-function KpiTile({ label, hint, value, href }: KpiItem) {
+function KpiTile({ label, hint, value, href, warnWhenPositive }: KpiItem) {
+  const warn = Boolean(warnWhenPositive && value > 0);
+  const className = cn(
+    "block rounded-lg border px-4 py-4 transition-colors",
+    warn
+      ? "border-amber-400 bg-amber-50 text-amber-950"
+      : "border-border bg-card",
+    href && !warn && "hover:border-primary/40 hover:bg-muted/40",
+    href && warn && "hover:border-amber-500 hover:bg-amber-100/80",
+  );
+
   const body = (
     <>
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <p
+        className={cn(
+          "text-xs font-medium uppercase tracking-wide",
+          warn ? "text-amber-800" : "text-muted-foreground",
+        )}
+      >
         {label}
       </p>
-      <p className="mt-2 font-heading text-3xl font-extrabold tabular-nums text-foreground">
+      <p
+        className={cn(
+          "mt-2 font-heading text-3xl font-extrabold tabular-nums",
+          warn ? "text-amber-950" : "text-foreground",
+        )}
+      >
         {value}
       </p>
-      <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
+      <p
+        className={cn(
+          "mt-1 text-sm",
+          warn ? "text-amber-900/80" : "text-muted-foreground",
+        )}
+      >
+        {hint}
+      </p>
     </>
   );
 
   if (href) {
     return (
-      <Link
-        href={href}
-        className="block rounded-lg border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40 hover:bg-muted/40"
-      >
+      <Link href={href} className={className}>
         {body}
       </Link>
     );
   }
 
-  return (
-    <div className="rounded-lg border border-border bg-card px-4 py-4">
-      {body}
-    </div>
-  );
+  return <div className={className}>{body}</div>;
 }
 
 function KpiSection({
@@ -57,7 +80,7 @@ function KpiSection({
       >
         {title}
       </h2>
-      <ul className="grid gap-3 sm:grid-cols-3">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => (
           <li key={item.label}>
             <KpiTile {...item} />
@@ -69,7 +92,7 @@ function KpiSection({
 }
 
 /**
- * Grades de KPI do painel — peças (acervo/reservas) e pedidos (fulfillment).
+ * Grades de KPI do painel — peças, Hold Sessions (D66) e pedidos.
  */
 export function AdminDashboardKpis({ kpis }: { kpis: AdminDashboardKpis }) {
   const productItems: KpiItem[] = [
@@ -80,15 +103,38 @@ export function AdminDashboardKpis({ kpis }: { kpis: AdminDashboardKpis }) {
       href: "/admin/produtos?status=available",
     },
     {
-      label: "Reservadas",
-      hint: "Com reserva ativa no carrinho",
-      value: kpis.productsReserved,
+      label: "Holds ativos",
+      hint: "Sessões de hold ainda válidas",
+      value: kpis.activeHolds,
+      href: "/admin/produtos?status=hold",
     },
     {
       label: "Vendidas",
       hint: "Já saíram do catálogo",
       value: kpis.productsSold,
       href: "/admin/produtos?status=sold",
+    },
+  ];
+
+  const holdOpsItems: KpiItem[] = [
+    {
+      label: "Expirando em breve",
+      hint: "Holds ativos com menos de 5 min",
+      value: kpis.holdsExpiringSoon,
+      warnWhenPositive: true,
+      href: "/admin/produtos?status=hold",
+    },
+    {
+      label: "Vendas loja hoje",
+      hint: "Pedidos canal loja (hoje)",
+      value: kpis.storeOrdersToday,
+      href: "/admin/pos",
+    },
+    {
+      label: "Overrides hoje",
+      hint: "Cancelamentos de hold no balcão",
+      value: kpis.overridesToday,
+      href: "/admin/override",
     },
   ];
 
@@ -114,6 +160,11 @@ export function AdminDashboardKpis({ kpis }: { kpis: AdminDashboardKpis }) {
   return (
     <div className="flex flex-col gap-8">
       <KpiSection id="kpi-pecas" title="Peças" items={productItems} />
+      <KpiSection
+        id="kpi-hold-loja"
+        title="Hold e loja"
+        items={holdOpsItems}
+      />
       <KpiSection id="kpi-pedidos" title="Pedidos" items={orderItems} />
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { createOrderAction } from "@/features/checkout/actions";
@@ -44,9 +44,16 @@ const EMPTY_ADDRESS: AddressValues = {
 
 export function CheckoutForm({ pageData }: CheckoutFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const items = useCartStore((s) => s.items);
+  const holdSessionIdFromStore = useCartStore((s) => s.holdSessionId);
+  const clearHold = useCartStore((s) => s.clearHold);
   const hasHydrated = useCartStore((s) => s.hasHydrated);
-  const removeItem = useCartStore((s) => s.removeItem);
+
+  const holdSessionId =
+    holdSessionIdFromStore ??
+    searchParams.get("holdSessionId")?.trim() ??
+    null;
 
   const [contact, setContact] = useState<ContactValues>({
     fullName: "",
@@ -105,10 +112,9 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     if (!/^\d{10,15}$/.test(digits)) {
       nextContact.phone = "Informe o telefone com DDD, só números.";
     }
-    if (
-      contact.email.trim() &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim())
-    ) {
+    if (!contact.email.trim()) {
+      nextContact.email = "Informe seu e-mail.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim())) {
       nextContact.email = "Informe um e-mail válido.";
     }
 
@@ -148,8 +154,8 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     event.preventDefault();
     setSubmitError(null);
 
-    if (items.length === 0) {
-      setSubmitError("Seu carrinho está vazio.");
+    if (items.length === 0 || !holdSessionId) {
+      setSubmitError("Sua reserva está vazia. Escolha as peças novamente.");
       return;
     }
 
@@ -161,7 +167,7 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
       email: contact.email,
       fulfillmentType,
       address: fulfillmentType === "delivery" ? address : undefined,
-      productIds: items.map((item) => item.productId),
+      holdSessionId,
     };
 
     const parsed = createOrderSchema.safeParse(payload);
@@ -176,16 +182,14 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     if (!result.success) {
       setPending(false);
       setSubmitError(result.error);
-      if (result.code === "reservation_expired") {
-        // Força o usuário a revisar o carrinho — itens podem ter expirado.
+      if (result.code === "reservation_expired" || result.code === "empty_cart") {
+        clearHold();
       }
       return;
     }
 
-    // Limpa o carrinho local após pedido criado (antes do redirect MP).
-    for (const item of [...items]) {
-      removeItem(item.productId);
-    }
+    // Limpa o espelho local após pedido criado (antes do redirect MP).
+    clearHold();
 
     if (result.initPoint) {
       window.location.assign(result.initPoint);
@@ -208,14 +212,14 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     );
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 || !holdSessionId) {
     return (
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-border px-4 py-10 text-center">
         <p className="font-heading text-xl font-bold text-foreground">
-          Seu carrinho está vazio
+          Nenhuma peça reservada
         </p>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Reserve uma peça no catálogo para continuar o checkout.
+          Toque em Comprar Agora no catálogo para reservar e continuar o checkout.
         </p>
         <Link
           href="/catalogo"
@@ -228,7 +232,9 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
   }
 
   const contactSummary = contact.fullName
-    ? `${contact.fullName}${contact.phone ? ` · ${contact.phone}` : ""}`
+    ? `${contact.fullName}${contact.phone ? ` · ${contact.phone}` : ""}${
+        contact.email.trim() ? ` · ${contact.email.trim()}` : ""
+      }`
     : undefined;
 
   return (

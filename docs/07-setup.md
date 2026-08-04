@@ -163,6 +163,18 @@ Após subir o ambiente:
    URL: `https://seu-dominio.vercel.app/api/webhooks/mercadopago`
    Eventos: `payment`
 
+   **Homologação / credenciais de teste**:
+   - Access Token de teste pode ser `TEST-…` **ou** `APP_USR-…` ligado a um
+     usuário com tag `test_user` (painel → Credenciais de teste).
+   - Pagamento: use **cartões de teste** (titular `APRO` + CPF `12345678909`)
+     ou login com **TESTUSER** comprador — conta MP real + vendedor teste
+     falha com “Uma das partes … é de teste”.
+   - O botão “Simular notificação” do painel envia `data.id=123456` (pagamento
+     inexistente). O webhook deve responder **200 ignored** (`payment_not_found`),
+     não 500. Pagamentos reais usam id válido e seguem o fluxo normal.
+   - Opcional: `MERCADOPAGO_SANDBOX=1` no Vercel/local para forçar
+     `sandbox_init_point` (também detectado via `/users/me`).
+
 5. **Configurar redirect URLs no Supabase Auth**:
    Site URL: `https://seu-dominio.vercel.app`
    Redirect URLs: `https://seu-dominio.vercel.app/auth/reset`

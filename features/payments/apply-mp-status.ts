@@ -1,5 +1,8 @@
 import "server-only";
 
+import { convertHoldSession } from "@/features/cart/hold-session";
+import { markProductsSoldForOrder } from "@/features/inventory/apply-transition";
+import { reconcileLatePayment } from "@/features/payments/reconcile-late-payment";
 import type { MercadoPagoPayment } from "@/lib/mercado-pago/fetch-payment";
 import {
   isOrderPastPendingPayment,
@@ -13,7 +16,12 @@ type OrderStatus = Database["public"]["Enums"]["order_status"];
 
 export type ApplyMpStatusSuccess = {
   ok: true;
-  outcome: "applied_paid" | "already_paid" | "payment_updated" | "noop";
+  outcome:
+    | "applied_paid"
+    | "already_paid"
+    | "payment_updated"
+    | "noop"
+    | "reconciled_after_override";
   orderId: string;
   publicCode: string;
   paymentStatus: PaymentStatus;
@@ -29,11 +37,13 @@ export type ApplyMpStatusFailure = {
 export type ApplyMpStatusResult = ApplyMpStatusSuccess | ApplyMpStatusFailure;
 
 /**
- * Aplica status do pagamento MP no pedido (service role — D13 / D46).
+ * Aplica status do pagamento MP no pedido (service role — D13 / D46 / D83).
  *
  * Idempotente: `paid → paid` retorna `already_paid` sem segundo
  * `order_events`, mas ainda garante `products.status = sold` (retry após
  * falha parcial no webhook).
+ *
+ * Pedido `cancelled` + MP approved → `reconcileLatePayment` (nunca sold).
  */
 export async function applyMercadoPagoPaymentStatus(
   payment: MercadoPagoPayment,
@@ -67,7 +77,7 @@ export async function applyMercadoPagoPaymentStatus(
       await upsertPaymentRow(supabase, order.id, payment, "paid", nowIso);
     }
 
-    const sold = await ensureOrderProductsSold(supabase, order.id, nowIso);
+    const sold = await ensureOrderProductsSold(supabase, order.id);
     if (!sold.ok) {
       return sold;
     }
@@ -82,7 +92,29 @@ export async function applyMercadoPagoPaymentStatus(
     };
   }
 
-  // Pedido terminal (cancelled/expired): só espelha payment_status / mp ids.
+  // Late webhook after Override / admin cancel — reconcile, never mark sold (D62/D83).
+  if (mapped === "paid" && order.status === "cancelled") {
+    const reconciled = await reconcileLatePayment(order, payment, { supabase });
+    if (!reconciled.ok) {
+      return {
+        ok: false,
+        error: reconciled.error,
+        code: "db",
+      };
+    }
+
+    return {
+      ok: true,
+      outcome:
+        reconciled.outcome === "noop" ? "noop" : "reconciled_after_override",
+      orderId: reconciled.orderId,
+      publicCode: reconciled.publicCode,
+      paymentStatus: "cancelled",
+      orderStatus: "cancelled",
+    };
+  }
+
+  // Pedido terminal (cancelled non-approved / expired): só espelha payment fields.
   if (order.status === "cancelled" || order.status === "expired") {
     const nowIso = new Date().toISOString();
     await supabase
@@ -280,9 +312,8 @@ async function markOrderPaid(
   const refreshed = updated;
 
   const sold = await markProductsSoldAndClearReservations(
-    supabase,
+    order.id,
     productIds,
-    nowIso,
   );
   if (!sold.ok) {
     return sold;
@@ -317,7 +348,6 @@ async function markOrderPaid(
 async function ensureOrderProductsSold(
   supabase: ReturnType<typeof createServiceSupabaseClient>,
   orderId: string,
-  nowIso: string,
 ): Promise<ApplyMpStatusResult | { ok: true }> {
   const { data: items, error: itemsError } = await supabase
     .from("order_items")
@@ -341,25 +371,33 @@ async function ensureOrderProductsSold(
     ),
   ];
 
-  return markProductsSoldAndClearReservations(supabase, productIds, nowIso);
+  return markProductsSoldAndClearReservations(orderId, productIds);
 }
 
+/**
+ * SN-05 — paid → sold via inventory state machine (hold→sold or available→sold).
+ * Channel online for Mercado Pago checkout (D65 / D71 / D80).
+ * SN-04: ensure convert_hold_session once before sold if still active.
+ */
 async function markProductsSoldAndClearReservations(
-  supabase: ReturnType<typeof createServiceSupabaseClient>,
+  orderId: string,
   productIds: string[],
-  nowIso: string,
 ): Promise<ApplyMpStatusResult | { ok: true }> {
   if (productIds.length === 0) {
     return { ok: true };
   }
 
-  const { error: productsError } = await supabase
-    .from("products")
-    .update({ status: "sold", updated_at: nowIso })
-    .in("id", productIds);
+  const supabase = createServiceSupabaseClient();
+  await ensureHoldConvertedForOrder(supabase, orderId);
 
-  if (productsError) {
-    console.error("markProductsSoldAndClearReservations sold:", productsError);
+  const result = await markProductsSoldForOrder({
+    orderId,
+    productIds,
+    channel: "online",
+  });
+
+  if (!result.ok) {
+    console.error("markProductsSoldAndClearReservations:", result.reason);
     return {
       ok: false,
       error: "Pagamento confirmado, mas falhou ao marcar peças como vendidas.",
@@ -367,20 +405,73 @@ async function markProductsSoldAndClearReservations(
     };
   }
 
-  const { error: reservationsError } = await supabase
-    .from("cart_reservations")
-    .delete()
-    .in("product_id", productIds);
+  return { ok: true };
+}
 
-  if (reservationsError) {
-    console.error(
-      "markProductsSoldAndClearReservations reservations:",
-      reservationsError,
-    );
-    // Não falha o fluxo — produto já sold; reserva órfã será varrida pelo cron.
+/**
+ * SN-04 prep: if createOrderAction somehow skipped convert, convert once.
+ * Never converts again when status is already `converted`.
+ */
+async function ensureHoldConvertedForOrder(
+  supabase: ReturnType<typeof createServiceSupabaseClient>,
+  orderId: string,
+): Promise<void> {
+  const { data: byOrder, error: byOrderError } = await supabase
+    .from("hold_sessions")
+    .select("session_id, status")
+    .eq("checkout_order_id", orderId)
+    .maybeSingle();
+
+  if (byOrderError) {
+    console.error("ensureHoldConvertedForOrder lookup:", byOrderError);
   }
 
-  return { ok: true };
+  if (byOrder?.status === "converted") {
+    return;
+  }
+
+  if (byOrder?.status === "active" && byOrder.session_id) {
+    try {
+      await convertHoldSession(byOrder.session_id, orderId);
+    } catch (convertError) {
+      console.error("ensureHoldConvertedForOrder convert:", convertError);
+    }
+    return;
+  }
+
+  // Fallback: hold_session_id stored on pricing_snapshot at order create (SN-04).
+  const { data: orderRow } = await supabase
+    .from("orders")
+    .select("pricing_snapshot_json")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  const snapshot = orderRow?.pricing_snapshot_json;
+  const holdSessionId =
+    snapshot &&
+    typeof snapshot === "object" &&
+    !Array.isArray(snapshot) &&
+    typeof (snapshot as { hold_session_id?: unknown }).hold_session_id === "string"
+      ? (snapshot as { hold_session_id: string }).hold_session_id
+      : null;
+
+  if (!holdSessionId) return;
+
+  const { data: byId } = await supabase
+    .from("hold_sessions")
+    .select("session_id, status")
+    .eq("id", holdSessionId)
+    .maybeSingle();
+
+  if (!byId || byId.status === "converted") return;
+
+  if (byId.status === "active") {
+    try {
+      await convertHoldSession(byId.session_id, orderId);
+    } catch (convertError) {
+      console.error("ensureHoldConvertedForOrder convert by id:", convertError);
+    }
+  }
 }
 
 async function upsertPaymentRow(

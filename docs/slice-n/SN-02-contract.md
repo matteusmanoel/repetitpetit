@@ -107,8 +107,8 @@ File: `features/cart/hold-session.ts`
 |---|---|
 | `POST /api/hold/reserve` | **Active contract** (new inventory locks) |
 | `POST /api/hold/release` | **Active contract** |
-| `POST /api/cart/reserve` | Legacy dual-read until SN-04 cutover |
-| `POST /api/cart/release` | Legacy dual-read until SN-04 cutover |
+| `POST /api/cart/reserve` | **410 Gone** (#96) — do not mutate `cart_reservations` |
+| `POST /api/cart/release` | **410 Gone** (#96) — do not mutate `cart_reservations` |
 
 Browser cookie `rp_cart_session` remains the Hold Session `session_id` (SN-04 / D79 — no rename).
 
@@ -138,7 +138,9 @@ Downstream agents **MUST NOT**:
 5. Put Mercado Pago / payment-provider logic inside reservation RPCs.
 6. Create Hold Sessions for POS store sales.
 
-`cart_reservations` / `reserve_cart_product` remain in the DB for dual-read until SN-04 cutover, but **new inventory locks must use Hold Session RPCs**.
+`cart_reservations` / `reserve_cart_product` may remain in the DB (table drop out of scope),
+but **HTTP inventory locks must use Hold Session RPCs only**. Legacy
+`/api/cart/reserve|release` return **410 Gone** (#96).
 
 ---
 

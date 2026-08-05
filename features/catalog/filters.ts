@@ -23,6 +23,11 @@ export type CatalogFilters = {
   conservacao: ProductCondition[];
   /** Faixa de preço. */
   preco: PriceRange | null;
+  /**
+   * Quando true, só peças `available` (esconde Reservada).
+   * Padrão false = available + hold (#97).
+   */
+  soDisponiveis: boolean;
 };
 
 export const EMPTY_CATALOG_FILTERS: CatalogFilters = {
@@ -32,6 +37,7 @@ export const EMPTY_CATALOG_FILTERS: CatalogFilters = {
   marca: [],
   conservacao: [],
   preco: null,
+  soDisponiveis: false,
 };
 
 export const SIZE_GROUPS = [
@@ -207,7 +213,13 @@ export function parseCatalogFilters(
       ? (precoRaw as PriceRange)
       : null;
 
-  return { tamanho, genero, faixa, marca, conservacao, preco };
+  const disponiveisRaw = (splitCsv(get("disponiveis"))[0] ?? "").toLowerCase();
+  const soDisponiveis =
+    disponiveisRaw === "1" ||
+    disponiveisRaw === "true" ||
+    disponiveisRaw === "sim";
+
+  return { tamanho, genero, faixa, marca, conservacao, preco, soDisponiveis };
 }
 
 /** Serializa filtros para URLSearchParams (omite vazios). */
@@ -234,6 +246,9 @@ export function serializeCatalogFilters(
   if (filters.preco) {
     params.set("preco", filters.preco);
   }
+  if (filters.soDisponiveis) {
+    params.set("disponiveis", "1");
+  }
 
   return params;
 }
@@ -249,7 +264,8 @@ export function hasActiveCatalogFilters(filters: CatalogFilters): boolean {
     filters.faixa != null ||
     filters.marca.length > 0 ||
     filters.conservacao.length > 0 ||
-    filters.preco != null
+    filters.preco != null ||
+    filters.soDisponiveis
   );
 }
 
@@ -351,6 +367,14 @@ export function getActiveFilterChips(
       id: `preco:${range}`,
       label: PRICE_RANGE_LABELS[range],
       remove: (current) => ({ ...current, preco: null }),
+    });
+  }
+
+  if (filters.soDisponiveis) {
+    chips.push({
+      id: "disponiveis:1",
+      label: "Só disponíveis",
+      remove: (current) => ({ ...current, soDisponiveis: false }),
     });
   }
 

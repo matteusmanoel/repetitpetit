@@ -13,6 +13,7 @@ import {
   interpretConvertHoldResult,
   planHoldCheckoutGate,
 } from "@/features/checkout/validate-hold";
+import { PENDING_PAYMENT_TTL_MINUTES } from "@/features/orders/constants";
 import { createCheckoutPreferenceForOrder } from "@/features/payments/create-checkout-preference";
 import type { Json } from "@/lib/supabase/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
@@ -359,6 +360,10 @@ export async function createOrderAction(
       hold_session_id: gate.holdSessionId,
     };
 
+    const expiresAt = new Date(
+      Date.now() + PENDING_PAYMENT_TTL_MINUTES * 60_000,
+    ).toISOString();
+
     const { data: orderRow, error: orderError } = await supabase
       .from("orders")
       .insert({
@@ -376,6 +381,8 @@ export async function createOrderAction(
         address_snapshot_json: addressSnapshot,
         pricing_snapshot_json: pricingSnapshot,
         estimated_fulfillment: estimatedFulfillment,
+        // Issue #99 / D92: 10 min payment TTL (aligned with DB DEFAULT).
+        expires_at: expiresAt,
       })
       .select("id, public_code")
       .single();

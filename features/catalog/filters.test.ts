@@ -32,7 +32,16 @@ describe("parseCatalogFilters", () => {
       marca: ["GAP", "Zara"],
       conservacao: ["seminovo"],
       preco: "30_60",
+      soDisponiveis: false,
     });
+  });
+
+  it("aceita disponiveis=1 como Só disponíveis", () => {
+    expect(parseCatalogFilters({ disponiveis: "1" }).soDisponiveis).toBe(true);
+    expect(parseCatalogFilters({ disponiveis: "true" }).soDisponiveis).toBe(
+      true,
+    );
+    expect(parseCatalogFilters({}).soDisponiveis).toBe(false);
   });
 
   it("aceita URLSearchParams", () => {
@@ -53,6 +62,7 @@ describe("serializeCatalogFilters", () => {
       marca: ["Carter's"],
       conservacao: ["novo" as const],
       preco: "acima" as const,
+      soDisponiveis: true,
     };
 
     const qs = catalogFiltersToQueryString(filters);
@@ -60,6 +70,7 @@ describe("serializeCatalogFilters", () => {
     expect(qs).toContain("genero=menino");
     expect(qs).not.toContain("faixa=");
     expect(qs).toContain("marca=Carter");
+    expect(qs).toContain("disponiveis=1");
     expect(parseCatalogFilters(serializeCatalogFilters(filters))).toEqual(
       filters,
     );
@@ -100,6 +111,7 @@ describe("getActiveFilterChips / hasActiveCatalogFilters", () => {
       marca: ["GAP"],
       conservacao: ["seminovo" as const],
       preco: "ate_30" as const,
+      soDisponiveis: true,
     };
 
     expect(hasActiveCatalogFilters(filters)).toBe(true);
@@ -112,6 +124,7 @@ describe("getActiveFilterChips / hasActiveCatalogFilters", () => {
       "marca:GAP",
       "conservacao:seminovo",
       "preco:ate_30",
+      "disponiveis:1",
     ]);
 
     const withoutGender = chips[1].remove(filters);

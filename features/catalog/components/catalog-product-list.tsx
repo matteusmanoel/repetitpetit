@@ -24,7 +24,7 @@ export async function CatalogProductList({ filters }: CatalogProductListProps) {
       <p className="text-sm text-muted-foreground">
         {products.length}{" "}
         {products.length === 1 ? "peça encontrada" : "peças encontradas"}
-        {filtered ? " com os filtros atuais" : " disponíveis"}
+        {filtered ? " com os filtros atuais" : ""}
       </p>
       <ProductGrid products={products} />
     </div>

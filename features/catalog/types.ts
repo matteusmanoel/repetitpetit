@@ -22,6 +22,7 @@ export type CatalogProduct = Pick<
   | "created_at"
   | "gender"
   | "condition"
+  | "status"
 >;
 
 /** Imagem da galeria na PDP (ordenada por `sort_order`). */

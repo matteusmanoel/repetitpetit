@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/features/cart/store";
 import type { ReservationView } from "@/features/catalog/types";
 
-/** Duração visual do estado "Reservada ✓" antes de virar "Ver reservas" (T6). */
+/** Duração visual do estado "Reservada ✓" antes do refresh mostrar a PDP da dona. */
 const ADDED_FEEDBACK_MS = 1500;
 
 type AddToCartButtonProps = {
@@ -29,6 +29,7 @@ type UiState =
 
 /**
  * CTA full-width "Comprar Agora" → `POST /api/hold/reserve` (SN-04 / D61).
+ * Só usado quando a peça está available (dona/outras usam ProductPurchasePanel).
  */
 export function AddToCartButton({
   productId,
@@ -93,15 +94,11 @@ export function AddToCartButton({
           payload?.message ?? "Esta peça não está mais disponível.";
         toast.message(message);
         setUi({ status: "error", message });
-        // Don't refresh: after hold, anon RLS hides status=hold products.
+        startTransition(() => router.refresh());
         return;
       }
 
-      if (
-        !response.ok ||
-        !payload?.holdSessionId ||
-        !payload.expiresAt
-      ) {
+      if (!response.ok || !payload?.holdSessionId || !payload.expiresAt) {
         setUi({
           status: "error",
           message:
@@ -133,7 +130,7 @@ export function AddToCartButton({
         () => setJustAdded(false),
         ADDED_FEEDBACK_MS,
       );
-      // Soft refresh for catalog/related only — avoid PDP notFound on hold.
+      // Refresh → ProductPurchasePanel troca para OwnHoldActions (#97).
       startTransition(() => router.refresh());
     } catch {
       setUi({

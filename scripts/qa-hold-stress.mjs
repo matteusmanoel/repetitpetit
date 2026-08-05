@@ -127,6 +127,34 @@ if (ok.length !== 1) {
   console.log("PASS: single winner");
 }
 
+// #95 — losers must not leave active hold_sessions with 0 items
+const loserSessionIds = results
+  .filter((r) => !(r.status === 200 && r.body?.holdSessionId))
+  .map((r) => r.sessionId);
+if (loserSessionIds.length > 0) {
+  const { data: loserSessions, error: ghostError } = await supabase
+    .from("hold_sessions")
+    .select("id, session_id, status, hold_items(id)")
+    .in("session_id", loserSessionIds)
+    .eq("status", "active");
+
+  if (ghostError) {
+    console.error("FAIL: could not query loser sessions", ghostError);
+    process.exitCode = 1;
+  } else {
+    const ghosts = (loserSessions ?? []).filter(
+      (row) => !Array.isArray(row.hold_items) || row.hold_items.length === 0,
+    );
+    console.log("--- empty active sessions from losers ---", ghosts.length);
+    if (ghosts.length !== 0) {
+      console.error("FAIL: ghost empty active hold_sessions", ghosts);
+      process.exitCode = 1;
+    } else {
+      console.log("PASS: no empty active sessions from losers");
+    }
+  }
+}
+
 const winner = ok[0];
 const sessionCheck = await getSession(winner.sessionId);
 console.log("winner session GET", sessionCheck.status, {
@@ -180,7 +208,7 @@ if (filler.length >= 5 && products.length >= 6) {
   if (winner) await release(winner.sessionId, productId);
 }
 
-// Dual-read: legacy cart still present?
+// Legacy cart must be Gone (#96) — Hold Session is the only inventory lock.
 const legacy = await fetch(`${baseUrl}/api/cart/reserve`, {
   method: "POST",
   headers: {
@@ -191,16 +219,25 @@ const legacy = await fetch(`${baseUrl}/api/cart/reserve`, {
 });
 const legacyBody = await legacy.json().catch(() => ({}));
 console.log("--- legacy /api/cart/reserve ---", legacy.status, legacyBody?.error ?? "ok?");
-if (legacy.status === 200) {
-  console.log("NOTE: legacy cart reserve still succeeds (dual-write risk)");
-  await fetch(`${baseUrl}/api/cart/release`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      cookie: cookieFor("noop"),
-    },
-    body: JSON.stringify({ productId: products[products.length - 1].id }),
-  }).catch(() => {});
+if (legacy.status !== 410 || legacyBody?.error !== "gone") {
+  console.error("FAIL: expected legacy /api/cart/reserve → 410 gone");
+  process.exitCode = 1;
+} else {
+  console.log("PASS: legacy cart 410");
+}
+
+const legacyRelease = await fetch(`${baseUrl}/api/cart/release`, {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    cookie: cookieFor("noop"),
+  },
+  body: JSON.stringify({ productId: products[products.length - 1].id }),
+});
+const legacyReleaseBody = await legacyRelease.json().catch(() => ({}));
+if (legacyRelease.status !== 410 || legacyReleaseBody?.error !== "gone") {
+  console.error("FAIL: expected legacy /api/cart/release → 410 gone");
+  process.exitCode = 1;
 }
 
 const { data: statusRow } = await supabase

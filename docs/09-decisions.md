@@ -1792,3 +1792,141 @@ TESTUSER comprador enquanto o seller for teste; doc em `docs/07-setup.md`.
 **Consequência**: Homologação sem misturar prod/test; simulador do painel
 verde; produção real continua falhando alto em erros de processamento
 genuínos.
+
+---
+
+## D90 — Legacy `/api/cart/reserve|release` → 410 Gone
+
+**Data**: 2026-08-05
+**Contexto**: Issue #96. SN-04 / D79 já apontam PDP e CartSheet para Hold
+Session (`/api/hold/*`). Rotas legadas ainda mutavam `cart_reservations`,
+risco de lock paralelo à verdade SN-02.
+**Decisão**: (1) `POST /api/cart/reserve` e `POST /api/cart/release` respondem
+**410** com `{ error: "gone", message }` em PT-BR apontando Hold Session —
+sem ler/gravar `cart_reservations` nem inventário. (2) UI comprador já usa
+só `/api/hold/*`; remove-se o client morto `releaseReservationClient`.
+(3) Tabela `cart_reservations` permanece (drop fora de escopo). (4) Smokes /
+QA assertem 410 nas rotas legadas; Hold continua em `qa-hold-stress.mjs`.
+**Consequência**: Única via HTTP de reserva de Peça = Hold Session. Contrato
+SN-02 atualizado. Sem migration.
+
+---
+
+## D91 — `reserve_hold_item` não deixa Hold Session active vazia em conflict
+
+**Data**: 2026-08-05
+**Contexto**: Soft-launch (#95). Em corrida N:1 pela mesma Peça, perdedores
+recebiam `unavailable` mas a RPC já tinha feito `INSERT` em `hold_sessions`
+antes do `hold_items` / check de disponibilidade — sessões fantasma `active`
+com 0 itens sob carga.
+**Decisão**: (1) Confirmar `products.status = available` (com `FOR UPDATE`)
+**antes** de criar `hold_sessions`. (2) Em `unique_violation` (ou unavailable
+com sessão active já existente e vazia), chamar
+`_finalize_hold_session(..., 'cancelled')` — nunca retornar conflict deixando
+`active` + 0 `hold_items`. (3) Respostas da RPC e contrato SN-02
+(`ok` / `unavailable` / `limit_reached`) permanecem iguais.
+**Consequência**: Migration aditiva
+`supabase/migrations/20260805050000_reserve_hold_item_no_empty_session.sql`.
+Orquestrador aplica no projeto `wcgpamsvnhpgonxzbzlg` após merge; smoke
+concorrente (0 sessões vazias) em WAVES-soft-launch.
+
+---
+
+## D92 — pending_payment online TTL 10 min + auto-cancel (issue #99)
+
+**Data**: 2026-08-05
+**Contexto**: Pedido online abandonado em `pending_payment` (cliente não conclui
+MP) deixava a Peça em `hold` via Hold Session convertida sem liberação
+automática. Soft-launch exige TTL curto e honestidade de inventário. D29 ainda
+documentava `orders.expires_at` DEFAULT de 30 minutos como TTL de pagamento —
+desalinhado do gate de 10 min.
+**Decisão**: (1) TTL **10 minutos** após criação do pedido (`orders.expires_at`
+DEFAULT + constante `PENDING_PAYMENT_TTL_MINUTES` + `createOrderAction`).
+(2) Job `expire_due_pending_payment_orders()` (pg_cron `* * * * *` + Edge
+`expire-pending-payment-orders`) cancela só `channel = online` +
+`pending_payment` com `expires_at <= now()`. (3) Inventário: SN-02
+`_finalize_hold_session` na sessão `converted` ligada por
+`checkout_order_id` — sem reinventar sold (SN-05). (4) Status do pedido =
+`cancelled` + `order_events.cancelled_by_payment_ttl` para preservar SN-06
+`reconcileLatePayment` em late webhook (não usar `expired`, que só espelha
+payment fields). (5) POS `channel = store` nunca é tocado.
+**Consequência**: Migration
+`supabase/migrations/20260805120100_expire_pending_payment_orders.sql` —
+orquestrador aplica no remoto + agenda/deploy Edge se necessário. D29 TTL de
+reserva (20 min hold) permanece; só o relógio de pagamento do pedido muda.
+
+---
+
+## D93 — Soft-launch polish: hide debug seed + normalize store name typo + favicon
+
+**Data**: 2026-08-05
+**Contexto**: Antes do link VIP (#100), a home listava peças Debug/E2E de
+scripts de verificação; secrets/dashboard às vezes tinham o nome da loja
+com **t extra** em "Repeti" (typo) na etiqueta; `/favicon.ico` 404.
+**Decisão**: (1) Migration idempotente desativa produtos cujo slug/nome
+bate `debug`/`e2e`/`t10-agente` e banners de título/CTA de teste.
+(2) `normalizeStoreName` em `lib/env/public.ts` corrige esse typo para
+`Repeti Petit` no load de env (etiquetas/PDF/UI). Orchestrator deve
+corrigir o valor canônico nos Secrets/Vercel. (3) Favicon via
+`app/favicon.ico` + `public/favicon.ico` (+ `icon.png` / `apple-icon.png`)
+gerados a partir de `public/brand/logo.png`.
+**Consequência**: Storefront soft-launch sem lixo de QA; typo não vaza na
+etiqueta mesmo com secret errado; handoff: aplicar migration remota +
+alinhar `NEXT_PUBLIC_STORE_NAME=Repeti Petit` no dashboard.
+
+
+---
+
+## D94 — Doc operacional: impressão térmica de etiquetas
+
+**Data**: 2026-08-05
+**Contexto**: Soft launch (#101). Hardware térmico chega depois; PDF/browser
+print já existem (D81). Equipe precisa de passos do zero sem secrets.
+**Decisão**: Documentar em `docs/thermal-label-print.md` (tamanho 58×40 mm,
+fluxo Admin → Etiqueta → Imprimir, opções de driver, fallback PDF, sem QZ
+Tray no MVP). Link a partir de `docs/07-setup.md`.
+**Consequência**: Ops configura impressora sem código novo; bridge nativo
+continua fora de escopo.
+
+---
+
+## D95 — Catálogo/PDP: anon SELECT `hold` + Reservada (dona vs outras)
+
+**Data**: 2026-08-05
+**Contexto**: Soft go-live (#97). Peças em Hold sumiam do catálogo/PDP porque
+RLS anon só permitia `status = available`. Grill: jornada sem login; dona vê
+countdown/Finalizar/Liberar; outras veem **Reservada** sem TTL alheio; fechar
+browser não libera (só TTL ou Liberar via SN-02).
+**Decisão**: (1) RLS anon `products` / `product_images`: `status IN
+('available','hold')` — sem expor `hold_sessions`/`hold_items`/PII.
+(2) Catálogo padrão = available+hold; filtro URL `disponiveis=1` = só available.
+(3) PDP: `resolvePdpPurchaseState` — own → countdown + Finalizar + Liberar
+(confirm) + Voltar (`history.back()` senão `/catalogo`); other → Reservada
+sem compra; consume `POST /api/hold/release` (SN-02), não reimplementa reserve.
+(4) Card mostra badge **Reservada** quando `status=hold`. (5) Home novidades
+permanece só `available`.
+**Consequência**: Migration
+`20260805120200_products_anon_select_hold.sql` — orchestrator aplica no projeto
+remoto. Realtime hold↔available = #98 / D96.
+
+
+---
+
+## D96 — Catálogo/PDP Realtime hold↔available (toast + refresh)
+
+**Data**: 2026-08-05
+**Contexto**: Soft go-live (#98). Com catálogo/PDP abertos, mudanças
+hold↔available precisam refletir sem F5. Toast preferido; update silencioso
+aceitável.
+**Decisão**: (1) `CatalogStatusRealtime` assina `products` UPDATE via anon
+browser client — catálogo: canal único sem filtro de id; PDP: `id=eq.<uuid>`.
+(2) Helpers puros em `catalog-realtime.ts` decidem refresh + copy toast
+(“Peça disponível de novo” / “Peça reservada”); falha de toast → só
+`router.refresh()`. (3) Publication `supabase_realtime` inclui `products`
+(migration idempotente) + `REPLICA IDENTITY FULL` para `payload.old.status`.
+Depende de D95 (RLS anon hold|available) para entrega de eventos.
+**Consequência**: Migration
+`20260805120300_products_realtime_publication.sql` — orchestrator aplica.
+Sem waitlist / WhatsApp.
+
+

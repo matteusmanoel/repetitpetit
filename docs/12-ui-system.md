@@ -59,7 +59,7 @@ continuam intocados — filtros são só apresentação.
 - CTA: `h-13` (52px), `rounded-full`. Após reservar com sucesso, mostra
   "Adicionado" com ícone de check por 1.5s (crossfade via `motion`) antes de
   virar "Ver carrinho" — decoração visual só; não toca no
-  `fetch("/api/cart/reserve")` nem na máquina de estados de
+  `fetch("/api/hold/reserve")` nem na máquina de estados de
   `AddToCartButton.tsx`.
 - "Você pode gostar": scroll horizontal com snap
   (`RelatedProductsCarousel.tsx`), não o grid do catálogo.
@@ -72,8 +72,9 @@ overlay com fade + `backdrop-blur-sm`, painel com slide-in `x: 100% → 0` via
 spring. Countdown por item vira coral/semibold abaixo de 5 minutos restantes.
 Itens saem da lista com fade+slide-up, tanto ao remover manualmente quanto
 ao expirar — a lógica de expiração (`setInterval`,
-`releaseReservationClient`, `removeItem`, o store em `features/cart/store.tsx`)
-não muda.
+`releaseHoldItemClient` / `releaseHoldSessionClient`, `removeItem`, o store em
+`features/cart/store.tsx`) não muda. Rotas `/api/cart/*` estão **410 Gone**
+(D90 / #96); reserva só via Hold Session.
 
 ## Header e home
 

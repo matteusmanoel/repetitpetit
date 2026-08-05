@@ -14,12 +14,15 @@ type SizeGroup = Database["public"]["Enums"]["size_group"];
 type ProductGender = Database["public"]["Enums"]["product_gender"];
 
 const CATALOG_SELECT =
-  "id, name, slug, price, compare_at_price, cover_image_url, quantity, brand, size_label, created_at, gender, condition";
+  "id, name, slug, price, compare_at_price, cover_image_url, quantity, brand, size_label, created_at, gender, condition, status";
+
+/** Statuses visibles no catálogo público (#97): available + hold (Reservada). */
+const CATALOG_STATUSES = ["available", "hold"] as const;
 
 /**
- * Produtos disponíveis para o catálogo público, mais recentes primeiro.
- * Respeita RLS (anon SELECT em `products` com status available).
- * Filtros opcionais via query params (T07).
+ * Produtos do catálogo público (available + hold), mais recentes primeiro.
+ * Filtro opcional `soDisponiveis` restringe a available.
+ * Respeita RLS anon SELECT em `products` com status available|hold.
  */
 export async function getAvailableProducts(
   filters: CatalogFilters = {
@@ -29,6 +32,7 @@ export async function getAvailableProducts(
     marca: [],
     conservacao: [],
     preco: null,
+    soDisponiveis: false,
   },
 ): Promise<CatalogProduct[]> {
   const supabase = await createServerSupabaseClient();
@@ -36,8 +40,13 @@ export async function getAvailableProducts(
   let query = supabase
     .from("products")
     .select(CATALOG_SELECT)
-    .eq("status", "available")
     .order("created_at", { ascending: false });
+
+  if (filters.soDisponiveis) {
+    query = query.eq("status", "available");
+  } else {
+    query = query.in("status", [...CATALOG_STATUSES]);
+  }
 
   const sizeGroups = resolveEffectiveSizeGroups(filters);
   if (sizeGroups != null) {
@@ -80,7 +89,7 @@ export async function getAvailableProducts(
 }
 
 /**
- * Marcas distintas presentes em produtos disponíveis (para o multi-select).
+ * Marcas distintas em produtos available|hold (para o multi-select).
  */
 export async function getAvailableBrands(): Promise<string[]> {
   const supabase = await createServerSupabaseClient();
@@ -88,7 +97,7 @@ export async function getAvailableBrands(): Promise<string[]> {
   const { data, error } = await supabase
     .from("products")
     .select("brand")
-    .eq("status", "available")
+    .in("status", [...CATALOG_STATUSES])
     .not("brand", "is", null)
     .order("brand", { ascending: true });
 
@@ -134,8 +143,8 @@ type ProductDetailRow = {
 };
 
 /**
- * PDP: produto disponível por slug + imagens ordenadas por `sort_order`.
- * Se não houver linhas em `product_images`, usa `cover_image_url` como única foto.
+ * PDP: produto available|hold por slug + imagens ordenadas por `sort_order`.
+ * Hold permanece visível (dona com countdown; outras veem Reservada).
  */
 export async function getProductBySlug(slug: string): Promise<ProductDetail | null> {
   const supabase = await createServerSupabaseClient();
@@ -163,7 +172,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
     `,
     )
     .eq("slug", slug)
-    .eq("status", "available")
+    .in("status", [...CATALOG_STATUSES])
     .maybeSingle();
 
   if (error) {
@@ -179,6 +188,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
 
 /**
  * Peças relacionadas por `size_group` e `gender` (excluindo a atual).
+ * Inclui hold para exibir Reservada no carrossel.
  */
 export async function getRelatedProducts(options: {
   productId: string;
@@ -192,7 +202,7 @@ export async function getRelatedProducts(options: {
   const { data, error } = await supabase
     .from("products")
     .select(CATALOG_SELECT)
-    .eq("status", "available")
+    .in("status", [...CATALOG_STATUSES])
     .eq("size_group", sizeGroup)
     .eq("gender", gender)
     .neq("id", productId)
@@ -251,7 +261,7 @@ function mapProductDetail(row: ProductDetailRow): ProductDetail {
 }
 
 /**
- * Últimas novidades para a home — mesmo critério do catálogo, com limite.
+ * Últimas novidades para a home — só available (vitrine "prontas para comprar").
  */
 export async function getLatestAvailableProducts(
   limit = 8,

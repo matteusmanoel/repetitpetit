@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { AddToCartButton } from "@/features/catalog/components/AddToCartButton";
+import { CatalogStatusRealtime } from "@/features/catalog/components/CatalogStatusRealtime";
 import { ProductAttributes } from "@/features/catalog/components/ProductAttributes";
 import { ProductGallery } from "@/features/catalog/components/ProductGallery";
+import { ProductPurchasePanel } from "@/features/catalog/components/ProductPurchasePanel";
 import { RelatedProductsCarousel } from "@/features/catalog/components/RelatedProductsCarousel";
-import { ReservationIndicator } from "@/features/catalog/components/ReservationIndicator";
 import { UniquePieceNotice } from "@/features/catalog/components/UniquePieceNotice";
 import { getProductBySlug, getRelatedProducts } from "@/features/catalog/data";
 import { formatPrice } from "@/features/catalog/format-price";
@@ -66,6 +66,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <div className="mx-auto w-full max-w-6xl pb-10 sm:px-8 sm:pt-6 sm:pb-14">
+      <CatalogStatusRealtime productId={product.id} />
       <nav
         aria-label="Breadcrumb"
         className="mb-3 hidden px-4 text-sm text-muted-foreground sm:mb-4 sm:block sm:px-0"
@@ -118,16 +119,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
           ) : null}
 
-          <AddToCartButton
+          <ProductPurchasePanel
             productId={product.id}
             name={product.name}
             slug={product.slug}
             price={product.price}
             coverImageUrl={product.cover_image_url}
+            productStatus={product.status}
             reservation={reservation}
           />
-
-          <ReservationIndicator reservation={reservation} />
         </div>
       </div>
 

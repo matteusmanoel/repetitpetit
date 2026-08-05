@@ -56,6 +56,11 @@ Behavior notes:
 - Clears stale `hold_items` for the product on `expired`/`cancelled` sessions (D14).
 - Auto-expires the caller’s own active session when `expires_at <= now()` before creating a new one.
 - Concurrency: `FOR UPDATE` on product + `UNIQUE(hold_items.product_id)`.
+- **#95 / D91**: create `hold_sessions` only after the Peça is confirmed `available`;
+  on `unique_violation` / unavailable, cancel any empty active session for the
+  caller (`_finalize_hold_session(..., 'cancelled')`). Losers must leave **0**
+  active sessions with zero `hold_items`. Migration:
+  `20260805050000_reserve_hold_item_no_empty_session.sql`.
 
 ### `release_hold_item` responses
 
@@ -107,8 +112,8 @@ File: `features/cart/hold-session.ts`
 |---|---|
 | `POST /api/hold/reserve` | **Active contract** (new inventory locks) |
 | `POST /api/hold/release` | **Active contract** |
-| `POST /api/cart/reserve` | Legacy dual-read until SN-04 cutover |
-| `POST /api/cart/release` | Legacy dual-read until SN-04 cutover |
+| `POST /api/cart/reserve` | **410 Gone** (#96) — do not mutate `cart_reservations` |
+| `POST /api/cart/release` | **410 Gone** (#96) — do not mutate `cart_reservations` |
 
 Browser cookie `rp_cart_session` remains the Hold Session `session_id` (SN-04 / D79 — no rename).
 
@@ -138,7 +143,9 @@ Downstream agents **MUST NOT**:
 5. Put Mercado Pago / payment-provider logic inside reservation RPCs.
 6. Create Hold Sessions for POS store sales.
 
-`cart_reservations` / `reserve_cart_product` remain in the DB for dual-read until SN-04 cutover, but **new inventory locks must use Hold Session RPCs**.
+`cart_reservations` / `reserve_cart_product` may remain in the DB (table drop out of scope),
+but **HTTP inventory locks must use Hold Session RPCs only**. Legacy
+`/api/cart/reserve|release` return **410 Gone** (#96).
 
 ---
 

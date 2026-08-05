@@ -1855,3 +1855,22 @@ payment fields). (5) POS `channel = store` nunca é tocado.
 orquestrador aplica no remoto + agenda/deploy Edge se necessário. D29 TTL de
 reserva (20 min hold) permanece; só o relógio de pagamento do pedido muda.
 
+---
+
+## D93 — Soft-launch polish: hide debug seed + normalize store name typo + favicon
+
+**Data**: 2026-08-05
+**Contexto**: Antes do link VIP (#100), a home listava peças Debug/E2E de
+scripts de verificação; secrets/dashboard às vezes tinham o nome da loja
+com **t extra** em "Repeti" (typo) na etiqueta; `/favicon.ico` 404.
+**Decisão**: (1) Migration idempotente desativa produtos cujo slug/nome
+bate `debug`/`e2e`/`t10-agente` e banners de título/CTA de teste.
+(2) `normalizeStoreName` em `lib/env/public.ts` corrige esse typo para
+`Repeti Petit` no load de env (etiquetas/PDF/UI). Orchestrator deve
+corrigir o valor canônico nos Secrets/Vercel. (3) Favicon via
+`app/favicon.ico` + `public/favicon.ico` (+ `icon.png` / `apple-icon.png`)
+gerados a partir de `public/brand/logo.png`.
+**Consequência**: Storefront soft-launch sem lixo de QA; typo não vaza na
+etiqueta mesmo com secret errado; handoff: aplicar migration remota +
+alinhar `NEXT_PUBLIC_STORE_NAME=Repeti Petit` no dashboard.
+

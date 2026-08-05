@@ -4,6 +4,11 @@ export { conditionLabel, genderLabel } from "./labels";
 export { getProductReservationView } from "./reservation";
 export { minutesRemaining } from "./reservation-time";
 export { resolvePdpPurchaseState } from "./pdp-purchase-state";
+export {
+  isHoldAvailableTransition,
+  shouldRefreshCatalogForProductChange,
+  toastMessageForHoldAvailabilityChange,
+} from "./catalog-realtime";
 export type {
   CatalogProduct,
   ProductDetail,
@@ -34,3 +39,4 @@ export { UniquePieceNotice } from "./components/UniquePieceNotice";
 export { BackToCatalogButton } from "./components/BackToCatalogButton";
 export { OwnHoldActions } from "./components/OwnHoldActions";
 export { ReservedByOtherActions } from "./components/ReservedByOtherActions";
+export { CatalogStatusRealtime } from "./components/CatalogStatusRealtime";

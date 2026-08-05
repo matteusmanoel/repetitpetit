@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ActiveFilterChips } from "@/features/catalog/components/ActiveFilterChips";
 import { CatalogFiltersPanel } from "@/features/catalog/components/catalog-filters-panel";
 import { CatalogProductList } from "@/features/catalog/components/catalog-product-list";
+import { CatalogStatusRealtime } from "@/features/catalog/components/CatalogStatusRealtime";
 import { ProductCardSkeletonGrid } from "@/features/catalog/components/ProductCardSkeleton";
 import {
   catalogFiltersToQueryString,
@@ -29,6 +30,7 @@ export default async function CatalogoPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
+      <CatalogStatusRealtime />
       <header className="mb-6 flex flex-col gap-2 sm:mb-8">
         <h1 className="font-heading text-2xl font-extrabold text-foreground sm:text-3xl">
           Catálogo

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CatalogStatusRealtime } from "@/features/catalog/components/CatalogStatusRealtime";
 import { ProductAttributes } from "@/features/catalog/components/ProductAttributes";
 import { ProductGallery } from "@/features/catalog/components/ProductGallery";
 import { ProductPurchasePanel } from "@/features/catalog/components/ProductPurchasePanel";
@@ -65,6 +66,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <div className="mx-auto w-full max-w-6xl pb-10 sm:px-8 sm:pt-6 sm:pb-14">
+      <CatalogStatusRealtime productId={product.id} />
       <nav
         aria-label="Breadcrumb"
         className="mb-3 hidden px-4 text-sm text-muted-foreground sm:mb-4 sm:block sm:px-0"

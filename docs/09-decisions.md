@@ -1910,3 +1910,23 @@ permanece só `available`.
 remoto. Realtime hold↔available = #98 / D96.
 
 
+---
+
+## D91 — Catálogo/PDP Realtime hold↔available (toast + refresh)
+
+**Data**: 2026-08-05
+**Contexto**: Soft go-live (#98). Com catálogo/PDP abertos, mudanças
+hold↔available precisam refletir sem F5. Toast preferido; update silencioso
+aceitável.
+**Decisão**: (1) `CatalogStatusRealtime` assina `products` UPDATE via anon
+browser client — catálogo: canal único sem filtro de id; PDP: `id=eq.<uuid>`.
+(2) Helpers puros em `catalog-realtime.ts` decidem refresh + copy toast
+(“Peça disponível de novo” / “Peça reservada”); falha de toast → só
+`router.refresh()`. (3) Publication `supabase_realtime` inclui `products`
+(migration idempotente). Depende de D90 (RLS anon hold|available) para
+entrega de eventos.
+**Consequência**: Migration
+`20260805043100_products_realtime_publication.sql` — orchestrator aplica.
+Sem waitlist / WhatsApp.
+
+

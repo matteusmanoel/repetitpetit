@@ -49,6 +49,7 @@ export type ProductDetail = Pick<
   | "quantity"
   | "status"
   | "created_at"
+  | "category_id"
 > & {
   images: ProductImage[];
 };

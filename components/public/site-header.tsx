@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu } from "lucide-react";
+import { Menu, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -16,7 +16,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { CartTrigger } from "@/features/cart/components/CartTrigger";
+import { useCartStore } from "@/features/cart/store";
 import { cn } from "@/lib/utils";
+import { getWhatsAppUrl } from "@/lib/whatsapp";
 
 const NAV_LINKS = [
   { href: "/catalogo", label: "Catálogo" },
@@ -29,6 +31,9 @@ const SCROLL_THRESHOLD = 8;
 export function SiteHeader() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const openCart = useCartStore((s) => s.openCart);
+  const whatsapp = process.env.NEXT_PUBLIC_STORE_WHATSAPP;
 
   useEffect(() => {
     function handleScroll() {
@@ -52,7 +57,7 @@ export function SiteHeader() {
         <Link
           href="/"
           aria-label="Repeti Petit — página inicial"
-          className="flex min-h-11 min-w-11 items-center py-2 pr-4"
+          className="flex min-h-11 min-w-11 items-center py-1.5 pr-3"
         >
           <Image
             src="/brand/logo.png"
@@ -60,7 +65,7 @@ export function SiteHeader() {
             width={335}
             height={597}
             priority
-            className="h-11 w-auto sm:h-13"
+            className="h-14 w-auto sm:h-16"
           />
         </Link>
 
@@ -82,7 +87,7 @@ export function SiteHeader() {
         <div className="flex items-center gap-0.5">
           <CartTrigger />
 
-          <Sheet>
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
@@ -106,7 +111,7 @@ export function SiteHeader() {
                     <Link
                       href={link.href}
                       className={cn(
-                        "flex min-h-11 items-center rounded-md px-3 text-base font-medium text-foreground transition-colors hover:bg-muted",
+                        "flex min-h-11 cursor-pointer items-center rounded-md px-3 text-base font-medium text-foreground transition-colors hover:bg-muted",
                         pathname?.startsWith(link.href) &&
                           "bg-muted text-primary",
                       )}
@@ -115,6 +120,28 @@ export function SiteHeader() {
                     </Link>
                   </SheetClose>
                 ))}
+                <button
+                  type="button"
+                  className="flex min-h-11 cursor-pointer items-center rounded-md px-3 text-left text-base font-medium text-foreground transition-colors hover:bg-muted"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    openCart();
+                  }}
+                >
+                  Suas reservas
+                </button>
+                {whatsapp ? (
+                  <a
+                    href={getWhatsAppUrl(whatsapp, "Oi, preciso de ajuda!")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-3 text-base font-medium text-foreground transition-colors hover:bg-muted"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <MessageCircle className="size-4" aria-hidden />
+                    Falar no WhatsApp
+                  </a>
+                ) : null}
               </nav>
             </SheetContent>
           </Sheet>

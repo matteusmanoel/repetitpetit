@@ -25,6 +25,7 @@ import {
 } from "@/features/checkout/schemas";
 import type { CheckoutPageData, FulfillmentType } from "@/features/checkout/types";
 import { useCartStore } from "@/features/cart/store";
+import { formatPhoneBrDisplay } from "@/lib/phone";
 
 type CheckoutFormProps = {
   pageData: CheckoutPageData;
@@ -232,9 +233,9 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
   }
 
   const contactSummary = contact.fullName
-    ? `${contact.fullName}${contact.phone ? ` · ${contact.phone}` : ""}${
-        contact.email.trim() ? ` · ${contact.email.trim()}` : ""
-      }`
+    ? `${contact.fullName}${
+        contact.phone ? ` · ${formatPhoneBrDisplay(contact.phone)}` : ""
+      }${contact.email.trim() ? ` · ${contact.email.trim()}` : ""}`
     : undefined;
 
   return (

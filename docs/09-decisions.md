@@ -1930,3 +1930,35 @@ Depende de D95 (RLS anon hold|available) para entrega de eventos.
 Sem waitlist / WhatsApp.
 
 
+---
+
+## D96 — Storefront SELECT para `authenticated` (= vitrine anon)
+
+**Data**: 2026-08-05
+**Contexto**: UI inspection — admin com cookie Auth via
+`createServerSupabaseClient` lia role `authenticated`; policies de catálogo
+eram só `TO anon` → empty state / PDP 404 na mesma sessão do painel.
+**Decisão**: (1) Policies de vitrine (`products`, `product_images`,
+`categories`, `banners`, `settings`, `shipping_rules`) passam a
+`FOR SELECT TO anon, authenticated` com o **mesmo predicado** do anon.
+(2) Renomear para `*_public_select` (padrão storage). (3) Writes sensíveis
+continuam `service_role` / policies admin — sem SELECT de pedidos/PII extra.
+**Consequência**: Migration
+`20260805143000_storefront_select_authenticated.sql`. Soft-launch: operador
+pode testar a loja logado sem “sumir” o acervo.
+
+
+---
+
+## D97 — Máscara de telefone BR no checkout e desapegue
+
+**Data**: 2026-08-05
+**Contexto**: Inspection + craft Leleco (números formatados no input e display).
+Schema já normalizava dígitos; UI mostrava cru.
+**Decisão**: Helper `lib/phone.ts` + `PhoneInput` compartilhado; estado guarda
+dígitos; display `(45) 99999-9999` / fixo 10 dígitos. E-mail checkout permanece
+obrigatório (D77).
+**Consequência**: Menos erro de digitação; docs/05 atualizado.
+
+
+

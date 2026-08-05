@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 import { submitIntakeAction } from "@/features/intake/actions";
 import {
   MAX_INTAKE_PHOTOS,
@@ -279,7 +280,7 @@ export function DesapegueForm({ storeName }: DesapegueFormProps) {
               Seus filhos cresceram. As peças merecem um novo lar.
             </h1>
             <p className="text-base text-muted-foreground sm:text-lg">
-              Venda ou troque com a gente em 3 passos simples.
+              Venda ou troque com a gente em 4 passos simples.
             </p>
             <p className="text-sm text-muted-foreground">
               A {storeName} recebe peças infantis em bom estado. Você preenche
@@ -333,17 +334,12 @@ export function DesapegueForm({ storeName }: DesapegueFormProps) {
                 htmlFor="phone"
                 error={fieldErrors.phone}
               >
-                <Input
+                <PhoneInput
                   id="phone"
                   name="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel"
                   value={form.phone}
-                  onChange={(event) =>
-                    updateField("phone", event.target.value.replace(/\D/g, ""))
-                  }
-                  placeholder="45999999999"
+                  onValueChange={(digits) => updateField("phone", digits)}
+                  placeholder="(45) 99999-9999"
                   className="h-11"
                   aria-invalid={Boolean(fieldErrors.phone)}
                 />

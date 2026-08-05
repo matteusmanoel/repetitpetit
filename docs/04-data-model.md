@@ -451,7 +451,7 @@ CREATE TABLE imports_log (
 
 ## Postura de RLS
 
-| Tabela | anon (público) | service_role (server actions/webhooks) |
+| Tabela | anon / authenticated (storefront) | service_role (server actions/webhooks) |
 |---|---|---|
 | `products` | SELECT WHERE status IN ('available', 'hold') | full access |
 | `categories` | SELECT WHERE is_active = true | full access |
@@ -468,6 +468,11 @@ CREATE TABLE imports_log (
 | `admins` | nenhum | full access |
 | `settings` | SELECT | full access |
 | `shipping_rules` | SELECT WHERE is_active = true | full access |
+| `product_images` | SELECT de produtos available\|hold | full access |
+
+**Nota (#112 / D96)**: policies de vitrine usam `TO anon, authenticated` com o
+mesmo predicado — admin logado no browser não “perde” o catálogo. Writes
+admin/webhook continuam em `service_role`.
 
 Todas as operações sensíveis (CRUD admin, webhook, sincronização de pagamento)
 usam `SUPABASE_SERVICE_ROLE_KEY` via `createServiceSupabaseClient()`.

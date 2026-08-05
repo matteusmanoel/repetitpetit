@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { PhoneInput } from "@/components/shared/PhoneInput";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -47,17 +48,12 @@ export function CheckoutContactSection({
         htmlFor="phone"
         error={errors.phone}
       >
-        <Input
+        <PhoneInput
           id="phone"
           name="phone"
-          type="tel"
-          inputMode="numeric"
-          autoComplete="tel"
           value={values.phone}
-          onChange={(event) =>
-            onChange("phone", event.target.value.replace(/\D/g, ""))
-          }
-          placeholder="45999999999"
+          onValueChange={(digits) => onChange("phone", digits)}
+          placeholder="(45) 99999-9999"
           className="h-11"
           aria-invalid={Boolean(errors.phone)}
         />

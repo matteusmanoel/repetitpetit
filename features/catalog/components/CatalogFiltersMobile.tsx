@@ -14,7 +14,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { CatalogFilters } from "@/features/catalog/components/CatalogFilters";
-import { getActiveFilterChips } from "@/features/catalog/filters";
+import {
+  EMPTY_CATALOG_FILTERS,
+  getActiveFilterChips,
+} from "@/features/catalog/filters";
 import { useCatalogFilters } from "@/features/catalog/use-catalog-filters";
 
 type CatalogFiltersMobileProps = {
@@ -23,14 +26,18 @@ type CatalogFiltersMobileProps = {
 
 /**
  * Drawer inferior de filtros para mobile/tablet (docs/05-ux-direction.md).
- * Reusa o `Sheet` (side="bottom") já usado em `BrandMultiSelect`/`CartSheet`
- * em vez de instalar um componente `Drawer` (vaul) novo — mesma primitiva,
- * zero dependência extra.
+ * Footer sticky com “Ver resultados”. Oculta o trigger quando não há acervo
+ * e nenhum filtro ativo (empty state sem controles mortos).
  */
 export function CatalogFiltersMobile({ brands }: CatalogFiltersMobileProps) {
   const [open, setOpen] = useState(false);
-  const { filters } = useCatalogFilters();
+  const { filters, replaceFilters } = useCatalogFilters();
   const activeCount = getActiveFilterChips(filters).length;
+  const hideTrigger = brands.length === 0 && activeCount === 0;
+
+  if (hideTrigger) {
+    return null;
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -51,17 +58,27 @@ export function CatalogFiltersMobile({ brands }: CatalogFiltersMobileProps) {
       </SheetTrigger>
       <SheetContent
         side="bottom"
-        className="max-h-[88vh] gap-0 overflow-y-auto p-0"
+        className="flex max-h-[88vh] flex-col gap-0 overflow-hidden p-0"
       >
-        <SheetHeader className="border-b border-border px-4 py-4 text-left">
+        <SheetHeader className="shrink-0 border-b border-border px-4 py-4 text-left">
           <SheetTitle className="font-heading text-lg">Filtros</SheetTitle>
         </SheetHeader>
 
-        <div className="px-4 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <CatalogFilters brands={brands} />
         </div>
 
-        <SheetFooter className="border-t border-border">
+        <SheetFooter className="shrink-0 gap-2 border-t border-border bg-background sm:flex-col">
+          {activeCount > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 w-full rounded-full"
+              onClick={() => replaceFilters(EMPTY_CATALOG_FILTERS)}
+            >
+              Limpar filtros
+            </Button>
+          ) : null}
           <Button
             type="button"
             size="lg"

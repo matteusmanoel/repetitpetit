@@ -181,4 +181,9 @@ Após subir o ambiente:
 
 6. **Inventário real**: Admin → Produtos → Importar (`docs/admin-xlsx-import-template.md`).
 
+7. **Impressora térmica de etiquetas** (quando o hardware estiver plugado):
+   ver [`docs/thermal-label-print.md`](thermal-label-print.md) — fluxo Admin →
+   Etiqueta → Imprimir, tamanho 58×40 mm, drivers e fallback PDF.
+
+
 Gate VIP / smoke / Lighthouse: `docs/11-soft-launch.md`.

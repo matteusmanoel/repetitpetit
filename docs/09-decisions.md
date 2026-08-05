@@ -1874,3 +1874,17 @@ gerados a partir de `public/brand/logo.png`.
 etiqueta mesmo com secret errado; handoff: aplicar migration remota +
 alinhar `NEXT_PUBLIC_STORE_NAME=Repeti Petit` no dashboard.
 
+
+---
+
+## D94 — Doc operacional: impressão térmica de etiquetas
+
+**Data**: 2026-08-05
+**Contexto**: Soft launch (#101). Hardware térmico chega depois; PDF/browser
+print já existem (D81). Equipe precisa de passos do zero sem secrets.
+**Decisão**: Documentar em `docs/thermal-label-print.md` (tamanho 58×40 mm,
+fluxo Admin → Etiqueta → Imprimir, opções de driver, fallback PDF, sem QZ
+Tray no MVP). Link a partir de `docs/07-setup.md`.
+**Consequência**: Ops configura impressora sem código novo; bridge nativo
+continua fora de escopo.
+

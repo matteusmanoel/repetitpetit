@@ -8,6 +8,7 @@ import {
   type CatalogFilters,
   resolveEffectiveSizeGroups,
 } from "./filters";
+import { mergeRelatedProducts } from "./related-products";
 import type { CatalogProduct, ProductDetail, ProductImage } from "./types";
 
 type SizeGroup = Database["public"]["Enums"]["size_group"];
@@ -132,6 +133,7 @@ type ProductDetailRow = {
   quantity: number;
   status: Database["public"]["Enums"]["product_status"];
   created_at: string;
+  category_id: string | null;
   product_images:
     | {
         id: string;
@@ -168,6 +170,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
       quantity,
       status,
       created_at,
+      category_id,
       product_images ( id, image_url, alt_text, sort_order )
     `,
     )
@@ -187,33 +190,64 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
 }
 
 /**
- * Peças relacionadas por `size_group` e `gender` (excluindo a atual).
+ * Peças relacionadas: primeiro size_group+gender; se faltar, completa com
+ * mesmo gender, depois mesma faixa (size_group), depois mesma categoria.
  * Inclui hold para exibir Reservada no carrossel.
  */
 export async function getRelatedProducts(options: {
   productId: string;
   sizeGroup: SizeGroup;
   gender: ProductGender;
+  categoryId?: string | null;
   limit?: number;
 }): Promise<CatalogProduct[]> {
-  const { productId, sizeGroup, gender, limit = 8 } = options;
+  const { productId, sizeGroup, gender, categoryId, limit = 8 } = options;
   const supabase = await createServerSupabaseClient();
 
-  const { data, error } = await supabase
-    .from("products")
-    .select(CATALOG_SELECT)
-    .in("status", [...CATALOG_STATUSES])
-    .eq("size_group", sizeGroup)
-    .eq("gender", gender)
-    .neq("id", productId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  async function query(extra: {
+    sizeGroup?: SizeGroup;
+    gender?: ProductGender;
+    categoryId?: string;
+  }): Promise<CatalogProduct[]> {
+    let q = supabase
+      .from("products")
+      .select(CATALOG_SELECT)
+      .in("status", [...CATALOG_STATUSES])
+      .neq("id", productId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-  if (error) {
-    throw new Error(`Falha ao carregar peças relacionadas: ${error.message}`);
+    if (extra.sizeGroup) q = q.eq("size_group", extra.sizeGroup);
+    if (extra.gender) q = q.eq("gender", extra.gender);
+    if (extra.categoryId) q = q.eq("category_id", extra.categoryId);
+
+    const { data, error } = await q;
+    if (error) {
+      throw new Error(`Falha ao carregar peças relacionadas: ${error.message}`);
+    }
+    return data ?? [];
   }
 
-  return data ?? [];
+  const primary = await query({ sizeGroup, gender });
+  if (primary.length >= limit) {
+    return primary.slice(0, limit);
+  }
+
+  const byGender = await query({ gender });
+  const bySize = await query({ sizeGroup });
+  const byCategory =
+    categoryId != null && categoryId !== ""
+      ? await query({ categoryId })
+      : [];
+
+  return mergeRelatedProducts(
+    productId,
+    limit,
+    primary,
+    byGender,
+    bySize,
+    byCategory,
+  );
 }
 
 function mapProductDetail(row: ProductDetailRow): ProductDetail {
@@ -256,6 +290,7 @@ function mapProductDetail(row: ProductDetailRow): ProductDetail {
     quantity: row.quantity,
     status: row.status,
     created_at: row.created_at,
+    category_id: row.category_id,
     images,
   };
 }

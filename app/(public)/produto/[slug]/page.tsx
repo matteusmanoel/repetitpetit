@@ -57,6 +57,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       productId: product.id,
       sizeGroup: product.size_group,
       gender: product.gender,
+      categoryId: product.category_id,
     }),
   ]);
 

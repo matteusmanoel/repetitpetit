@@ -128,13 +128,15 @@ Badge vermelho/coral (`--destructive`) visível sem scroll:
 Uma única página (não multi-step no mobile).
 Seções colapsáveis em mobile, layout `grid-cols-[1fr_380px]` em desktop.
 
-1. **Contato**: nome completo + telefone (obrigatório; sem e-mail obrigatório)
+1. **Contato**: nome completo + telefone (obrigatório) + **e-mail obrigatório**
+   (D69 / D77 / SN-12 — base para Customer e notificações; sem login comprador)
 2. **Fulfillment**: tabs "Retirada" / "Entrega" (radio cards com ícone)
    - Se entrega: campo CEP → ViaCEP preenche o restante → taxa de entrega exibida
 3. **Resumo do pedido**: itens com foto, subtotal, frete, total
 4. **Pagamento**: botão "Pagar com Mercado Pago" (abre Checkout Pro)
 
 Nenhum campo redundante. Nenhum login obrigatório.
+Telefone com máscara BR no input e no display (`formatPhoneBr` / #113).
 
 ---
 
@@ -166,7 +168,7 @@ Nenhum campo redundante. Nenhum login obrigatório.
 
 ### Step 1 — Apresentação
 Headline: "Seus filhos cresceram. As peças merecem um novo lar."
-Sub: "Venda ou troque com a gente em 3 passos simples."
+Sub: "Venda ou troque com a gente em 4 passos simples."
 CTA: "Quero desapegar" → avança para step 2.
 
 ### Step 2 — Dados pessoais

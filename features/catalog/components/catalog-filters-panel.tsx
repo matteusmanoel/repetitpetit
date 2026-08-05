@@ -14,11 +14,13 @@ export async function CatalogFiltersPanel() {
 
   return (
     <>
-      <aside className="hidden lg:sticky lg:top-24 lg:block">
-        <Suspense fallback={<FiltersSidebarFallback />}>
-          <CatalogFilters brands={brands} />
-        </Suspense>
-      </aside>
+      {brands.length > 0 ? (
+        <aside className="hidden lg:sticky lg:top-24 lg:block">
+          <Suspense fallback={<FiltersSidebarFallback />}>
+            <CatalogFilters brands={brands} />
+          </Suspense>
+        </aside>
+      ) : null}
 
       <div className="lg:hidden">
         <Suspense fallback={null}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
 import {
@@ -26,8 +26,6 @@ type CatalogStatusRealtimeProps = {
  */
 export function CatalogStatusRealtime({ productId }: CatalogStatusRealtimeProps) {
   const router = useRouter();
-  const productIdRef = useRef(productId);
-  productIdRef.current = productId;
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient();
@@ -48,10 +46,6 @@ export function CatalogStatusRealtime({ productId }: CatalogStatusRealtimeProps)
         (payload) => {
           const previous = payload.old as ProductStatusChangePayload | undefined;
           const next = payload.new as ProductStatusChangePayload | undefined;
-
-          if (productIdRef.current && next?.id && next.id !== productIdRef.current) {
-            return;
-          }
 
           if (!shouldRefreshCatalogForProductChange(previous, next)) {
             return;

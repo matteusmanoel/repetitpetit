@@ -1829,3 +1829,29 @@ com sessão active já existente e vazia), chamar
 `supabase/migrations/20260805050000_reserve_hold_item_no_empty_session.sql`.
 Orquestrador aplica no projeto `wcgpamsvnhpgonxzbzlg` após merge; smoke
 concorrente (0 sessões vazias) em WAVES-soft-launch.
+
+---
+
+## D92 — pending_payment online TTL 10 min + auto-cancel (issue #99)
+
+**Data**: 2026-08-05
+**Contexto**: Pedido online abandonado em `pending_payment` (cliente não conclui
+MP) deixava a Peça em `hold` via Hold Session convertida sem liberação
+automática. Soft-launch exige TTL curto e honestidade de inventário. D29 ainda
+documentava `orders.expires_at` DEFAULT de 30 minutos como TTL de pagamento —
+desalinhado do gate de 10 min.
+**Decisão**: (1) TTL **10 minutos** após criação do pedido (`orders.expires_at`
+DEFAULT + constante `PENDING_PAYMENT_TTL_MINUTES` + `createOrderAction`).
+(2) Job `expire_due_pending_payment_orders()` (pg_cron `* * * * *` + Edge
+`expire-pending-payment-orders`) cancela só `channel = online` +
+`pending_payment` com `expires_at <= now()`. (3) Inventário: SN-02
+`_finalize_hold_session` na sessão `converted` ligada por
+`checkout_order_id` — sem reinventar sold (SN-05). (4) Status do pedido =
+`cancelled` + `order_events.cancelled_by_payment_ttl` para preservar SN-06
+`reconcileLatePayment` em late webhook (não usar `expired`, que só espelha
+payment fields). (5) POS `channel = store` nunca é tocado.
+**Consequência**: Migration
+`supabase/migrations/20260805120100_expire_pending_payment_orders.sql` —
+orquestrador aplica no remoto + agenda/deploy Edge se necessário. D29 TTL de
+reserva (20 min hold) permanece; só o relógio de pagamento do pedido muda.
+

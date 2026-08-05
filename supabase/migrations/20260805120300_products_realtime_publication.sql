@@ -1,6 +1,9 @@
--- #98 — Public catalog/PDP Realtime for products.status hold↔available.
+-- #98 / D96 — Public catalog/PDP Realtime for products.status hold↔available.
 -- Idempotent ADD to supabase_realtime. Orchestrator applies remotely after merge.
--- Relies on #97 anon SELECT available|hold so RLS allows event delivery.
+-- Relies on #97 / D95 anon SELECT available|hold so RLS allows event delivery.
+-- REPLICA IDENTITY FULL so Realtime payloads include old.status (hold↔available toast).
+
+ALTER TABLE public.products REPLICA IDENTITY FULL;
 
 DO $$
 BEGIN

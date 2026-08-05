@@ -127,6 +127,34 @@ if (ok.length !== 1) {
   console.log("PASS: single winner");
 }
 
+// #95 — losers must not leave active hold_sessions with 0 items
+const loserSessionIds = results
+  .filter((r) => !(r.status === 200 && r.body?.holdSessionId))
+  .map((r) => r.sessionId);
+if (loserSessionIds.length > 0) {
+  const { data: loserSessions, error: ghostError } = await supabase
+    .from("hold_sessions")
+    .select("id, session_id, status, hold_items(id)")
+    .in("session_id", loserSessionIds)
+    .eq("status", "active");
+
+  if (ghostError) {
+    console.error("FAIL: could not query loser sessions", ghostError);
+    process.exitCode = 1;
+  } else {
+    const ghosts = (loserSessions ?? []).filter(
+      (row) => !Array.isArray(row.hold_items) || row.hold_items.length === 0,
+    );
+    console.log("--- empty active sessions from losers ---", ghosts.length);
+    if (ghosts.length !== 0) {
+      console.error("FAIL: ghost empty active hold_sessions", ghosts);
+      process.exitCode = 1;
+    } else {
+      console.log("PASS: no empty active sessions from losers");
+    }
+  }
+}
+
 const winner = ok[0];
 const sessionCheck = await getSession(winner.sessionId);
 console.log("winner session GET", sessionCheck.status, {

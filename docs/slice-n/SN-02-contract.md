@@ -56,6 +56,11 @@ Behavior notes:
 - Clears stale `hold_items` for the product on `expired`/`cancelled` sessions (D14).
 - Auto-expires the caller’s own active session when `expires_at <= now()` before creating a new one.
 - Concurrency: `FOR UPDATE` on product + `UNIQUE(hold_items.product_id)`.
+- **#95 / D91**: create `hold_sessions` only after the Peça is confirmed `available`;
+  on `unique_violation` / unavailable, cancel any empty active session for the
+  caller (`_finalize_hold_session(..., 'cancelled')`). Losers must leave **0**
+  active sessions with zero `hold_items`. Migration:
+  `20260805050000_reserve_hold_item_no_empty_session.sql`.
 
 ### `release_hold_item` responses
 

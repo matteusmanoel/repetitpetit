@@ -1809,3 +1809,23 @@ só `/api/hold/*`; remove-se o client morto `releaseReservationClient`.
 QA assertem 410 nas rotas legadas; Hold continua em `qa-hold-stress.mjs`.
 **Consequência**: Única via HTTP de reserva de Peça = Hold Session. Contrato
 SN-02 atualizado. Sem migration.
+
+---
+
+## D91 — `reserve_hold_item` não deixa Hold Session active vazia em conflict
+
+**Data**: 2026-08-05
+**Contexto**: Soft-launch (#95). Em corrida N:1 pela mesma Peça, perdedores
+recebiam `unavailable` mas a RPC já tinha feito `INSERT` em `hold_sessions`
+antes do `hold_items` / check de disponibilidade — sessões fantasma `active`
+com 0 itens sob carga.
+**Decisão**: (1) Confirmar `products.status = available` (com `FOR UPDATE`)
+**antes** de criar `hold_sessions`. (2) Em `unique_violation` (ou unavailable
+com sessão active já existente e vazia), chamar
+`_finalize_hold_session(..., 'cancelled')` — nunca retornar conflict deixando
+`active` + 0 `hold_items`. (3) Respostas da RPC e contrato SN-02
+(`ok` / `unavailable` / `limit_reached`) permanecem iguais.
+**Consequência**: Migration aditiva
+`supabase/migrations/20260805050000_reserve_hold_item_no_empty_session.sql`.
+Orquestrador aplica no projeto `wcgpamsvnhpgonxzbzlg` após merge; smoke
+concorrente (0 sessões vazias) em WAVES-soft-launch.

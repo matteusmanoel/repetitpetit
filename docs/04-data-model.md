@@ -453,7 +453,7 @@ CREATE TABLE imports_log (
 
 | Tabela | anon (público) | service_role (server actions/webhooks) |
 |---|---|---|
-| `products` | SELECT WHERE status = 'available' | full access |
+| `products` | SELECT WHERE status IN ('available', 'hold') | full access |
 | `categories` | SELECT WHERE is_active = true | full access |
 | `banners` | SELECT WHERE is_active = true | full access |
 | `orders` | INSERT (criar pedido) | full access |

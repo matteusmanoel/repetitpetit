@@ -174,6 +174,26 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
       )}
       aria-busy={isPending || undefined}
     >
+      <FilterSection title="Disponibilidade">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/60 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
+          <input
+            type="checkbox"
+            className="size-5 shrink-0 rounded border-border accent-primary"
+            checked={filters.soDisponiveis}
+            onChange={() =>
+              replaceFilters({
+                ...filters,
+                soDisponiveis: !filters.soDisponiveis,
+              })
+            }
+          />
+          <span>Só disponíveis</span>
+        </label>
+        <p className="text-xs text-muted-foreground sm:text-sm">
+          Por padrão o catálogo também mostra peças reservadas.
+        </p>
+      </FilterSection>
+
       <FilterSection title="Tamanho">
         <div
           className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]"

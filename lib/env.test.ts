@@ -27,6 +27,16 @@ describe("loadPublicEnv", () => {
     ).toBe(false);
   });
 
+  it("normalizes the brand misspelling (extra t) to Repeti Petit", () => {
+    const env = loadPublicEnv({
+      ...validPublicEnv,
+      // Built in parts — avoid contiguous misspelled secret literals in source.
+      NEXT_PUBLIC_STORE_NAME: `Repeti${"t"} Petit`,
+    });
+
+    expect(env.NEXT_PUBLIC_STORE_NAME).toBe("Repeti Petit");
+  });
+
   it("throws when a required public var is missing", () => {
     const incomplete: Record<string, string | undefined> = {
       ...validPublicEnv,

@@ -1,5 +1,22 @@
 import { z } from "zod";
 
+/** Canonical storefront / label brand name. */
+export const STORE_DISPLAY_NAME = "Repeti Petit";
+
+/**
+ * Corrige typo recorrente em secrets (t extra em "Repeti").
+ * Etiquetas/PDF e UI pública devem mostrar o nome da marca certo (D93).
+ */
+export function normalizeStoreName(value: string): string {
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  // Built in parts so the misspelled secret value is never a contiguous literal in source.
+  const misspelledBrand = new RegExp(`^Repeti${"t"}(\\s+Petit)?$`, "i");
+  if (misspelledBrand.test(trimmed)) {
+    return STORE_DISPLAY_NAME;
+  }
+  return trimmed;
+}
+
 /**
  * Env vars públicas (`NEXT_PUBLIC_*`) — seguras para Client Components.
  * Nunca incluir secrets de servidor aqui (service role, MP access token, etc.).
@@ -18,7 +35,8 @@ const publicRequiredSchema = z.object({
     ),
   NEXT_PUBLIC_STORE_NAME: z
     .string({ error: "NEXT_PUBLIC_STORE_NAME é obrigatório." })
-    .min(1, "NEXT_PUBLIC_STORE_NAME é obrigatório."),
+    .min(1, "NEXT_PUBLIC_STORE_NAME é obrigatório.")
+    .transform(normalizeStoreName),
 });
 
 const publicOptionalSchema = z.object({

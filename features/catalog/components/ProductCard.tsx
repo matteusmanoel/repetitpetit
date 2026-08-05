@@ -42,9 +42,18 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           alt={product.name}
           priority={priority}
         />
-        {product.quantity === 1 ? (
+        {product.status === "hold" ? (
+          <Badge className="absolute top-2 left-2 z-10 h-auto rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold tracking-wide text-foreground uppercase shadow-sm ring-1 ring-border">
+            Reservada
+          </Badge>
+        ) : product.quantity === 1 ? (
           <Badge className="absolute top-2 left-2 z-10 h-auto rounded-full bg-destructive px-2.5 py-1 text-[11px] font-bold tracking-wide text-destructive-foreground uppercase shadow-sm">
             Peça única
+          </Badge>
+        ) : null}
+        {product.status === "hold" && product.quantity === 1 ? (
+          <Badge className="absolute top-2 right-2 z-10 h-auto rounded-full bg-destructive/90 px-2 py-0.5 text-[10px] font-bold tracking-wide text-destructive-foreground uppercase shadow-sm">
+            Única
           </Badge>
         ) : null}
       </div>

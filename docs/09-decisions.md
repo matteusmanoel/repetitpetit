@@ -1888,3 +1888,45 @@ Tray no MVP). Link a partir de `docs/07-setup.md`.
 **Consequência**: Ops configura impressora sem código novo; bridge nativo
 continua fora de escopo.
 
+---
+
+## D95 — Catálogo/PDP: anon SELECT `hold` + Reservada (dona vs outras)
+
+**Data**: 2026-08-05
+**Contexto**: Soft go-live (#97). Peças em Hold sumiam do catálogo/PDP porque
+RLS anon só permitia `status = available`. Grill: jornada sem login; dona vê
+countdown/Finalizar/Liberar; outras veem **Reservada** sem TTL alheio; fechar
+browser não libera (só TTL ou Liberar via SN-02).
+**Decisão**: (1) RLS anon `products` / `product_images`: `status IN
+('available','hold')` — sem expor `hold_sessions`/`hold_items`/PII.
+(2) Catálogo padrão = available+hold; filtro URL `disponiveis=1` = só available.
+(3) PDP: `resolvePdpPurchaseState` — own → countdown + Finalizar + Liberar
+(confirm) + Voltar (`history.back()` senão `/catalogo`); other → Reservada
+sem compra; consume `POST /api/hold/release` (SN-02), não reimplementa reserve.
+(4) Card mostra badge **Reservada** quando `status=hold`. (5) Home novidades
+permanece só `available`.
+**Consequência**: Migration
+`20260805120200_products_anon_select_hold.sql` — orchestrator aplica no projeto
+remoto. Realtime hold↔available = #98 / D96.
+
+
+---
+
+## D96 — Catálogo/PDP Realtime hold↔available (toast + refresh)
+
+**Data**: 2026-08-05
+**Contexto**: Soft go-live (#98). Com catálogo/PDP abertos, mudanças
+hold↔available precisam refletir sem F5. Toast preferido; update silencioso
+aceitável.
+**Decisão**: (1) `CatalogStatusRealtime` assina `products` UPDATE via anon
+browser client — catálogo: canal único sem filtro de id; PDP: `id=eq.<uuid>`.
+(2) Helpers puros em `catalog-realtime.ts` decidem refresh + copy toast
+(“Peça disponível de novo” / “Peça reservada”); falha de toast → só
+`router.refresh()`. (3) Publication `supabase_realtime` inclui `products`
+(migration idempotente) + `REPLICA IDENTITY FULL` para `payload.old.status`.
+Depende de D95 (RLS anon hold|available) para entrega de eventos.
+**Consequência**: Migration
+`20260805120300_products_realtime_publication.sql` — orchestrator aplica.
+Sem waitlist / WhatsApp.
+
+

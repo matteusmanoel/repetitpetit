@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PENDING_PAYMENT_TTL_MINUTES } from "@/features/orders/constants";
-import {
-  planPendingPaymentExpire,
-  planPendingPaymentExpireOutcome,
-} from "@/features/orders/expire-pending-payment";
+/**
+ * Issue #99 — pending_payment TTL expire contract tests.
+ * Live SQL semantics: expire_due_pending_payment_orders() (orchestrator applies).
+ */
 
 vi.mock("server-only", () => ({}));
 
@@ -13,6 +12,13 @@ const rpc = vi.fn();
 vi.mock("@/lib/supabase/server-service", () => ({
   createServiceSupabaseClient: () => ({ rpc }),
 }));
+
+import { PENDING_PAYMENT_TTL_MINUTES } from "@/features/orders/constants";
+import {
+  expireDuePendingPaymentOrders,
+  planPendingPaymentExpire,
+  planPendingPaymentExpireOutcome,
+} from "@/features/orders/expire-pending-payment";
 
 describe("PENDING_PAYMENT_TTL_MINUTES", () => {
   it("is documented as 10 minutes (issue #99 / D92)", () => {
@@ -108,10 +114,6 @@ describe("expireDuePendingPaymentOrders RPC contract", () => {
       error: null,
     });
 
-    const { expireDuePendingPaymentOrders } = await import(
-      "@/features/orders/expire-pending-payment"
-    );
-
     await expect(expireDuePendingPaymentOrders()).resolves.toEqual({
       status: "ok",
       expired_count: 1,
@@ -131,10 +133,6 @@ describe("expireDuePendingPaymentOrders RPC contract", () => {
       },
       error: null,
     });
-
-    const { expireDuePendingPaymentOrders } = await import(
-      "@/features/orders/expire-pending-payment"
-    );
 
     await expect(expireDuePendingPaymentOrders()).resolves.toMatchObject({
       status: "ok",

@@ -166,14 +166,26 @@ Após subir o ambiente:
    **Homologação / credenciais de teste**:
    - Access Token de teste pode ser `TEST-…` **ou** `APP_USR-…` ligado a um
      usuário com tag `test_user` (painel → Credenciais de teste).
-   - Pagamento: use **cartões de teste** (titular `APRO` + CPF `12345678909`)
-     ou login com **TESTUSER** comprador — conta MP real + vendedor teste
-     falha com “Uma das partes … é de teste”.
+   - Com credenciais de teste, defina **`MERCADOPAGO_SANDBOX=1`** no Vercel
+     (Production + Preview) e **redeploy**. Sem isso o Checkout Pro pode abrir
+     `www.mercadopago.com.br` e falhar mesmo em aba anônima com
+     “Uma das partes … é de teste”.
+   - Confirme na URL do redirect: host = **`sandbox.mercadopago.com.br`**.
+   - Pagamento no sandbox:
+     1. **Não** faça login com conta Mercado Pago **real** (nem Google/Apple da
+        conta pessoal) — MP exige comprador de teste quando o vendedor é teste
+        ([contas de teste](https://www.mercadopago.com.br/developers/pt/docs/your-integrations/test/accounts)).
+     2. Prefira **checkout convidado** + cartão de teste: Mastercard
+        `5480 8328 0103 3311`, titular `APRO`, CPF `12345678909`, CVV `123`,
+        validade `11/30`.
+     3. Ou crie um usuário **Comprador** em Suas integrações → Contas de teste
+        (precisa estar logado com a conta **produtiva** do Devsite) e entre com
+        o username/senha gerados.
    - O botão “Simular notificação” do painel envia `data.id=123456` (pagamento
      inexistente). O webhook deve responder **200 ignored** (`payment_not_found`),
      não 500. Pagamentos reais usam id válido e seguem o fluxo normal.
-   - Opcional: `MERCADOPAGO_SANDBOX=1` no Vercel/local para forçar
-     `sandbox_init_point` (também detectado via `/users/me`).
+   - Smoke automatizado (sandbox host): `node scripts/qa-mp-pref-hosts.mjs` e
+     `node scripts/qa-buyer-journey-prod.mjs` (requer Playwright + Chrome).
 
 5. **Configurar redirect URLs no Supabase Auth**:
    Site URL: `https://seu-dominio.vercel.app`

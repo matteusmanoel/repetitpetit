@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * Corpo de `POST /api/cart/reserve`, `POST /api/cart/release`,
- * `POST /api/hold/reserve` e release de um item em `POST /api/hold/release`.
+ * Corpo de `POST /api/hold/reserve` e release de um item em
+ * `POST /api/hold/release`. (Rotas `/api/cart/*` estão 410 Gone — #96.)
  */
 export const cartProductBodySchema = z.object({
   productId: z.uuid("productId deve ser um UUID válido."),

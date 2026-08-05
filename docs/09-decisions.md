@@ -1792,3 +1792,20 @@ TESTUSER comprador enquanto o seller for teste; doc em `docs/07-setup.md`.
 **Consequência**: Homologação sem misturar prod/test; simulador do painel
 verde; produção real continua falhando alto em erros de processamento
 genuínos.
+
+---
+
+## D90 — Legacy `/api/cart/reserve|release` → 410 Gone
+
+**Data**: 2026-08-05
+**Contexto**: Issue #96. SN-04 / D79 já apontam PDP e CartSheet para Hold
+Session (`/api/hold/*`). Rotas legadas ainda mutavam `cart_reservations`,
+risco de lock paralelo à verdade SN-02.
+**Decisão**: (1) `POST /api/cart/reserve` e `POST /api/cart/release` respondem
+**410** com `{ error: "gone", message }` em PT-BR apontando Hold Session —
+sem ler/gravar `cart_reservations` nem inventário. (2) UI comprador já usa
+só `/api/hold/*`; remove-se o client morto `releaseReservationClient`.
+(3) Tabela `cart_reservations` permanece (drop fora de escopo). (4) Smokes /
+QA assertem 410 nas rotas legadas; Hold continua em `qa-hold-stress.mjs`.
+**Consequência**: Única via HTTP de reserva de Peça = Hold Session. Contrato
+SN-02 atualizado. Sem migration.

@@ -180,7 +180,7 @@ if (filler.length >= 5 && products.length >= 6) {
   if (winner) await release(winner.sessionId, productId);
 }
 
-// Dual-read: legacy cart still present?
+// Legacy cart must be Gone (#96) — Hold Session is the only inventory lock.
 const legacy = await fetch(`${baseUrl}/api/cart/reserve`, {
   method: "POST",
   headers: {
@@ -191,16 +191,25 @@ const legacy = await fetch(`${baseUrl}/api/cart/reserve`, {
 });
 const legacyBody = await legacy.json().catch(() => ({}));
 console.log("--- legacy /api/cart/reserve ---", legacy.status, legacyBody?.error ?? "ok?");
-if (legacy.status === 200) {
-  console.log("NOTE: legacy cart reserve still succeeds (dual-write risk)");
-  await fetch(`${baseUrl}/api/cart/release`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      cookie: cookieFor("noop"),
-    },
-    body: JSON.stringify({ productId: products[products.length - 1].id }),
-  }).catch(() => {});
+if (legacy.status !== 410 || legacyBody?.error !== "gone") {
+  console.error("FAIL: expected legacy /api/cart/reserve → 410 gone");
+  process.exitCode = 1;
+} else {
+  console.log("PASS: legacy cart 410");
+}
+
+const legacyRelease = await fetch(`${baseUrl}/api/cart/release`, {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    cookie: cookieFor("noop"),
+  },
+  body: JSON.stringify({ productId: products[products.length - 1].id }),
+});
+const legacyReleaseBody = await legacyRelease.json().catch(() => ({}));
+if (legacyRelease.status !== 410 || legacyReleaseBody?.error !== "gone") {
+  console.error("FAIL: expected legacy /api/cart/release → 410 gone");
+  process.exitCode = 1;
 }
 
 const { data: statusRow } = await supabase

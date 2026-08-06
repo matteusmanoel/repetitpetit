@@ -7,7 +7,7 @@ const validPublicEnv = {
   NEXT_PUBLIC_SUPABASE_URL: "https://example-project.supabase.co",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",
   NEXT_PUBLIC_SITE_URL: "https://repetipetit.com.br",
-  NEXT_PUBLIC_STORE_NAME: "Repeti Petite",
+  NEXT_PUBLIC_STORE_NAME: "Repeti Petit",
 };
 
 const validRequiredEnv = {
@@ -27,25 +27,25 @@ describe("loadPublicEnv", () => {
     ).toBe(false);
   });
 
-  it("normalizes brand variants to Repeti Petite (canonical)", () => {
+  it("normalizes brand variants to Repeti Petit (canonical)", () => {
     for (const variant of [
-      "Repeti Petit",
+      "Repeti Petite",
       "Repetit Petit",
       "Repetit Petite",
-      "repeti petite",
+      "repeti petit",
     ]) {
       const env = loadPublicEnv({
         ...validPublicEnv,
         NEXT_PUBLIC_STORE_NAME: variant,
       });
-      expect(env.NEXT_PUBLIC_STORE_NAME).toBe("Repeti Petite");
+      expect(env.NEXT_PUBLIC_STORE_NAME).toBe("Repeti Petit");
     }
   });
 
-  it("keeps Repeti Petite unchanged", () => {
+  it("keeps Repeti Petit unchanged", () => {
     const env = loadPublicEnv(validPublicEnv);
 
-    expect(env.NEXT_PUBLIC_STORE_NAME).toBe("Repeti Petite");
+    expect(env.NEXT_PUBLIC_STORE_NAME).toBe("Repeti Petit");
   });
 
   it("throws when a required public var is missing", () => {
@@ -86,7 +86,7 @@ describe("loadEnv", () => {
   it("succeeds when only the always-required vars are present", () => {
     const env = loadEnv(validRequiredEnv);
 
-    expect(env.NEXT_PUBLIC_STORE_NAME).toBe("Repeti Petite");
+    expect(env.NEXT_PUBLIC_STORE_NAME).toBe("Repeti Petit");
     expect(env.MERCADOPAGO_ACCESS_TOKEN).toBeUndefined();
     expect(env.NEXT_PUBLIC_STORE_WHATSAPP).toBeUndefined();
   });

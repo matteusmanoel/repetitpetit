@@ -36,7 +36,7 @@ Configure no [Cloud Agents → Secrets](https://cursor.com/dashboard/cloud-agent
 1. `NEXT_PUBLIC_SUPABASE_URL`
 2. `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 3. `NEXT_PUBLIC_SITE_URL` — ex.: `https://repetitpetit.vercel.app` ou alias real
-4. `NEXT_PUBLIC_STORE_NAME` — **`Repeti Petite`** (marca real; loader corrige variantes Repetit/Petit — D99)
+4. `NEXT_PUBLIC_STORE_NAME` — **`Repeti Petit`** (marca real; loader corrige Repetit/Petite — D100)
 5. `SUPABASE_SERVICE_ROLE_KEY`
 
 Adicione MP quando o issue tocar checkout/webhook.

@@ -1984,17 +1984,14 @@ ticket não força PIX a aparecer se a conta não o oferece.
 
 ---
 
-## D99 — Marca canônica Repeti Petite (corrige D98)
+## D100 — Marca canônica Repeti Petit (fecha D93/D98/D99)
 
 **Data**: 2026-08-06
-**Contexto**: D98 fixou `Repetit Petit` (dois t). Operador confirma a marca
-real: **Repeti Petite** — um t em *Repeti*, *Petite* com e final.
-**Decisão**: (1) `STORE_DISPLAY_NAME` / `normalizeStoreName` → `Repeti Petite`.
-Variantes `Repetit Petit`, `Repetit Petite`, `Repeti Petit` normalizam para o
-canônico. (2) Vercel `NEXT_PUBLIC_STORE_NAME=Repeti Petite` (Production +
-Preview). (3) Mercado Pago não tem campo de “nome da loja” separado — só
-`statement_descriptor` na preference (já usa `NEXT_PUBLIC_STORE_NAME`);
-exclusão de boleto (D98) permanece. (4) Sandbox MP permanece até paid→sold.
-**Consequência**: Etiquetas/PDF/descriptor corretos após redeploy. Copy
-hardcoded "Repeti Petit" na UI ainda é follow-up.
+**Contexto**: Oscilação de spelling (Repetit / Petite). Operador confirma:
+marca real = **Repeti Petit** (um t em *Repeti*; *Petit* sem e).
+**Decisão**: (1) `STORE_DISPLAY_NAME` / `normalizeStoreName` → `Repeti Petit`.
+Variantes `Repetit Petit`, `Repetit Petite`, `Repeti Petite` → canônico.
+(2) Vercel `NEXT_PUBLIC_STORE_NAME=Repeti Petit` (Production + Preview).
+(3) MP `statement_descriptor` segue o env; exclusão de boleto (D98) permanece.
+**Consequência**: D93 direção correta para o nome; D98/D99 supersedidos neste ponto.
 

@@ -123,7 +123,7 @@ export function buildPreferenceBody(
     external_reference: sanitizeExternalReference(input.externalReference),
     notification_url: notificationUrl,
     statement_descriptor: truncate(
-      storeName.replace(/[^a-zA-Z0-9 ]/g, "").trim() || "REPETIT PETIT",
+      storeName.replace(/[^a-zA-Z0-9 ]/g, "").trim() || "REPETI PETITE",
       22,
     ),
     payment_methods: {

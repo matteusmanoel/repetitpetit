@@ -1982,3 +1982,19 @@ UI ainda existem (passagem de copy em follow-up). PIX no sandbox depende
 da conta de teste MP estar habilitada para PIX no Brasil; exclusão de
 ticket não força PIX a aparecer se a conta não o oferece.
 
+---
+
+## D99 — Marca canônica Repeti Petite (corrige D98)
+
+**Data**: 2026-08-06
+**Contexto**: D98 fixou `Repetit Petit` (dois t). Operador confirma a marca
+real: **Repeti Petite** — um t em *Repeti*, *Petite* com e final.
+**Decisão**: (1) `STORE_DISPLAY_NAME` / `normalizeStoreName` → `Repeti Petite`.
+Variantes `Repetit Petit`, `Repetit Petite`, `Repeti Petit` normalizam para o
+canônico. (2) Vercel `NEXT_PUBLIC_STORE_NAME=Repeti Petite` (Production +
+Preview). (3) Mercado Pago não tem campo de “nome da loja” separado — só
+`statement_descriptor` na preference (já usa `NEXT_PUBLIC_STORE_NAME`);
+exclusão de boleto (D98) permanece. (4) Sandbox MP permanece até paid→sold.
+**Consequência**: Etiquetas/PDF/descriptor corretos após redeploy. Copy
+hardcoded "Repeti Petit" na UI ainda é follow-up.
+

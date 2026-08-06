@@ -59,9 +59,12 @@ describe("buildPreferenceBody", () => {
       phone: { number: "45999999999" },
     });
     expect(body).not.toHaveProperty("gift_message");
-    // Sem exclusões → PIX + cartão disponíveis no Checkout Pro.
-    expect(body.payment_methods).toEqual({ installments: 12 });
-    expect(JSON.stringify(body.payment_methods)).not.toContain("excluded");
+    // Boleto (ticket) excluído; PIX (bank_transfer) + cartão permanecem.
+    expect(body.payment_methods).toEqual({
+      installments: 12,
+      excluded_payment_types: [{ id: "ticket" }],
+    });
+    expect(body.statement_descriptor).toBe("Repeti Petit");
   });
 
   it("omite picture_url http e frete zero", () => {

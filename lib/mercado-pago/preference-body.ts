@@ -49,15 +49,19 @@ export type PreferenceRequestBody = {
   notification_url?: string;
   statement_descriptor?: string;
   metadata?: Record<string, string>;
-  /** PIX + cartão ficam disponíveis por padrão no Checkout Pro (sem exclusões). */
+  /**
+   * Cartão + PIX; boleto/ticket excluído (D98).
+   * PIX = payment type `bank_transfer` / method `pix` — não excluir.
+   */
   payment_methods?: {
     installments?: number;
+    excluded_payment_types?: Array<{ id: string }>;
   };
 };
 
 /**
  * Monta o body da Preference API (puro — testável sem rede).
- * Sem gift_message (reuse-map flor). PIX + cartão nativos do Checkout Pro.
+ * Sem gift_message (reuse-map flor). PIX + cartão; boleto excluído (D98).
  */
 export function buildPreferenceBody(
   input: CreatePreferenceInput,
@@ -123,8 +127,9 @@ export function buildPreferenceBody(
       22,
     ),
     payment_methods: {
-      // Cartão com parcelas; PIX permanece disponível (Checkout Pro default).
+      // Cartão com parcelas; PIX (bank_transfer) permanece; boleto = ticket.
       installments: 12,
+      excluded_payment_types: [{ id: "ticket" }],
     },
   };
 

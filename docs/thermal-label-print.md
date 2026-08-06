@@ -89,7 +89,7 @@ o que a loja escolher; não precisa instalar QZ Tray no MVP):
 | Só controles do admin saem na folha | Atualizar a página; o CSS esconde `.label-print-controls` no `@media print` |
 | “Peça sem código RP” | Ativar a peça no admin antes de imprimir |
 | QR não abre Passport | Conferir `NEXT_PUBLIC_SITE_URL` (D16 / D81); SN-11 pode 404 até o Passport estar no ar — o QR ainda deve apontar para a URL correta |
-| Nome da loja errado na etiqueta | Usar `Repeti Petit` em `NEXT_PUBLIC_STORE_NAME` (ver `.env.example` e D93) |
+| Nome da loja errado na etiqueta | Usar `Repeti Petit` em `NEXT_PUBLIC_STORE_NAME` (ver `.env.example` e D100) |
 
 ## Relacionado
 

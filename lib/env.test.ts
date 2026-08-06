@@ -27,12 +27,23 @@ describe("loadPublicEnv", () => {
     ).toBe(false);
   });
 
-  it("normalizes the brand misspelling (extra t) to Repeti Petit", () => {
-    const env = loadPublicEnv({
-      ...validPublicEnv,
-      // Built in parts — avoid contiguous misspelled secret literals in source.
-      NEXT_PUBLIC_STORE_NAME: `Repeti${"t"} Petit`,
-    });
+  it("normalizes brand variants to Repeti Petit (canonical)", () => {
+    for (const variant of [
+      "Repeti Petite",
+      "Repetit Petit",
+      "Repetit Petite",
+      "repeti petit",
+    ]) {
+      const env = loadPublicEnv({
+        ...validPublicEnv,
+        NEXT_PUBLIC_STORE_NAME: variant,
+      });
+      expect(env.NEXT_PUBLIC_STORE_NAME).toBe("Repeti Petit");
+    }
+  });
+
+  it("keeps Repeti Petit unchanged", () => {
+    const env = loadPublicEnv(validPublicEnv);
 
     expect(env.NEXT_PUBLIC_STORE_NAME).toBe("Repeti Petit");
   });

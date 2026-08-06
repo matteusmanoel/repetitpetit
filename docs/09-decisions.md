@@ -1960,5 +1960,38 @@ dígitos; display `(45) 99999-9999` / fixo 10 dígitos. E-mail checkout permanec
 obrigatório (D77).
 **Consequência**: Menos erro de digitação; docs/05 atualizado.
 
+---
 
+## D98 — Marca canônica Repetit Petit + Checkout Pro sem boleto
+
+**Data**: 2026-08-05
+**Contexto**: D93 tratou "Repetit" (dois t) como typo e forçava `Repeti Petit`.
+Operador confirma que a marca real / nome comercial é **Repetit Petit**.
+No Checkout Pro, boleto aparecia e PIX às vezes não (conta sandbox / UI MP);
+D45 deixava preferência sem `excluded_payment_types`. Soft launch permanece
+em **sandbox** até validar paid→sold.
+**Decisão**: (1) `STORE_DISPLAY_NAME` / `normalizeStoreName` canônico =
+`Repetit Petit`; valor `Repeti Petit` (um t) é corrigido para o canônico.
+(2) Preference `payment_methods.excluded_payment_types = [{ id: "ticket" }]`
+remove boleto/lotérica; PIX (`bank_transfer` / `pix`) e cartão ficam.
+(3) Credenciais MP Production **não** trocam nesta entrega — sandbox até
+HITL de pagamento.
+**Consequência**: Etiquetas/statement_descriptor e Vercel env devem usar
+`NEXT_PUBLIC_STORE_NAME=Repetit Petit`. Strings hardcoded "Repeti Petit" na
+UI ainda existem (passagem de copy em follow-up). PIX no sandbox depende
+da conta de teste MP estar habilitada para PIX no Brasil; exclusão de
+ticket não força PIX a aparecer se a conta não o oferece.
+
+---
+
+## D100 — Marca canônica Repeti Petit (fecha D93/D98/D99)
+
+**Data**: 2026-08-06
+**Contexto**: Oscilação de spelling (Repetit / Petite). Operador confirma:
+marca real = **Repeti Petit** (um t em *Repeti*; *Petit* sem e).
+**Decisão**: (1) `STORE_DISPLAY_NAME` / `normalizeStoreName` → `Repeti Petit`.
+Variantes `Repetit Petit`, `Repetit Petite`, `Repeti Petite` → canônico.
+(2) Vercel `NEXT_PUBLIC_STORE_NAME=Repeti Petit` (Production + Preview).
+(3) MP `statement_descriptor` segue o env; exclusão de boleto (D98) permanece.
+**Consequência**: D93 direção correta para o nome; D98/D99 supersedidos neste ponto.
 

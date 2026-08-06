@@ -1,17 +1,16 @@
 import { z } from "zod";
 
-/** Canonical storefront / label brand name. */
+/** Canonical storefront / label brand name (legal/trade: Repeti Petit). */
 export const STORE_DISPLAY_NAME = "Repeti Petit";
 
 /**
- * Corrige typo recorrente em secrets (t extra em "Repeti").
- * Etiquetas/PDF e UI pública devem mostrar o nome da marca certo (D93).
+ * Normaliza o nome da loja no load de env (D100; supersede D93/D98/D99).
+ * Marca real = "Repeti Petit". Variantes com t extra ou Petite → canônico.
  */
 export function normalizeStoreName(value: string): string {
   const trimmed = value.trim().replace(/\s+/g, " ");
-  // Built in parts so the misspelled secret value is never a contiguous literal in source.
-  const misspelledBrand = new RegExp(`^Repeti${"t"}(\\s+Petit)?$`, "i");
-  if (misspelledBrand.test(trimmed)) {
+  // Repeti(t) Petit(e) → Repeti Petit
+  if (/^Repetit?\s+Petite?$/i.test(trimmed)) {
     return STORE_DISPLAY_NAME;
   }
   return trimmed;

@@ -26,7 +26,7 @@ describe("buildPreferenceBody", () => {
         metadata: { order_id: "uuid-1", public_code: "RP-2026-0042" },
       },
       "https://repetipetit.com.br",
-      "Repetit Petit",
+      "Repeti Petit",
     );
 
     expect(body.items).toHaveLength(2);
@@ -64,7 +64,7 @@ describe("buildPreferenceBody", () => {
       installments: 12,
       excluded_payment_types: [{ id: "ticket" }],
     });
-    expect(body.statement_descriptor).toBe("Repetit Petit");
+    expect(body.statement_descriptor).toBe("Repeti Petit");
   });
 
   it("omite picture_url http e frete zero", () => {

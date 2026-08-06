@@ -9,7 +9,7 @@ Referências de produto: D73 / D81 (`docs/09-decisions.md`), rotas admin
 
 ## O que a etiqueta contém
 
-- Nome da loja (`NEXT_PUBLIC_STORE_NAME` / marca **Repetit Petit**)
+- Nome da loja (`NEXT_PUBLIC_STORE_NAME` / marca **Repeti Petit**)
 - QR Code (Passport URL com `staff_code` `RP-…`)
 - Código `RP-…` em texto
 - Nome da peça (uma linha) e tamanho
@@ -89,7 +89,7 @@ o que a loja escolher; não precisa instalar QZ Tray no MVP):
 | Só controles do admin saem na folha | Atualizar a página; o CSS esconde `.label-print-controls` no `@media print` |
 | “Peça sem código RP” | Ativar a peça no admin antes de imprimir |
 | QR não abre Passport | Conferir `NEXT_PUBLIC_SITE_URL` (D16 / D81); SN-11 pode 404 até o Passport estar no ar — o QR ainda deve apontar para a URL correta |
-| Nome da loja errado na etiqueta | Usar `Repetit Petit` em `NEXT_PUBLIC_STORE_NAME` (ver `.env.example` e D98) |
+| Nome da loja errado na etiqueta | Usar `Repeti Petit` em `NEXT_PUBLIC_STORE_NAME` (ver `.env.example` e D100) |
 
 ## Relacionado
 

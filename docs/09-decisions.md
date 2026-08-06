@@ -1982,3 +1982,16 @@ UI ainda existem (passagem de copy em follow-up). PIX no sandbox depende
 da conta de teste MP estar habilitada para PIX no Brasil; exclusão de
 ticket não força PIX a aparecer se a conta não o oferece.
 
+---
+
+## D100 — Marca canônica Repeti Petit (fecha D93/D98/D99)
+
+**Data**: 2026-08-06
+**Contexto**: Oscilação de spelling (Repetit / Petite). Operador confirma:
+marca real = **Repeti Petit** (um t em *Repeti*; *Petit* sem e).
+**Decisão**: (1) `STORE_DISPLAY_NAME` / `normalizeStoreName` → `Repeti Petit`.
+Variantes `Repetit Petit`, `Repetit Petite`, `Repeti Petite` → canônico.
+(2) Vercel `NEXT_PUBLIC_STORE_NAME=Repeti Petit` (Production + Preview).
+(3) MP `statement_descriptor` segue o env; exclusão de boleto (D98) permanece.
+**Consequência**: D93 direção correta para o nome; D98/D99 supersedidos neste ponto.
+

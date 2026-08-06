@@ -1,17 +1,16 @@
 import { z } from "zod";
 
-/** Canonical storefront / label brand name (legal/trade: Repetit Petit). */
-export const STORE_DISPLAY_NAME = "Repetit Petit";
+/** Canonical storefront / label brand name (legal/trade: Repeti Petit). */
+export const STORE_DISPLAY_NAME = "Repeti Petit";
 
 /**
- * Normaliza o nome da loja no load de env (D98; supersede D93).
- * Marca real = "Repetit Petit". Secrets com um "t" só ("Repeti Petit")
- * são corrigidos para o canônico — D93 tinha a direção invertida.
+ * Normaliza o nome da loja no load de env (D100; supersede D93/D98/D99).
+ * Marca real = "Repeti Petit". Variantes com t extra ou Petite → canônico.
  */
 export function normalizeStoreName(value: string): string {
   const trimmed = value.trim().replace(/\s+/g, " ");
-  const oneTBrand = /^Repeti(\s+Petit)?$/i;
-  if (oneTBrand.test(trimmed)) {
+  // Repeti(t) Petit(e) → Repeti Petit
+  if (/^Repetit?\s+Petite?$/i.test(trimmed)) {
     return STORE_DISPLAY_NAME;
   }
   return trimmed;

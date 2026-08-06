@@ -16,12 +16,18 @@ type CheckoutSuccessClientProps = {
   mpReturnStatus: string | null;
 };
 
-type PollState = "processing" | "paid" | "failed" | "pending_return";
+type PollState =
+  | "processing"
+  | "paid"
+  | "failed"
+  | "pending_return"
+  | "timed_out";
 
 function deriveState(
   orderStatus: string,
   paymentStatus: string,
   mpReturnStatus: string | null,
+  timedOut: boolean,
 ): PollState {
   if (paymentStatus === "paid" || orderStatus === "paid") {
     return "paid";
@@ -34,10 +40,52 @@ function deriveState(
   ) {
     return "failed";
   }
+  if (timedOut) {
+    return "timed_out";
+  }
   if (mpReturnStatus === "pending" || mpReturnStatus === "in_process") {
     return "pending_return";
   }
   return "processing";
+}
+
+type SyncOrStatusPayload = {
+  orderStatus: string;
+  paymentStatus: string;
+  confirmed?: boolean;
+};
+
+/**
+ * D46: sync puxa o estado no MP (cobre webhook perdido/401).
+ * Fallback: status local se ainda não houver pagamento no MP.
+ */
+async function fetchPaymentUpdate(
+  publicCode: string,
+): Promise<SyncOrStatusPayload | null> {
+  try {
+    const syncResponse = await fetch("/api/payments/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ publicCode }),
+      cache: "no-store",
+    });
+    if (syncResponse.ok) {
+      return (await syncResponse.json()) as SyncOrStatusPayload;
+    }
+  } catch {
+    // tenta status local abaixo
+  }
+
+  try {
+    const statusResponse = await fetch(
+      `/api/payments/status?codigo=${encodeURIComponent(publicCode)}`,
+      { cache: "no-store" },
+    );
+    if (!statusResponse.ok) return null;
+    return (await statusResponse.json()) as SyncOrStatusPayload;
+  } catch {
+    return null;
+  }
 }
 
 export function CheckoutSuccessClient({
@@ -49,13 +97,19 @@ export function CheckoutSuccessClient({
 }: CheckoutSuccessClientProps) {
   const [orderStatus, setOrderStatus] = useState(initialOrderStatus);
   const [paymentStatus, setPaymentStatus] = useState(initialPaymentStatus);
+  const [timedOut, setTimedOut] = useState(false);
   const [retryPending, setRetryPending] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
 
-  const state = deriveState(orderStatus, paymentStatus, mpReturnStatus);
+  const state = deriveState(
+    orderStatus,
+    paymentStatus,
+    mpReturnStatus,
+    timedOut,
+  );
 
   useEffect(() => {
-    if (state === "paid" || state === "failed") return;
+    if (state === "paid" || state === "failed" || state === "timed_out") return;
 
     let cancelled = false;
     let attempts = 0;
@@ -63,22 +117,12 @@ export function CheckoutSuccessClient({
 
     async function poll() {
       attempts += 1;
-      try {
-        const response = await fetch(
-          `/api/payments/status?codigo=${encodeURIComponent(publicCode)}`,
-          { cache: "no-store" },
-        );
-        if (!response.ok) return;
-        const data = (await response.json()) as {
-          orderStatus: string;
-          paymentStatus: string;
-          confirmed: boolean;
-        };
-        if (cancelled) return;
-        setOrderStatus(data.orderStatus);
-        setPaymentStatus(data.paymentStatus);
-      } catch {
-        // Mantém estado atual; tenta de novo no próximo tick.
+      const data = await fetchPaymentUpdate(publicCode);
+      if (cancelled || !data) return;
+      setOrderStatus(data.orderStatus);
+      setPaymentStatus(data.paymentStatus);
+      if (data.paymentStatus === "paid" || data.orderStatus === "paid") {
+        setTimedOut(false);
       }
     }
 
@@ -86,6 +130,7 @@ export function CheckoutSuccessClient({
     const timer = window.setInterval(() => {
       if (attempts >= maxAttempts) {
         window.clearInterval(timer);
+        if (!cancelled) setTimedOut(true);
         return;
       }
       void poll();
@@ -133,6 +178,14 @@ export function CheckoutSuccessClient({
           />
         ) : null}
 
+        {state === "timed_out" ? (
+          <StatusBlock
+            icon={<Loader2 className="size-8 text-muted-foreground" />}
+            title="Ainda não confirmamos o pagamento"
+            body="O Mercado Pago pode demorar um pouco. Atualize a página ou abra o pedido — se o pagamento já foi aprovado, a confirmação aparece assim que sincronizarmos."
+          />
+        ) : null}
+
         {(state === "processing" || state === "pending_return") && (
           <StatusBlock
             icon={
@@ -174,7 +227,10 @@ export function CheckoutSuccessClient({
       ) : null}
 
       <div className="mt-8 flex flex-col gap-2">
-        {state === "failed" || state === "processing" || state === "pending_return" ? (
+        {state === "failed" ||
+        state === "processing" ||
+        state === "pending_return" ||
+        state === "timed_out" ? (
           <button
             type="button"
             disabled={retryPending}

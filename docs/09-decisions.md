@@ -2236,3 +2236,20 @@ manual. (4) Rota `/admin/produtos/intake-ia`; XLSX permanece.
 **Consequência**: Migration `20260807192000_label_print_jobs`; orchestrator
 aplica no projeto compartilhado + secrets AI/bridge quando homologar.
 
+
+## D118 — Frete P1: geocode CEP (Nominatim/Photon) + knobs em `settings` (#127)
+
+**Data**: 2026-08-07
+**Contexto**: D104 / SO-02 P1 — ViaCEP não devolve lat/lng; BrasilAPI v2
+retornou `coordinates` vazio nos CEPs de Foz testados.
+**Decisão**: (1) ViaCEP continua no autofill de endereço no checkout.
+(2) Distância = haversine(coords loja, coords CEP cliente); geocode server-side
+via Nominatim (postalcode) com fallback Photon. (3) Knobs admin em `settings`:
+`store_postal_code`, `store_latitude`/`store_longitude` (cache no save),
+`delivery_rate_per_km`, `delivery_multiplier`, `delivery_min_amount`,
+`delivery_max_radius_km`. UI `/admin/configuracoes`. (4) Pay gate:
+`isCheckoutPayEnabled(delivery)` só com frete OK; `createOrderAction` recalcula
+frete no server e persiste em `orders.shipping_amount` +
+`pricing_snapshot_json.frete`. Correios / tabela de bairros fora.
+**Consequência**: Migration `20260807200000_delivery_frete_settings`;
+orchestrator aplica no projeto compartilhado + regen types se divergir.

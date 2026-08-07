@@ -13,6 +13,11 @@ const NAV_ITEMS = [
   { href: "/admin/produtos", label: "Produtos", match: "prefix" as const },
   { href: "/admin/categorias", label: "Categorias", match: "prefix" as const },
   { href: "/admin/banners", label: "Banners", match: "prefix" as const },
+  {
+    href: "/admin/configuracoes",
+    label: "Configurações",
+    match: "prefix" as const,
+  },
 ] as const;
 
 function isActivePath(

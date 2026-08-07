@@ -3,13 +3,15 @@
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { createOrderAction } from "@/features/checkout/actions";
+import { calculateFreteAction } from "@/features/checkout/calculate-frete";
 import {
   CheckoutAddressSection,
   type AddressErrors,
   type AddressValues,
+  type FreteQuoteUi,
 } from "@/features/checkout/components/CheckoutAddressSection";
 import {
   CheckoutContactSection,
@@ -46,9 +48,6 @@ const EMPTY_ADDRESS: AddressValues = {
   reference: "",
 };
 
-/** P0: frete haversine ainda não entra (#127). */
-const DELIVERY_FRETE_READY = false;
-
 export function CheckoutForm({ pageData }: CheckoutFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -62,6 +61,8 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     searchParams.get("holdSessionId")?.trim() ??
     null;
 
+  const deliveryAvailable = pageData.deliveryFreteConfigured;
+
   const [contact, setContact] = useState<ContactValues>({
     fullName: "",
     phone: "",
@@ -74,6 +75,7 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
   const [fulfillmentError, setFulfillmentError] = useState<string | undefined>();
   const [address, setAddress] = useState<AddressValues>(EMPTY_ADDRESS);
   const [addressErrors, setAddressErrors] = useState<AddressErrors>({});
+  const [frete, setFrete] = useState<FreteQuoteUi>({ status: "idle" });
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   /** Evita empty-state flash após clearHold + redirect MP. */
@@ -85,16 +87,16 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     }
   }, [contact.fullName, address.recipientName]);
 
+  const freteReady =
+    frete.status === "ok" &&
+    frete.postalCode === address.postalCode.replace(/\D/g, "");
+
   const payEnabled = isCheckoutPayEnabled(fulfillmentType, {
-    deliveryFreteReady: DELIVERY_FRETE_READY,
+    deliveryFreteReady: freteReady,
   });
 
-  const shippingAmount = useMemo(() => {
-    if (fulfillmentType === "delivery" && DELIVERY_FRETE_READY) {
-      return pageData.deliveryRule?.amount ?? 0;
-    }
-    return 0;
-  }, [fulfillmentType, pageData.deliveryRule?.amount]);
+  const shippingAmount =
+    fulfillmentType === "delivery" && frete.status === "ok" ? frete.amount : 0;
 
   const fulfillmentLabel =
     fulfillmentType === "delivery" ? "Entrega" : "Sacolinha";
@@ -113,6 +115,29 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
   ) {
     setAddress((prev) => ({ ...prev, [key]: value }));
     setAddressErrors((prev) => ({ ...prev, [key]: undefined }));
+    if (key === "postalCode") {
+      setFrete({ status: "idle" });
+    }
+  }
+
+  async function handleCalculateFrete() {
+    const postalCode = address.postalCode.replace(/\D/g, "");
+    setFrete({ status: "loading" });
+    setFulfillmentError(undefined);
+
+    const result = await calculateFreteAction({ postalCode });
+
+    if (!result.ok) {
+      setFrete({ status: "error", message: result.error });
+      return;
+    }
+
+    setFrete({
+      status: "ok",
+      amount: result.amount,
+      distanceKm: result.distanceKm,
+      postalCode: result.postalCode,
+    });
   }
 
   function validateClient(): boolean {
@@ -136,14 +161,17 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     let nextFulfillmentError: string | undefined;
     if (!fulfillmentType) {
       nextFulfillmentError = "Escolha Sacolinha ou entrega.";
-    } else if (!payEnabled) {
+    } else if (fulfillmentType === "delivery" && !deliveryAvailable) {
       nextFulfillmentError =
-        "Entrega imediata ainda não está disponível. Escolha Sacolinha para pagar.";
+        "Entrega imediata indisponível. Escolha Sacolinha para pagar.";
+    } else if (fulfillmentType === "delivery" && !freteReady) {
+      nextFulfillmentError =
+        "Calcule o frete pelo CEP antes de pagar a entrega.";
     }
     setFulfillmentError(nextFulfillmentError);
 
     let nextAddressErrors: AddressErrors = {};
-    if (fulfillmentType === "delivery" && DELIVERY_FRETE_READY) {
+    if (fulfillmentType === "delivery" && deliveryAvailable) {
       const parsed = checkoutAddressSchema.safeParse(address);
       if (!parsed.success) {
         for (const issue of parsed.error.issues) {
@@ -177,10 +205,12 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
 
     if (!validateClient()) return;
 
-    // Defesa extra: nunca cria preferência no stub de entrega sem frete.
+    // Defesa: nunca cria preferência MP sem frete OK no path delivery.
     if (!payEnabled) {
       setFulfillmentError(
-        "Entrega imediata ainda não está disponível. Escolha Sacolinha para pagar.",
+        fulfillmentType === "delivery"
+          ? "Calcule o frete pelo CEP antes de pagar a entrega."
+          : "Escolha Sacolinha ou entrega para pagar.",
       );
       return;
     }
@@ -190,10 +220,7 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
       phone: contact.phone,
       email: contact.email,
       fulfillmentType,
-      address:
-        fulfillmentType === "delivery" && DELIVERY_FRETE_READY
-          ? address
-          : undefined,
+      address: fulfillmentType === "delivery" ? address : undefined,
       holdSessionId,
     };
 
@@ -271,7 +298,7 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     : undefined;
 
   const showAddressSection =
-    fulfillmentType === "delivery" && DELIVERY_FRETE_READY;
+    fulfillmentType === "delivery" && deliveryAvailable;
 
   return (
     <form
@@ -319,12 +346,15 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
         >
           <CheckoutFulfillmentSection
             value={fulfillmentType}
-            deliveryFreteReady={DELIVERY_FRETE_READY}
+            deliveryAvailable={deliveryAvailable}
             pickupAddress={pageData.pickupAddress}
             error={fulfillmentError}
             onChange={(value) => {
               setFulfillmentType(value);
               setFulfillmentError(undefined);
+              if (value !== "delivery") {
+                setFrete({ status: "idle" });
+              }
             }}
           />
         </CheckoutSection>
@@ -334,20 +364,23 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
             step={3}
             title="Endereço de entrega"
             summary={
-              address.street
-                ? `${address.street}, ${address.number || "s/n"}`
-                : undefined
+              frete.status === "ok"
+                ? `Frete calculado`
+                : address.street
+                  ? `${address.street}, ${address.number || "s/n"}`
+                  : undefined
             }
             defaultOpen
           >
             <CheckoutAddressSection
               values={address}
               errors={addressErrors}
-              deliveryRule={pageData.deliveryRule}
+              frete={frete}
               onChange={updateAddress}
               onAutofill={(partial) =>
                 setAddress((prev) => ({ ...prev, ...partial }))
               }
+              onCalculateFrete={() => void handleCalculateFrete()}
             />
           </CheckoutSection>
         ) : null}
@@ -376,9 +409,11 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
               disabled={items.length === 0 || !payEnabled}
             />
             <p className="text-center text-xs text-muted-foreground">
-              {payEnabled
-                ? "Você será redirecionado ao Mercado Pago para pagar com PIX ou cartão."
-                : "Selecione Sacolinha para habilitar o pagamento."}
+              {fulfillmentType === "delivery" && !freteReady
+                ? "Calcule o frete pelo CEP para habilitar o pagamento."
+                : payEnabled
+                  ? "Você será redirecionado ao Mercado Pago para pagar com PIX ou cartão."
+                  : "Selecione Sacolinha para habilitar o pagamento."}
             </p>
           </div>
         </div>

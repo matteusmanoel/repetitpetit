@@ -93,6 +93,14 @@ CREATE TABLE settings (
   correios_enabled boolean NOT NULL DEFAULT false,
   logo_url      text,
   theme_json    jsonb,
+  -- Frete entrega imediata (D104 / #127)
+  store_postal_code char(8),           -- CEP origem haversine
+  store_latitude  numeric(10,7),      -- cache geocode do CEP da loja
+  store_longitude numeric(10,7),
+  delivery_rate_per_km numeric(10,2) NOT NULL DEFAULT 2.50,
+  delivery_multiplier  numeric(10,2) NOT NULL DEFAULT 1.00,
+  delivery_min_amount  numeric(10,2) NOT NULL DEFAULT 8.00,
+  delivery_max_radius_km numeric(10,2) NOT NULL DEFAULT 15.00,
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now()
 );

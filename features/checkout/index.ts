@@ -1,4 +1,5 @@
 export { createOrderAction } from "@/features/checkout/actions";
+export { calculateFreteAction } from "@/features/checkout/calculate-frete";
 export {
   interpretConvertHoldResult,
   planHoldCheckoutGate,

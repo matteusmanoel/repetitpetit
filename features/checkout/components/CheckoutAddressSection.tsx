@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatPrice } from "@/features/catalog/format-price";
-import type { ShippingRuleOption } from "@/features/checkout/types";
 import { fetchAddressByCep } from "@/lib/viacep";
 
 export type AddressValues = {
@@ -24,23 +23,36 @@ export type AddressValues = {
 
 export type AddressErrors = Partial<Record<keyof AddressValues, string>>;
 
+export type FreteQuoteUi =
+  | { status: "idle" }
+  | { status: "loading" }
+  | {
+      status: "ok";
+      amount: number;
+      distanceKm: number;
+      postalCode: string;
+    }
+  | { status: "error"; message: string };
+
 type CheckoutAddressSectionProps = {
   values: AddressValues;
   errors: AddressErrors;
-  deliveryRule: ShippingRuleOption | null;
+  frete: FreteQuoteUi;
   onChange: <K extends keyof AddressValues>(
     key: K,
     value: AddressValues[K],
   ) => void;
   onAutofill: (partial: Partial<AddressValues>) => void;
+  onCalculateFrete: () => void;
 };
 
 export function CheckoutAddressSection({
   values,
   errors,
-  deliveryRule,
+  frete,
   onChange,
   onAutofill,
+  onCalculateFrete,
 }: CheckoutAddressSectionProps) {
   const [cepLoading, setCepLoading] = useState(false);
   const [cepMessage, setCepMessage] = useState<string | null>(null);
@@ -58,7 +70,7 @@ export function CheckoutAddressSection({
         network: "Não foi possível consultar o CEP. Tente de novo.",
       } as const;
       setCepMessage(messages[result.reason]);
-      return;
+      return false;
     }
 
     onAutofill({
@@ -70,25 +82,25 @@ export function CheckoutAddressSection({
       state: result.address.state,
     });
     setCepMessage("Endereço preenchido pelo CEP.");
+    return true;
   }
+
+  async function handleCalculateFrete() {
+    const ok = await handleCepLookup();
+    if (ok === false && values.postalCode.replace(/\D/g, "").length !== 8) {
+      return;
+    }
+    // Continua mesmo se ViaCEP falhar com endereço já preenchido manualmente.
+    if (values.postalCode.replace(/\D/g, "").length === 8) {
+      onCalculateFrete();
+    }
+  }
+
+  const cepDigits = values.postalCode.replace(/\D/g, "");
+  const freteBusy = frete.status === "loading" || cepLoading;
 
   return (
     <div className="flex flex-col gap-3">
-      {deliveryRule ? (
-        <p className="rounded-xl bg-muted/70 px-3 py-2 text-sm text-foreground">
-          Frete:{" "}
-          <span className="font-medium text-primary">
-            {formatPrice(deliveryRule.amount)}
-          </span>
-          {deliveryRule.description
-            ? ` · ${deliveryRule.description}`
-            : null}
-          {deliveryRule.cities.length > 0
-            ? ` · ${deliveryRule.cities.join(", ")}`
-            : null}
-        </p>
-      ) : null}
-
       <div className="flex flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-2">
         <div className="flex-1">
           <Field label="CEP" htmlFor="postalCode" error={errors.postalCode}>
@@ -101,11 +113,6 @@ export function CheckoutAddressSection({
               onChange={(event) =>
                 onChange("postalCode", event.target.value.replace(/\D/g, "").slice(0, 8))
               }
-              onBlur={() => {
-                if (values.postalCode.replace(/\D/g, "").length === 8) {
-                  void handleCepLookup();
-                }
-              }}
               placeholder="85851000"
               className="h-11"
               aria-invalid={Boolean(errors.postalCode)}
@@ -114,18 +121,17 @@ export function CheckoutAddressSection({
         </div>
         <Button
           type="button"
-          variant="outline"
           className="h-11 shrink-0"
-          disabled={cepLoading || values.postalCode.replace(/\D/g, "").length !== 8}
-          onClick={() => void handleCepLookup()}
+          disabled={freteBusy || cepDigits.length !== 8}
+          onClick={() => void handleCalculateFrete()}
         >
-          {cepLoading ? (
+          {freteBusy ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Buscando…
+              Calculando…
             </>
           ) : (
-            "Buscar CEP"
+            "Calcular frete"
           )}
         </Button>
       </div>
@@ -133,6 +139,34 @@ export function CheckoutAddressSection({
       {cepMessage ? (
         <p className="text-sm text-muted-foreground" role="status">
           {cepMessage}
+        </p>
+      ) : null}
+
+      {frete.status === "ok" ? (
+        <p
+          className="rounded-xl bg-primary/10 px-3 py-2 text-sm text-foreground"
+          role="status"
+        >
+          Frete:{" "}
+          <span className="font-medium text-primary">
+            {formatPrice(frete.amount)}
+          </span>
+          <span className="text-muted-foreground">
+            {" "}
+            · {frete.distanceKm.toFixed(1).replace(".", ",")} km da loja
+          </span>
+        </p>
+      ) : null}
+
+      {frete.status === "error" ? (
+        <p role="alert" className="text-sm text-destructive">
+          {frete.message}
+        </p>
+      ) : null}
+
+      {frete.status === "idle" ? (
+        <p className="text-sm text-muted-foreground">
+          Informe o CEP e toque em Calcular frete para liberar o pagamento.
         </p>
       ) : null}
 

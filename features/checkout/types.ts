@@ -34,6 +34,8 @@ export type ShippingRuleOption = {
 export type CheckoutPageData = {
   pickupEnabled: boolean;
   deliveryEnabled: boolean;
+  /** Entrega imediata com CEP loja + coords + knobs (D104). */
+  deliveryFreteConfigured: boolean;
   pickupAddress: string | null;
   deliveryRule: ShippingRuleOption | null;
   pickupRule: ShippingRuleOption | null;

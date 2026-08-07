@@ -2190,7 +2190,22 @@ cart fullscreen; soft footer; rotas `/sobre`, `/privacidade`, `/termos`.
 
 ---
 
-## D115 — `na_sacolinha` no enum; `ready_for_pickup` permanece até `em_rota`
+## D115 — Checkout P0: Sacolinha pay-only + MP handoff estável (#124)
+
+**Data**: 2026-08-07
+**Contexto**: SO-02 P0 / D102; frete haversine é #127 (P1). Empty flash ao limpar
+hold antes do redirect MP.
+**Decisão**: (1) UI pré-seleciona Sacolinha (`fulfillment_type=pickup`) com copy
+“Guarde na Sacolinha — retire quando quiser”; path = contato só (sem endereço).
+(2) Toggle “Entrega imediata” visível como stub; `isCheckoutPayEnabled` só libera
+pagar em Sacolinha até `deliveryFreteReady` (#127). (3) Antes de `clearHold` +
+`location.assign(init_point)`, marca handoff e renderiza `CheckoutMpHandoff`
+(skeleton estável) — sem empty-state “Nenhuma peça reservada”.
+**Consequência**: Schema/action de delivery permanece para P1; P0 não coleta CEP.
+
+---
+
+## D116 — `na_sacolinha` no enum; `ready_for_pickup` permanece até `em_rota`
 
 **Data**: 2026-08-07
 **Contexto**: D105 / SO-05 P0 (#125) exige path Sacolinha

@@ -40,6 +40,7 @@ export function isOrderPastPendingPayment(
     orderStatus === "paid" ||
     orderStatus === "confirmed" ||
     orderStatus === "ready_for_pickup" ||
+    orderStatus === "na_sacolinha" ||
     orderStatus === "shipped" ||
     orderStatus === "completed"
   );

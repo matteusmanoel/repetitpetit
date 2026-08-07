@@ -577,8 +577,10 @@ export type Database = {
           order_type: Database["public"]["Enums"]["order_type"]
           paid_at: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
+          pickup_deadline: string | null
           pricing_snapshot_json: Json | null
           public_code: string
+          ready_since: string | null
           shipping_amount: number
           shipping_rule_id: string | null
           status: Database["public"]["Enums"]["order_status"]
@@ -608,8 +610,10 @@ export type Database = {
           order_type?: Database["public"]["Enums"]["order_type"]
           paid_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          pickup_deadline?: string | null
           pricing_snapshot_json?: Json | null
           public_code: string
+          ready_since?: string | null
           shipping_amount?: number
           shipping_rule_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -639,8 +643,10 @@ export type Database = {
           order_type?: Database["public"]["Enums"]["order_type"]
           paid_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          pickup_deadline?: string | null
           pricing_snapshot_json?: Json | null
           public_code?: string
+          ready_since?: string | null
           shipping_amount?: number
           shipping_rule_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -1132,6 +1138,7 @@ export type Database = {
         | "paid"
         | "confirmed"
         | "ready_for_pickup"
+        | "na_sacolinha"
         | "shipped"
         | "completed"
         | "cancelled"
@@ -1294,6 +1301,7 @@ export const Constants = {
         "paid",
         "confirmed",
         "ready_for_pickup",
+        "na_sacolinha",
         "shipped",
         "completed",
         "cancelled",

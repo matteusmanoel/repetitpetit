@@ -2188,3 +2188,19 @@ cart fullscreen; soft footer; rotas `/sobre`, `/privacidade`, `/termos`.
 **Consequência**: Features P0 nascem no visual T; admin permanece Inter via
 `.admin-shell`.
 
+---
+
+## D115 — `na_sacolinha` no enum; `ready_for_pickup` permanece até `em_rota`
+
+**Data**: 2026-08-07
+**Contexto**: D105 / SO-05 P0 (#125) exige path Sacolinha
+`pago → separando → na_sacolinha → concluído`. O enum já tinha
+`ready_for_pickup` (retirada genérica / D48).
+**Decisão**: (1) Additive `ALTER TYPE … ADD VALUE 'na_sacolinha'`.
+(2) Pickup (Sacolinha): `confirmed → na_sacolinha → completed` com
+`ready_since` + `pickup_deadline` (+30d) na transição — sem job/notificador.
+(3) `ready_for_pickup` permanece para delivery até o status `em_rota` (#128).
+(4) Override SQL / `isOrderPastPendingPayment` incluem `na_sacolinha`.
+**Consequência**: Orchestrator aplica
+`20260807191000_order_status_na_sacolinha` após merge + regen types.
+

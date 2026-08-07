@@ -66,7 +66,13 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
           ? "finalize o pagamento"
           : isFailed
             ? statusLabel.toLowerCase()
-            : "pagamento confirmado!"}
+            : order.status === "na_sacolinha"
+              ? "na sacolinha!"
+              : order.status === "completed"
+                ? "pedido concluído!"
+                : order.status === "confirmed"
+                  ? "em separação"
+                  : "pagamento confirmado!"}
       </p>
       <h1 className="mt-2 text-2xl font-bold text-foreground">
         {order.publicCode}

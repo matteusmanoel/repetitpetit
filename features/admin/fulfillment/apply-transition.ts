@@ -3,7 +3,10 @@ import "server-only";
 import type {
   FulfillmentTargetStatus,
 } from "@/features/admin/fulfillment/transitions";
-import { planFulfillmentTransition } from "@/features/admin/fulfillment/transitions";
+import {
+  computePickupDeadlineIso,
+  planFulfillmentTransition,
+} from "@/features/admin/fulfillment/transitions";
 import type { OrderStatus } from "@/features/orders/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
 import type { Database } from "@/lib/supabase/types";
@@ -95,6 +98,10 @@ export async function applyFulfillmentTransition(input: {
   if (plan.setCompletedAt) patch.completed_at = nowIso;
   if (plan.setTrackingCode && trackingCode) {
     patch.tracking_code = trackingCode;
+  }
+  if (plan.setReadyTimestamps) {
+    patch.ready_since = nowIso;
+    patch.pickup_deadline = computePickupDeadlineIso(nowIso);
   }
 
   const { data: updated, error: updateError } = await supabase

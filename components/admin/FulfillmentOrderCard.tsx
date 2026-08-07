@@ -11,6 +11,7 @@ import {
   cancelOrderAction,
   completeOrderAction,
   confirmOrderAction,
+  markNaSacolinhaAction,
   markReadyForPickupAction,
   markShippedAction,
 } from "@/features/admin/fulfillment/actions";
@@ -36,7 +37,7 @@ function formatPaidAt(iso: string | null): string {
 }
 
 /**
- * Card da fila — ações de transição T20 conforme status atual.
+ * Card da fila — ações de transição T20 / #125 conforme status atual.
  */
 export function FulfillmentOrderCard({
   order,
@@ -53,10 +54,14 @@ export function FulfillmentOrderCard({
     order.itemCount === 1 ? "1 peça" : `${order.itemCount} peças`;
 
   const canCancel = order.status === "paid" || order.status === "confirmed";
+  const showNaSacolinha =
+    order.status === "confirmed" && order.fulfillmentType === "pickup";
   const showReadyForPickup =
-    order.status === "confirmed" &&
-    (order.fulfillmentType === "pickup" ||
-      order.fulfillmentType === "delivery");
+    order.status === "confirmed" && order.fulfillmentType === "delivery";
+  const canComplete =
+    order.status === "ready_for_pickup" ||
+    order.status === "na_sacolinha" ||
+    order.status === "shipped";
 
   const run = (
     action: () => Promise<FulfillmentTransitionResult>,
@@ -151,6 +156,23 @@ export function FulfillmentOrderCard({
           </Button>
         ) : null}
 
+        {showNaSacolinha ? (
+          <Button
+            type="button"
+            size="lg"
+            className="min-h-11 w-full"
+            disabled={isPending}
+            onClick={() =>
+              run(
+                () => markNaSacolinhaAction(order.id),
+                "Pedido na sacolinha.",
+              )
+            }
+          >
+            Marcar na sacolinha
+          </Button>
+        ) : null}
+
         {showReadyForPickup ? (
           <Button
             type="button"
@@ -225,7 +247,7 @@ export function FulfillmentOrderCard({
           </div>
         ) : null}
 
-        {order.status === "ready_for_pickup" || order.status === "shipped" ? (
+        {canComplete ? (
           <Button
             type="button"
             size="lg"

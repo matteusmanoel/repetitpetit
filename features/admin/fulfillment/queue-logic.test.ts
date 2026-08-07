@@ -5,9 +5,11 @@ import {
   formatQueueDocumentTitle,
   isInProgressQueuePayload,
   isPaidQueuePayload,
+  isUrgentDeliveryFulfillment,
   removeQueueOrder,
   shouldRemoveFromInProgressQueue,
   shouldRemoveFromPaidQueue,
+  sortQueueOrders,
   upsertQueueOrder,
 } from "@/features/admin/fulfillment/queue-logic";
 import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
@@ -87,6 +89,67 @@ describe("upsertQueueOrder", () => {
     const merged = upsertQueueOrder([older, newer], updated);
     expect(merged.map((o) => o.id)).toEqual(["a", "b"]);
     expect(merged[0]?.publicCode).toBe("RP-2026-0099");
+  });
+
+  it("places delivery (entrega urgente) above older Sacolinha pickup", () => {
+    const olderPickup = fakeOrder({
+      id: "pickup-old",
+      fulfillmentType: "pickup",
+      paidAt: "2026-08-01T14:00:00.000Z",
+    });
+    const newerPickup = fakeOrder({
+      id: "pickup-new",
+      fulfillmentType: "pickup",
+      paidAt: "2026-08-01T15:00:00.000Z",
+    });
+    const olderDelivery = fakeOrder({
+      id: "delivery-old",
+      fulfillmentType: "delivery",
+      paidAt: "2026-08-01T10:00:00.000Z",
+    });
+    const newerDelivery = fakeOrder({
+      id: "delivery-new",
+      fulfillmentType: "delivery",
+      paidAt: "2026-08-01T11:00:00.000Z",
+    });
+
+    const merged = upsertQueueOrder(
+      [olderPickup, newerPickup, olderDelivery],
+      newerDelivery,
+    );
+
+    expect(merged.map((o) => o.id)).toEqual([
+      "delivery-new",
+      "delivery-old",
+      "pickup-new",
+      "pickup-old",
+    ]);
+  });
+});
+
+describe("sortQueueOrders / isUrgentDeliveryFulfillment", () => {
+  it("flags only delivery as urgent", () => {
+    expect(isUrgentDeliveryFulfillment("delivery")).toBe(true);
+    expect(isUrgentDeliveryFulfillment("pickup")).toBe(false);
+    expect(isUrgentDeliveryFulfillment("correios")).toBe(false);
+    expect(isUrgentDeliveryFulfillment("store_counter")).toBe(false);
+  });
+
+  it("sorts delivery before pickup regardless of paid_at", () => {
+    const pickup = fakeOrder({
+      id: "p",
+      fulfillmentType: "pickup",
+      paidAt: "2026-08-01T20:00:00.000Z",
+    });
+    const delivery = fakeOrder({
+      id: "d",
+      fulfillmentType: "delivery",
+      paidAt: "2026-08-01T08:00:00.000Z",
+    });
+    expect(sortQueueOrders([pickup, delivery]).map((o) => o.id)).toEqual([
+      "d",
+      "p",
+    ]);
   });
 });
 

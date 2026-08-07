@@ -1,4 +1,4 @@
-import type { OrderStatus } from "@/features/orders/types";
+import type { FulfillmentType, OrderStatus } from "@/features/orders/types";
 
 import { isInProgressStatus } from "@/features/admin/fulfillment/transitions";
 import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
@@ -7,6 +7,40 @@ type RealtimeOrderRow = {
   id?: string;
   status?: OrderStatus | string;
 };
+
+/**
+ * Entrega imediata no checkout persiste como `fulfillment_type=delivery`
+ * (D104 / #127). D105: prioridade visual na fila admin.
+ */
+export function isUrgentDeliveryFulfillment(
+  fulfillmentType: FulfillmentType,
+): boolean {
+  return fulfillmentType === "delivery";
+}
+
+/**
+ * Comparador da fila (D105): entrega imediata primeiro; empate por
+ * `paidAt` desc, depois `createdAt` desc.
+ */
+export function compareQueuePriority(
+  a: FulfillmentQueueOrder,
+  b: FulfillmentQueueOrder,
+): number {
+  const aUrgent = isUrgentDeliveryFulfillment(a.fulfillmentType) ? 0 : 1;
+  const bUrgent = isUrgentDeliveryFulfillment(b.fulfillmentType) ? 0 : 1;
+  if (aUrgent !== bUrgent) return aUrgent - bUrgent;
+
+  const aPaid = a.paidAt ?? a.createdAt;
+  const bPaid = b.paidAt ?? b.createdAt;
+  return bPaid.localeCompare(aPaid);
+}
+
+/** Ordena cópia da lista com a prioridade da fila (D105). */
+export function sortQueueOrders(
+  orders: readonly FulfillmentQueueOrder[],
+): FulfillmentQueueOrder[] {
+  return [...orders].sort(compareQueuePriority);
+}
 
 /**
  * Pedidos entram na fila quando o NEW row está `paid`.
@@ -53,19 +87,15 @@ export function shouldRemoveFromInProgressQueue(
 }
 
 /**
- * Insere/atualiza o pedido no topo da fila (mais recente primeiro).
- * Deduplica por `id`. Ordena por `paidAt` desc, depois `createdAt` desc.
+ * Insere/atualiza o pedido na fila. Deduplica por `id`.
+ * Ordena: entrega imediata (`delivery`) primeiro, depois `paidAt` desc (D105).
  */
 export function upsertQueueOrder(
   current: readonly FulfillmentQueueOrder[],
   incoming: FulfillmentQueueOrder,
 ): FulfillmentQueueOrder[] {
   const without = current.filter((order) => order.id !== incoming.id);
-  return [incoming, ...without].sort((a, b) => {
-    const aPaid = a.paidAt ?? a.createdAt;
-    const bPaid = b.paidAt ?? b.createdAt;
-    return bPaid.localeCompare(aPaid);
-  });
+  return sortQueueOrders([incoming, ...without]);
 }
 
 export function removeQueueOrder(

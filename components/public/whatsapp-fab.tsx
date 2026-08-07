@@ -38,7 +38,7 @@ export function WhatsAppFab({ whatsappNumber }: WhatsAppFabProps) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Fale com a gente no WhatsApp"
-      className="fixed right-4 bottom-4 z-40 flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#25D366]/50 active:scale-95 sm:right-6 sm:bottom-6"
+      className="fixed right-4 bottom-20 z-40 flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#25D366]/50 active:scale-95 md:right-6 md:bottom-6"
     >
       <WhatsAppIcon className="size-7" />
     </a>

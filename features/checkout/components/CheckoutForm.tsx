@@ -309,9 +309,9 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
       </div>
 
       <aside className="lg:sticky lg:top-20">
-        <div className="rounded-2xl border border-border bg-background p-4">
-          <h2 className="font-heading mb-4 text-lg font-bold text-foreground">
-            Resumo do pedido
+        <div className="rounded-3xl border border-border bg-card p-4 shadow-sm md:p-5">
+          <h2 className="mb-4 text-xl font-bold text-foreground">
+            Resumo
           </h2>
           <CheckoutOrderSummary
             items={items}

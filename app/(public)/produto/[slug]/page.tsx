@@ -6,11 +6,12 @@ import { CatalogStatusRealtime } from "@/features/catalog/components/CatalogStat
 import { ProductAttributes } from "@/features/catalog/components/ProductAttributes";
 import { ProductGallery } from "@/features/catalog/components/ProductGallery";
 import { ProductPurchasePanel } from "@/features/catalog/components/ProductPurchasePanel";
-import { RelatedProductsCarousel } from "@/features/catalog/components/RelatedProductsCarousel";
+import { RelatedProductsSection } from "@/features/catalog/components/RelatedProductsCarousel";
 import { UniquePieceNotice } from "@/features/catalog/components/UniquePieceNotice";
 import { getProductBySlug, getRelatedProducts } from "@/features/catalog/data";
 import { formatPrice } from "@/features/catalog/format-price";
 import { getProductReservationView } from "@/features/catalog/reservation";
+import { PRODUCT_CONDITION_LABELS } from "@/features/catalog/filters";
 
 type ProductPageProps = {
   params: Promise<{ slug: string }>;
@@ -66,7 +67,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const hasCompare = compareAt != null && compareAt > product.price;
 
   return (
-    <div className="mx-auto w-full max-w-6xl pb-10 sm:px-8 sm:pt-6 sm:pb-14">
+    <div className="mx-auto w-full max-w-6xl pb-4 sm:px-4 sm:pt-6 sm:pb-8">
       <CatalogStatusRealtime productId={product.id} />
       <nav
         aria-label="Breadcrumb"
@@ -81,8 +82,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <span className="text-foreground">{product.name}</span>
       </nav>
 
-      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
-        <div className="sm:overflow-hidden sm:rounded-xl">
+      <div className="md:grid md:grid-cols-2 md:items-start md:gap-10">
+        <div className="overflow-hidden sm:rounded-3xl">
           <ProductGallery
             images={product.images}
             productName={product.name}
@@ -90,23 +91,27 @@ export default async function ProductPage({ params }: ProductPageProps) {
           />
         </div>
 
-        <div className="flex flex-col gap-5 px-4 pt-5 sm:px-0 sm:pt-0 lg:sticky lg:top-24">
+        <div className="mt-6 space-y-5 rounded-3xl border border-border bg-card p-5 shadow-sm md:mt-0 md:p-8">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">
+            {isUnique ? "Peça única" : "Peça"} ·{" "}
+            {PRODUCT_CONDITION_LABELS[product.condition]}
+          </p>
+
           {isUnique ? <UniquePieceNotice /> : null}
 
-          <div className="flex flex-col gap-2">
-            <h1 className="font-heading text-[22px] font-bold leading-snug text-foreground sm:text-3xl">
-              {product.name}
-            </h1>
-            <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-              <span className="text-2xl font-medium text-primary">
-                {formatPrice(product.price)}
+          <h1 className="text-2xl font-bold leading-snug text-foreground md:text-3xl">
+            {product.name}
+          </h1>
+
+          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <span className="text-3xl font-bold text-primary md:text-4xl">
+              {formatPrice(product.price)}
+            </span>
+            {hasCompare ? (
+              <span className="text-base text-muted-foreground line-through">
+                {formatPrice(compareAt)}
               </span>
-              {hasCompare ? (
-                <span className="text-base text-muted-foreground line-through">
-                  {formatPrice(compareAt)}
-                </span>
-              ) : null}
-            </div>
+            ) : null}
           </div>
 
           <ProductAttributes product={product} />
@@ -132,17 +137,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         </div>
       </div>
 
-      {related.length > 0 ? (
-        <section className="mt-12 px-4 sm:mt-16 sm:px-0" aria-labelledby="related-heading">
-          <h2
-            id="related-heading"
-            className="font-heading mb-4 text-xl font-bold text-foreground sm:mb-6 sm:text-2xl"
-          >
-            Você pode gostar
-          </h2>
-          <RelatedProductsCarousel products={related} />
-        </section>
-      ) : null}
+      <RelatedProductsSection products={related} />
     </div>
   );
 }

@@ -162,15 +162,15 @@ export function CartSheet() {
 
             <SheetPrimitive.Content asChild forceMount>
               <motion.div
-                className="fixed inset-y-0 right-0 z-50 flex w-full flex-col gap-0 bg-popover text-sm text-popover-foreground shadow-lg sm:max-w-md"
+                className="fixed inset-0 z-50 flex w-full flex-col gap-0 bg-popover text-sm text-popover-foreground shadow-lg md:inset-y-0 md:right-0 md:left-auto md:max-w-md"
                 initial={{ x: "100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "100%" }}
                 transition={{ type: "spring", stiffness: 340, damping: 34 }}
               >
-                <div className="flex flex-col gap-0.5 border-b border-border p-4">
-                  <SheetPrimitive.Title className="font-heading text-lg font-bold text-foreground">
-                    Suas reservas
+                <div className="flex flex-col gap-0.5 border-b border-border p-4 md:p-5">
+                  <SheetPrimitive.Title className="text-xl font-bold text-primary md:text-2xl">
+                    Minha sacola
                   </SheetPrimitive.Title>
                   <SheetPrimitive.Description className="text-sm text-muted-foreground">
                     {items.length === 0
@@ -223,7 +223,7 @@ export function CartSheet() {
                             <Link
                               href={`/produto/${item.slug}`}
                               onClick={closeCart}
-                              className="relative h-20 w-15 shrink-0 overflow-hidden rounded-md bg-muted"
+                              className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-muted"
                             >
                               {item.coverImageUrl ? (
                                 <Image
@@ -248,7 +248,7 @@ export function CartSheet() {
                               >
                                 {item.name}
                               </Link>
-                              <p className="text-sm font-medium text-primary">
+                              <p className="text-base font-bold text-primary">
                                 {formatPrice(item.price)}
                               </p>
                               <button
@@ -268,13 +268,11 @@ export function CartSheet() {
                   )}
                 </div>
 
-                <div className="mt-auto flex flex-col gap-2 border-t border-border p-4">
+                <div className="mt-auto flex flex-col gap-2 border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:p-5">
                   {items.length > 0 ? (
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span className="font-heading text-base font-bold text-foreground">
-                        {formatPrice(subtotal)}
-                      </span>
+                    <div className="mb-1 flex items-center justify-between text-lg font-bold">
+                      <span>Subtotal</span>
+                      <span className="text-primary">{formatPrice(subtotal)}</span>
                     </div>
                   ) : null}
 
@@ -282,7 +280,7 @@ export function CartSheet() {
                     <Button
                       type="button"
                       size="lg"
-                      className="h-12 w-full rounded-full text-base font-medium"
+                      className="h-12 w-full rounded-full text-base font-bold"
                       disabled
                     >
                       Finalizar compra
@@ -291,7 +289,7 @@ export function CartSheet() {
                     <Button
                       asChild
                       size="lg"
-                      className="h-12 w-full rounded-full text-base font-medium"
+                      className="h-12 w-full rounded-full text-base font-bold uppercase tracking-wide"
                     >
                       <Link href={checkoutHref} onClick={closeCart}>
                         Finalizar compra
@@ -301,9 +299,9 @@ export function CartSheet() {
 
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="lg"
-                    className="h-11 w-full text-base"
+                    className="h-11 w-full rounded-full border-2 border-primary text-base font-bold text-primary"
                     onClick={closeCart}
                   >
                     Continuar comprando

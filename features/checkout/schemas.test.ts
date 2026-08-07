@@ -12,12 +12,15 @@ const base = {
 };
 
 describe("createOrderSchema", () => {
-  it("aceita retirada sem endereço", () => {
+  it("aceita Sacolinha (pickup) sem endereço", () => {
     const result = createOrderSchema.safeParse({
       ...base,
       fulfillmentType: "pickup",
     });
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.address).toBeUndefined();
+    }
   });
 
   it("exige holdSessionId", () => {

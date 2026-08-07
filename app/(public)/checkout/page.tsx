@@ -24,7 +24,8 @@ export default async function CheckoutPage() {
           Checkout
         </h1>
         <p className="max-w-xl text-sm text-muted-foreground">
-          Seus dados, Sacolinha ou entrega, e o resumo das peças reservadas.
+          Contato, Sacolinha (padrão) ou entrega, e o resumo das peças
+          reservadas — sem endereço na Sacolinha.
         </p>
       </header>
 

@@ -1,6 +1,6 @@
 # Slice O — Redesign TipTop + Sacolinha
 
-Guia para cloud agents. Decisões: **D101–D112** em `docs/09-decisions.md`.
+Guia para cloud agents. Decisões: **D101–D113** em `docs/09-decisions.md`.
 Protótipo: `app/prototype/tiptop-redesign?variant=T` (vencedor T rev.3 — ver `VERDICT.md`).
 **HITL OK 2026-08-07** — dispatch D0 (#122) liberado. Admin UI polish fica pós-features.
 
@@ -11,14 +11,14 @@ Protótipo: `app/prototype/tiptop-redesign?variant=T` (vencedor T rev.3 — ver 
 | **Sacolinha** | Bolsa única por Customer de peças **pagas** aguardando retirada (default) ou settle |
 | **Entrega imediata** | Ramo opcional no checkout; frete haversine antes do MP; prioridade na fila |
 | **Hold Session** | Reserva pré-pago (Slice N) — não é Sacolinha |
-| **Consignação / Sacolinha mensal** | **Apagado** do glossário (D101) |
+| **Consignação / Sacolinha mensal** | **Apagado** do glossário (D101); schema purge em #123 / D113 |
 
 ## Waves
 
 | Wave | Objetivo | Bloqueia VIP? |
 |---|---|---|
 | **D0** | Design tokens + redesign storefront no visual **T** (após HITL) | Sim (antes de features novas) |
-| **Purge** | Remover docs/schema legado consignação/`order_type` misuse | Não (pode paralelo a D0 docs) |
+| **Purge** | Remover docs/schema legado consignação/`order_type` misuse (#123 / D113) | Não (paralelo a D0) |
 | **P0** | Sacolinha default + fix empty checkout + IA lote + térmica sequencial | Sim (catálogo real + compra retirar) |
 | **P1** | Frete haversine + prioridade fila + magic link + área Sacolinha | Não (pós-VIP ok) |
 | **P2** | Notify 30d, polish, cupom real | Não |

@@ -73,7 +73,7 @@ delivery. New paid Hold Sessions add to that bag. Storekeepers track age/TTL to
 nudge Customers on WhatsApp. Settle default ~30 days per payment package is
 adjustable ops guidance, not a rigid engine yet.
 _Avoid_: monthly subscription, consignação portal, pedido mensal, unpaid holds,
-`order_type = 'sacolinha'` as this concept
+`order_type = 'sacolinha'` as this concept (enum label retired for writes — #123 / D113)
 
 **Shopping Cart**:
 Optional non-reserving staging only — **never** reserves inventory. Not the MVP
@@ -124,4 +124,5 @@ _Avoid_: autonomous AI publish; form-first bulk entry as the long-term ideal
 
 ### Discarded
 
-Sacolinha-as-monthly-package / consignação (D11 → D60 → D101). Do not reintroduce.
+Sacolinha-as-monthly-package / consignação (D11 → D60 → D101 → D113). Do not reintroduce.
+Writes of `order_type = 'sacolinha'` are blocked in DB (#123); use `ORDER_TYPE_STANDARD`.

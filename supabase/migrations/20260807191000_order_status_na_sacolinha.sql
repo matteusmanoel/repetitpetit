@@ -1,4 +1,4 @@
--- #125 / D105 / D115 — Sacolinha fulfillment status `na_sacolinha`
+-- #125 / D105 / D116 — Sacolinha fulfillment status `na_sacolinha`
 -- Path: paid → confirmed (separando) → na_sacolinha → completed
 -- Also persists ready_since / pickup_deadline for future 30d reminder job (no notifier yet).
 -- Orchestrator applies on shared Supabase after merge; cloud agents commit file only.

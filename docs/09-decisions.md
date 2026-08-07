@@ -1995,3 +1995,162 @@ Variantes `Repetit Petit`, `Repetit Petite`, `Repeti Petite` → canônico.
 (3) MP `statement_descriptor` segue o env; exclusão de boleto (D98) permanece.
 **Consequência**: D93 direção correta para o nome; D98/D99 supersedidos neste ponto.
 
+---
+
+## D101 — Slice O: Sacolinha canônica; consignação apagada do glossário
+
+**Data**: 2026-08-07
+**Contexto**: Grill pós-Slice N. D60 já define Sacolinha como bag pós-pago; docs
+legado (brief/PRD/roadmap) ainda citavam consignação / pedido mensal.
+**Decisão**: (1) Sacolinha = única bolsa aberta por Customer de peças **pagas**
+aguardando retirada (default) ou settle via entrega. (2) Remover de docs de produto
+qualquer referência a consignação / assinatura mensal / “Sacolinha mensal”.
+(3) `order_type = 'sacolinha'` permanece enum legado no schema até migration de
+purge (ticket dedicado) — **não** modela o conceito de negócio.
+**Consequência**: Agentes usam só D60/D101 + `CONTEXT.md`. Ver `docs/slice-o/`.
+
+---
+
+## D102 — Checkout: Sacolinha default vs entrega imediata (Correios fora)
+
+**Data**: 2026-08-07
+**Contexto**: Mães compram várias vezes e decidem retirada depois; urgência precisa
+de frete antes do MP.
+**Decisão**: (1) No checkout, escolha binária com **Sacolinha pré-selecionada**
+(“Guarde na Sacolinha — retire quando quiser”). (2) Entrega imediata é ramo
+opcional: CEP + “Calcular frete” obrigatórios; pagar só habilita com frete OK.
+(3) Path Sacolinha: contato mínimo (nome, telefone, e-mail) — sem endereço.
+(4) Correios **fora** deste slice.
+**Consequência**: Atualiza UX de fulfillment (revisa ênfase de D12 no path default).
+
+---
+
+## D103 — Auth comprador: magic link pós-compra, não bloqueante (supersede D69 portal)
+
+**Data**: 2026-08-07
+**Contexto**: D69 adiou área logada; Slice O precisa Sacolinha do comprador sem
+fricção pré-pagamento.
+**Decisão**: (1) Guest-first até o pagamento. (2) Pós-MP sempre `/pedido/[codigo]`
+primeiro — **nunca** redirect duro para login. (3) Nudge discreto (sheet/tooltip)
+para magic link (Supabase Auth, role distinta de admin); e-mail pré-preenchido.
+(4) Conta não bloqueia ver pedido; bloqueia só área agregada (Sacolinha, histórico,
+preferência). (5) Merge automático `customer` + `anonymous_id`/sessão pelo e-mail.
+**Consequência**: D69 permanece válido para Slice N histórico; portal mínimo entra
+em Slice O P1.
+
+---
+
+## D104 — Frete entrega imediata: ViaCEP + haversine + knobs admin
+
+**Data**: 2026-08-07
+**Decisão**: `distância_km` = haversine(CEP loja ViaCEP, CEP cliente ViaCEP);
+`frete = max(mínimo, distância_km × taxa_km × multiplicador)`. Admin configura
+taxa/km, multiplicador, mínimo, raio máximo (fora = só Sacolinha). Sem tabela
+manual de bairros; Distance Matrix externo fora.
+**Consequência**: Settings/shipping config no admin; botão Calcular frete no checkout.
+
+---
+
+## D105 — Fila admin única; entrega urgente com prioridade visual
+
+**Data**: 2026-08-07
+**Decisão**: Uma fila Realtime de pedidos pagos; ordenação `entrega_imediata`
+primeiro; badge “ENTREGA URGENTE”. Status Sacolinha:
+`pago → separando → na_sacolinha → concluído`. Entrega:
+`pago → separando → em_rota → concluído`. Job/notificação 30d só modelo neste slice.
+**Consequência**: Estende fila D47/D48; sem Slack/e-mail/push novo.
+
+---
+
+## D106 — Sessão anônima: cookie + merge; sem geo/push
+
+**Data**: 2026-08-07
+**Decisão**: Persist `anonymous_id` + preferência de recebimento; merge no magic
+link. Geolocalização browser e Notification API **fora**. LGPD: texto mínimo +
+privacidade, sem CMP complexo.
+**Consequência**: Reusa cookie de hold (`rp_cart_session` / D79) como âncora.
+
+---
+
+## D107 — Intake IA: áudio+fotos → preview → confirm + print térmico sequencial
+
+**Data**: 2026-08-07
+**Decisão**: Admin “Cadastrar com IA”: fotos + áudio → preview editável (schema Zod)
+→ confirm cria produto + `staff_code` → enfileira etiqueta térmica **uma a uma**
+com ACK (retry 1x). Print falha não reverte o produto (`label_print=failed`).
+Bridge local ESC/POS (modelo TBD). XLSX permanece fallback. Multimodal via AI
+Gateway/provider do stack.
+**Consequência**: Alinha Intake Pipeline do `CONTEXT.md`; D94 (térmica) vira
+obrigatória no lote IA.
+
+---
+
+## D108 — Slice O ordem: D0 redesign TipTop→Repeti antes de features
+
+**Data**: 2026-08-07
+**Decisão**: (1) Hard copy de **layout/estrutura** TipTop (rounded, fluido, clean,
+kids-like tipografia) com **palette/logo Repeti** — não skin TipTop.
+(2) Protótipo UI `/prototype/tiptop-redesign` → pick → docs de sistema → redesign
+full storefront **antes** de implementar Sacolinha/frete/IA em cima do visual antigo.
+(3) Waves: **D0** redesign; **P0** Sacolinha default + fix checkout empty + IA/print;
+**P1** frete + prioridade + magic link + área Sacolinha; **P2** 30d, polish, cupom.
+**Consequência**: Cloud agents não abrem feature P0 até D0 tokens/docs alinhados
+(ou issues D0 explícitas primeiro).
+
+---
+
+## D109 — Pós-pagamento: pedido primeiro + nudge Sacolinha/conta
+
+**Data**: 2026-08-07
+**Decisão**: Retorno MP → `/pedido/[codigo]` com status. Sem sessão comprador:
+sheet/tooltip “Crie seu acesso para ver a Sacolinha”. Com sessão: CTA “Ver minha
+Sacolinha”. WhatsApp suporte permanece.
+**Consequência**: Fecha atrito briefing vs D103; implementa com D103 em P1.
+
+---
+
+## D110 — Redesign TipTop→Repeti: Variant A (+ tokens soft de B)
+
+**Data**: 2026-08-07
+**Contexto**: Protótipo `/prototype/tiptop-redesign` (A Dense / B Soft / C Editorial).
+Grill pediu hard copy TipTop + cores Repeti.
+**Decisão**: Vencedor **A (Dense commerce)** como estrutura canônica do redesign D0;
+incorporar de B radius/display mais generosos em cards e títulos; C só como
+experimento futuro de landing. Veredicto em
+`app/prototype/tiptop-redesign/VERDICT.md`. Tokens e `docs/12-ui-system.md`
+atualizados para orientar cloud agents.
+**Consequência**: Features P0+ nascem no visual A; protótipo é throwaway.
+
+---
+
+## D111 — Protótipo TipTop rev.2: Variant T + Omnes/Becca (supersede D110 visual)
+
+**Data**: 2026-08-07
+**Contexto**: HITL vs TipTop real: A não era TipTop-shaped; B arredondado certo mas
+espaçamento desktop exagerado. Tipografia precisa Omnes (UI) + Becca (display)
+em tamanhos bem visíveis.
+**Decisão**: (1) Vencedor de protótipo = **Variant T** (`?variant=T`): hard-copy
+de estrutura TipTop (header pill search, nav ícones, filtro idade, catálogo
+sidebar, PDP card, mini-cart sheet, checkout pills) com **palette Repeti**.
+(2) Tipografia alvo **Omnes + Becca**; protótipo usa stand-ins Fredoka/Caveat
+até arquivos licenciados. (3) Mobile herda radius kids-like de B; desktop usa
+`max-w-6xl` e gaps menores (corrige ar de B). (4) D110 permanece histórico;
+D0 implementa T, não A. (5) **Não** iniciar implementação D0 até HITL OK no T.
+**Consequência**: Atualizar brand/UI docs + issue #122; P0 UI espera aceite do T.
+
+---
+
+## D112 — Protótipo T rev.3: nav Lucide, BottomBar, cores verde/azul/rosa, legal soft
+
+**Data**: 2026-08-07
+**Contexto**: HITL vs TipTop header real + páginas soft iFraldas.
+**Decisão**: (1) Categorias do header = texto + ícone Lucide centralizado, gap
+generoso do centro às bordas — sem thumbnails circulares. (2) Hover/elevation e
+popover de Conta. (3) Hierarquia de cor: verde neutro/CTA, azul meninos, rosa
+meninas/promo (logo intacto). (4) BottomBar mobile Home/Catálogo/Sacolinha/Conta;
+hambúrguer para o resto; cart mobile fullscreen. (5) “Você pode gostar também”
+(Becca) em PDP e Checkout. (6) Telas Sobre/FAQ, Privacidade e Termos no protótipo
+com footer soft compartilhado; textos legais **adaptados** a Repeti (não copiar
+lista de chá TipTop). (7) D0 permanece gated a HITL do T.
+**Consequência**: VERDICT rev.3; #122 só após aceite.
+

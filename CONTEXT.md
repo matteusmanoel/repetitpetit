@@ -82,12 +82,16 @@ _Avoid_: calling Hold Session a cart; using cart to lock Peças
 
 **Customer**:
 A person who buys; persisted as a Customer row linked from Orders (`customer_id`).
-Slice N: capture/confirm email at checkout (plus existing name/phone as available);
-no buyer login or customer Sacolinha panel yet — public order link + WhatsApp.
-Staff see Sacolinha/packing internally. Buyer portal is a later slice on the same
-Customer/Order/Peça model.
-_Avoid_: Client, account (for the person), lead; building buyer Auth in Slice N;
-anonymous orders with no Customer when email/phone exists
+Checkout always captures email (+ name/phone). Public order link `/pedido/[codigo]`
+always works. Slice O P1: optional buyer magic-link Auth (not admin); merge anonymous
+session → Customer; minimal Sacolinha panel. Staff packing queue remains source of
+truth for store ops.
+_Avoid_: Client, lead-as-customer; forcing Auth before payment; redirecting MP return
+to a hard login wall (D103/D109)
+
+**Discarded terms**:
+consignação portal, Sacolinha-as-monthly-subscription, pedido mensal as Sacolinha
+(D11 historical → D60/D101).
 
 **Settle**:
 Claiming Sacolinha contents via pickup or delivery; ops nudges if space is held too long.
@@ -120,4 +124,4 @@ _Avoid_: autonomous AI publish; form-first bulk entry as the long-term ideal
 
 ### Discarded
 
-Sacolinha-as-monthly-package / consignação (D11 → D60).
+Sacolinha-as-monthly-package / consignação (D11 → D60 → D101). Do not reintroduce.

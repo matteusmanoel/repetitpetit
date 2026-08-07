@@ -49,9 +49,8 @@ Meta do MVP: ≥ 60% dos pedidos online sem contato prévio.
 ## Fora do escopo deste MVP
 
 - Agente WhatsApp com IA
-- Portal de consignação (Sacolinha mensal) — schema preparado, funcionalidade depois
 - Multi-admin / multi-loja
 - Estoque em tempo real (validação manual permanece)
 - Recomendação inteligente
 - Cupons com motor de regras complexo
-- Área do cliente com histórico
+- Área do cliente completa (Slice O P1 entrega portal mínimo Sacolinha; histórico pleno depois)

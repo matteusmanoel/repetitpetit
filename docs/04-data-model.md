@@ -57,6 +57,8 @@ CREATE TYPE order_status AS ENUM (
 );
 
 -- Tipo de pedido (extensível para Sacolinha)
+-- Legado: 'sacolinha' no enum NÃO modela a Sacolinha de negócio (D60/D101).
+-- Purge em migration dedicada (Slice O). Preferir sempre 'standard' em código novo.
 CREATE TYPE order_type AS ENUM ('standard', 'sacolinha');
 
 -- Status do pagamento

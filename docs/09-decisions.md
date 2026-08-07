@@ -2219,3 +2219,20 @@ pagar em Sacolinha até `deliveryFreteReady` (#127). (3) Antes de `clearHold` +
 **Consequência**: Orchestrator aplica
 `20260807191000_order_status_na_sacolinha` após merge + regen types.
 
+---
+
+## D117 — SO-04: `label_print_jobs` + bridge ESC/POS offline-first (#126)
+
+**Data**: 2026-08-07
+**Contexto**: D107 / SO-04 — intake IA com fila térmica sequencial ACK;
+Vercel não fala USB; chave de IA pode estar ausente no Cloud Agent.
+**Decisão**: (1) Tabela `label_print_jobs` (`pending|printing|printed|failed`,
+`batch_id`, `attempt_count`/`max_attempts=2`) — falha de print **não** reverte
+produto; espelha `metadata_json.label_print`. (2) Bridge abstrata ESC/POS;
+`THERMAL_PRINT_BRIDGE_URL` opcional → sem URL = offline → job `failed` + UI
+reprint + fallback HTML `/etiqueta`. (3) AI via `OPENAI_API_KEY` ou
+`AI_GATEWAY_API_KEY` opcionais em `lib/env` — sem chave: preview editável
+manual. (4) Rota `/admin/produtos/intake-ia`; XLSX permanece.
+**Consequência**: Migration `20260807192000_label_print_jobs`; orchestrator
+aplica no projeto compartilhado + secrets AI/bridge quando homologar.
+

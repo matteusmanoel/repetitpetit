@@ -458,6 +458,69 @@ export type Database = {
         }
         Relationships: []
       }
+      label_print_jobs: {
+        Row: {
+          attempt_count: number
+          batch_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          max_attempts: number
+          printed_at: string | null
+          product_id: string
+          sort_order: number
+          staff_code: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          batch_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          printed_at?: string | null
+          product_id: string
+          sort_order?: number
+          staff_code: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          batch_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          printed_at?: string | null
+          product_id?: string
+          sort_order?: number
+          staff_code?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_print_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_print_jobs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_events: {
         Row: {
           actor_id: string | null

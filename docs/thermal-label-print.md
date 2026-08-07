@@ -95,4 +95,7 @@ o que a loja escolher; não precisa instalar QZ Tray no MVP):
 
 - Setup geral: [`docs/07-setup.md`](07-setup.md)
 - Soft launch: [`docs/11-soft-launch.md`](11-soft-launch.md)
-- Decisões D73 / D81 / D93 / D94: [`docs/09-decisions.md`](09-decisions.md)
+- Decisões D73 / D81 / D93 / D94 / D107 / D117: [`docs/09-decisions.md`](09-decisions.md)
+- Intake IA + fila sequencial ESC/POS: [`docs/slice-o/SO-04-ai-intake-print.md`](slice-o/SO-04-ai-intake-print.md)
+  — rota `/admin/produtos/intake-ia`; jobs em `label_print_jobs`; bridge local
+  opcional (`THERMAL_PRINT_BRIDGE_URL`)

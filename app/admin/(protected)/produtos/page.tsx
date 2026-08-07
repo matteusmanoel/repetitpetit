@@ -60,6 +60,9 @@ export default async function AdminProductsPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm">
+            <Link href="/admin/produtos/intake-ia">Cadastrar com IA</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
             <Link href="/admin/produtos/importar">Importar XLSX</Link>
           </Button>
           <Button asChild size="sm">

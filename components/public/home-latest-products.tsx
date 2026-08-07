@@ -12,31 +12,26 @@ export function HomeLatestProducts({ products }: HomeLatestProductsProps) {
   return (
     <section
       aria-labelledby="home-latest-heading"
-      className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-8 sm:py-14"
+      className="mx-auto w-full max-w-6xl px-4 pb-6 md:px-4"
     >
-      <header className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-2">
-          <h2
-            id="home-latest-heading"
-            className="font-heading text-2xl font-extrabold text-foreground sm:text-3xl"
-          >
-            Últimas novidades
-          </h2>
-          <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
-            Acabaram de chegar. Peça única — corre antes que acabe!
-          </p>
-        </div>
+      <header className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+        <h2
+          id="home-latest-heading"
+          className="font-display text-3xl text-primary md:text-4xl"
+        >
+          novidades da semana!
+        </h2>
         <Button
           asChild
           variant="outline"
-          className="h-11 w-full rounded-full sm:w-auto"
+          className="h-11 w-full rounded-full border-primary text-primary sm:w-auto"
         >
           <Link href="/catalogo">Ver catálogo completo</Link>
         </Button>
       </header>
 
       {products.length === 0 ? (
-        <p className="rounded-xl bg-muted px-4 py-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-2xl bg-muted px-4 py-8 text-center text-sm text-muted-foreground">
           Novidades em breve. Enquanto isso, fale com a gente no WhatsApp.
         </p>
       ) : (

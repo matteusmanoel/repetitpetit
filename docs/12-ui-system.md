@@ -27,14 +27,15 @@ Fonte: `app/prototype/tiptop-redesign/VERDICT.md`. **Não implementar D0 até HI
 4. **Catálogo**: sidebar desktop; grid 2/3; preço verde; acentos de gênero azul/rosa.
 5. **PDP / Checkout**: CTA pill verde; bloco Becca “você pode gostar também”.
 6. **Carrinho**: sheet desktop; **fullscreen mobile**.
-7. **Mobile**: BottomBar Home/Catálogo/Sacolinha/Conta; hambúrguer para Desapegue/Sobre/Legal/Admin.
+7. **Mobile**: BottomBar Home/Catálogo/Sacolinha/Conta; hambúrguer para Desapegue/Sobre/Legal.
 8. **Sobre/FAQ + Privacidade + Termos** + footer soft em todas as rotas públicas.
-9. **Tipografia**: Omnes + Becca em escala grande.
+9. **Tipografia**: Omnes + Becca em escala grande (stand-ins Fredoka/Caveat — D114).
 
 ### Escopo do rollout D0
 
-Home, catálogo, PDP, cart sheet, checkout, `/pedido/[codigo]`, header/footer.
-Admin (fila/IA) herda densidade/radius mas mantém identidade ferramenta.
+Home, catálogo, PDP, cart sheet, checkout, `/pedido/[codigo]`, header/footer,
+`/sobre`, `/privacidade`, `/termos`. Admin herda density/radius mas mantém
+identidade ferramenta (Inter). **Status**: implementado em #122 (D114).
 
 ## Tokens de condição e gênero (D57)
 
@@ -84,8 +85,8 @@ continuam intocados — filtros são só apresentação.
   virar "Ver carrinho" — decoração visual só; não toca no
   `fetch("/api/hold/reserve")` nem na máquina de estados de
   `AddToCartButton.tsx`.
-- "Você pode gostar": scroll horizontal com snap
-  (`RelatedProductsCarousel.tsx`), não o grid do catálogo.
+- "Você pode gostar também": grid TipTop (`RelatedProductsSection`) com título
+  `font-display` (Becca/Caveat) na PDP e no checkout (D112/D114).
 
 ## Carrinho
 
@@ -128,7 +129,7 @@ ao expirar — a lógica de expiração (`setInterval`,
 
 | | Loja pública | Admin |
 |---|---|---|
-| Tipografia de título | Nunito 700/800 (`font-heading`) | Inter 600 (`.admin-shell` sobrescreve `font-heading`/`h1`–`h6` para `var(--font-inter)`) |
+| Tipografia de título | Fredoka / Caveat display (`font-heading` / `font-display`) | Inter 600 (`.admin-shell` sobrescreve) |
 | Cor funcional | Lima/coral por gênero/condição | Só tokens shadcn neutros (`primary`, `muted`, `destructive` sóbrio) |
 | Animação | `motion` (spring, pulso, crossfade) | Nenhuma — transições CSS padrão do shadcn |
 | Densidade de controles | Botões grandes (`size="lg"`, CTA 52px) | `size="sm"` nos controles, tabelas compactas |

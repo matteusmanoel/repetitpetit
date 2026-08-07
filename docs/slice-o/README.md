@@ -1,6 +1,6 @@
 # Slice O — Redesign TipTop + Sacolinha
 
-Guia para cloud agents. Decisões: **D101–D113** em `docs/09-decisions.md`.
+Guia para cloud agents. Decisões: **D101–D114** em `docs/09-decisions.md`.
 Protótipo: `app/prototype/tiptop-redesign?variant=T` (vencedor T rev.3 — ver `VERDICT.md`).
 **HITL OK 2026-08-07** — dispatch D0 (#122) liberado. Admin UI polish fica pós-features.
 

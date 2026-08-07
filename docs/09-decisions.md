@@ -2172,3 +2172,19 @@ não ensinam consignação como Sacolinha; D11 permanece só histórico.
 **Consequência**: Orchestrator aplica a migration no projeto shared após merge.
 Tipos gerados podem ainda listar o label legado — código não o escreve.
 
+---
+
+## D114 — D0 production storefront = Variant T rev.3 (stand-in fonts)
+
+**Data**: 2026-08-07
+**Decisão**: (1) Storefront produção reescrito para TipTop chrome + palette Repeti
+conforme VERDICT T rev.3 / #122 — **sem** promover `app/prototype/*`.
+(2) Tokens: `--primary` = verde CTA; `--gender-menino` azul; `--gender-menina`
+rosa; `--radius` 1rem; `--font-sans`/`--font-heading` = Fredoka (Omnes stand-in);
+`--font-display` = Caveat (Becca stand-in) até arquivos licenciados.
+(3) Chrome: header pill search + nav Lucide + Conta popover; BottomBar mobile;
+cart fullscreen; soft footer; rotas `/sobre`, `/privacidade`, `/termos`.
+(4) Hold Session / Mercado Pago / Realtime intactos.
+**Consequência**: Features P0 nascem no visual T; admin permanece Inter via
+`.admin-shell`.
+

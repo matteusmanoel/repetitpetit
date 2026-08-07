@@ -55,17 +55,28 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
   const isFailed = isTerminalFailureStatus(order.status);
 
   return (
-    <div className="mx-auto w-full max-w-lg flex-1 px-4 py-8 sm:px-8 sm:py-12">
-      <p className="text-sm font-medium text-primary">Repeti Petit</p>
-      <h1 className="font-heading mt-1 text-2xl font-extrabold text-foreground">
-        Pedido {order.publicCode}
+    <div className="mx-auto w-full max-w-lg flex-1 px-4 py-10 text-center sm:px-8 sm:py-12">
+      {!isFailed && !awaitingPayment ? (
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-2xl text-primary-foreground">
+          ✓
+        </div>
+      ) : null}
+      <p className="font-display mt-4 text-3xl text-primary md:text-4xl">
+        {awaitingPayment
+          ? "finalize o pagamento"
+          : isFailed
+            ? statusLabel.toLowerCase()
+            : "pagamento confirmado!"}
+      </p>
+      <h1 className="mt-2 text-2xl font-bold text-foreground">
+        {order.publicCode}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Status: <span className="font-medium text-foreground">{statusLabel}</span>
       </p>
 
       {!isFailed ? (
-        <div className="mt-6 rounded-2xl border border-border px-2 py-4 sm:px-3">
+        <div className="mt-6 rounded-3xl border border-border px-2 py-4 text-left sm:px-3">
           <OrderProgressBar
             status={order.status}
             fulfillmentType={order.fulfillmentType}
@@ -74,7 +85,7 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
       ) : (
         <div
           role="status"
-          className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground"
+          className="mt-6 rounded-3xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-left text-sm text-foreground"
         >
           <p className="font-medium">{statusLabel}</p>
           <p className="mt-1 text-muted-foreground">
@@ -86,7 +97,7 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
       )}
 
       {awaitingPayment ? (
-        <div className="mt-4 rounded-2xl bg-muted/60 px-4 py-4 text-sm text-foreground">
+        <div className="mt-4 rounded-3xl bg-muted/60 px-4 py-4 text-left text-sm text-foreground">
           <p className="font-medium">Finalize o pagamento</p>
           <p className="mt-1 text-muted-foreground">
             Pague com PIX ou cartão no Checkout Pro do Mercado Pago. Após o
@@ -98,8 +109,8 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
         </div>
       ) : null}
 
-      <section className="mt-6 flex flex-col gap-3 rounded-2xl border border-border p-4">
-        <h2 className="font-heading text-base font-bold text-foreground">
+      <section className="mt-6 flex flex-col gap-3 rounded-3xl border border-border p-5 text-left">
+        <h2 className="text-base font-bold text-foreground">
           Prazo estimado
         </h2>
         <p className="text-sm text-foreground">{slaText}</p>
@@ -117,8 +128,8 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
         ) : null}
       </section>
 
-      <section className="mt-6 flex flex-col gap-3 rounded-2xl border border-border p-4">
-        <h2 className="font-heading text-base font-bold text-foreground">
+      <section className="mt-6 flex flex-col gap-3 rounded-3xl border border-border p-5 text-left">
+        <h2 className="text-base font-bold text-foreground">
           Itens
         </h2>
         <OrderItemsList items={order.items} />
@@ -136,8 +147,8 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
             </dd>
           </div>
           <div className="flex justify-between gap-3 border-t border-border pt-2 text-base">
-            <dt className="font-heading font-bold">Total</dt>
-            <dd className="font-heading font-bold text-primary">
+            <dt className="font-bold">Total</dt>
+            <dd className="font-bold text-primary">
               {formatPrice(order.totalAmount)}
             </dd>
           </div>

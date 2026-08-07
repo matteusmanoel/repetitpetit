@@ -12,6 +12,12 @@ const serverOnlySchema = z.object({
     .min(1, "SUPABASE_SERVICE_ROLE_KEY é obrigatório."),
   MERCADOPAGO_ACCESS_TOKEN: z.string().min(1).optional(),
   MERCADOPAGO_WEBHOOK_SECRET: z.string().min(1).optional(),
+  /** Optional — SO-04 AI intake multimodal. Missing → manual editable preview. */
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  /** Optional Vercel AI Gateway / alternate provider key (same role as OPENAI). */
+  AI_GATEWAY_API_KEY: z.string().min(1).optional(),
+  /** Optional local ESC/POS bridge base URL (store machine). Missing → offline. */
+  THERMAL_PRINT_BRIDGE_URL: z.string().url().optional(),
 });
 
 const envSchema = publicEnvSchema.extend(serverOnlySchema.shape);

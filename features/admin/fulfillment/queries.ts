@@ -1,6 +1,7 @@
 import "server-only";
 
 import { mapFulfillmentQueueOrder } from "@/features/admin/fulfillment/map-order";
+import { sortQueueOrders } from "@/features/admin/fulfillment/queue-logic";
 import { IN_PROGRESS_STATUSES } from "@/features/admin/fulfillment/transitions";
 import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
@@ -49,7 +50,8 @@ export async function getPaidFulfillmentQueue(): Promise<
     );
   }
 
-  return (data ?? []).map(mapFulfillmentQueueOrder);
+  // D105: entrega imediata acima de Sacolinha (SSR alinhado ao Realtime).
+  return sortQueueOrders((data ?? []).map(mapFulfillmentQueueOrder));
 }
 
 /**
@@ -73,7 +75,7 @@ export async function getInProgressFulfillmentQueue(): Promise<
     );
   }
 
-  return (data ?? []).map(mapFulfillmentQueueOrder);
+  return sortQueueOrders((data ?? []).map(mapFulfillmentQueueOrder));
 }
 
 /**

@@ -84,6 +84,28 @@ export async function markReadyForPickupAction(
   });
 }
 
+/** Sacolinha path (D105): confirmed → na_sacolinha (+ ready_since / deadline). */
+export async function markNaSacolinhaAction(
+  orderId: string,
+): Promise<FulfillmentTransitionResult> {
+  const session = await requireAdminSession();
+  const parsed = fulfillmentOrderIdSchema.safeParse({ orderId });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Pedido inválido.",
+      code: "validation",
+    };
+  }
+
+  return applyFulfillmentTransition({
+    orderId: parsed.data.orderId,
+    target: "na_sacolinha",
+    actorId: session.admin.id,
+  });
+}
+
 export async function markShippedAction(
   orderId: string,
   trackingCode: string,

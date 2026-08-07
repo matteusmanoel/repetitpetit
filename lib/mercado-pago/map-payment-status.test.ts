@@ -34,6 +34,7 @@ describe("isOrderPastPendingPayment", () => {
   it("considera paid e fulfillment posteriores", () => {
     expect(isOrderPastPendingPayment("paid")).toBe(true);
     expect(isOrderPastPendingPayment("confirmed")).toBe(true);
+    expect(isOrderPastPendingPayment("na_sacolinha")).toBe(true);
     expect(isOrderPastPendingPayment("completed")).toBe(true);
     expect(isOrderPastPendingPayment("pending_payment")).toBe(false);
     expect(isOrderPastPendingPayment("cancelled")).toBe(false);

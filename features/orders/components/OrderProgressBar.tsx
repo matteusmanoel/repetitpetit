@@ -15,7 +15,7 @@ type OrderProgressBarProps = {
 
 /**
  * Barra de progresso do pedido público.
- * ADAPT do Flor: inclui passos confirmed + shipped/ready_for_pickup.
+ * ADAPT do Flor: inclui passos confirmed + shipped/ready_for_pickup/na_sacolinha.
  */
 export function OrderProgressBar({
   status,

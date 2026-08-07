@@ -14,6 +14,7 @@ describe("assertOverrideAllowed (SN-06 / SN-13)", () => {
     for (const status of [
       "confirmed",
       "ready_for_pickup",
+      "na_sacolinha",
       "shipped",
       "completed",
     ] as const) {

@@ -49,7 +49,8 @@ CREATE TYPE order_status AS ENUM (
   'pending_payment',   -- aguardando pagamento
   'paid',              -- MP confirmou — entra na fila do admin
   'confirmed',         -- lojista conferiu e está separando
-  'ready_for_pickup',  -- pronto para retirada
+  'ready_for_pickup',  -- pronto para retirada (entrega local até em_rota / #128)
+  'na_sacolinha',      -- Sacolinha: separado e aguardando retirada (D105 / #125)
   'shipped',           -- enviado pelos Correios
   'completed',         -- entregue / retirado / concluído
   'cancelled',         -- cancelado pelo admin
@@ -309,6 +310,8 @@ CREATE TABLE orders (
   updated_at              timestamptz NOT NULL DEFAULT now(),
   paid_at                 timestamptz,
   confirmed_at            timestamptz,
+  ready_since             timestamptz,  -- quando entrou em na_sacolinha (D105)
+  pickup_deadline         timestamptz,  -- ready_since + 30d; job futuro (SO-05)
   completed_at            timestamptz,
   cancelled_at            timestamptz,
   expires_at              timestamptz DEFAULT (now() + interval '30 minutes')

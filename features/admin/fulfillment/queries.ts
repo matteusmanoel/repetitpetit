@@ -53,7 +53,7 @@ export async function getPaidFulfillmentQueue(): Promise<
 }
 
 /**
- * Pedidos em separação / envio (confirmed, ready_for_pickup, shipped).
+ * Pedidos em separação / envio (confirmed, ready_for_pickup, na_sacolinha, shipped).
  */
 export async function getInProgressFulfillmentQueue(): Promise<
   FulfillmentQueueOrder[]

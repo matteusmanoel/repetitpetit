@@ -111,12 +111,15 @@ describe("formatQueueDocumentTitle", () => {
 });
 
 describe("in-progress queue helpers", () => {
-  it("accepts confirmed / ready / shipped payloads", () => {
+  it("accepts confirmed / ready / na_sacolinha / shipped payloads", () => {
     expect(isInProgressQueuePayload({ id: "o1", status: "confirmed" })).toBe(
       true,
     );
     expect(
       isInProgressQueuePayload({ id: "o1", status: "ready_for_pickup" }),
+    ).toBe(true);
+    expect(
+      isInProgressQueuePayload({ id: "o1", status: "na_sacolinha" }),
     ).toBe(true);
     expect(isInProgressQueuePayload({ id: "o1", status: "paid" })).toBe(false);
   });
@@ -130,8 +133,20 @@ describe("in-progress queue helpers", () => {
     ).toBe(true);
     expect(
       shouldRemoveFromInProgressQueue(
+        { id: "o1", status: "na_sacolinha" },
+        { id: "o1", status: "completed" },
+      ),
+    ).toBe(true);
+    expect(
+      shouldRemoveFromInProgressQueue(
         { id: "o1", status: "confirmed" },
         { id: "o1", status: "shipped" },
+      ),
+    ).toBe(false);
+    expect(
+      shouldRemoveFromInProgressQueue(
+        { id: "o1", status: "confirmed" },
+        { id: "o1", status: "na_sacolinha" },
       ),
     ).toBe(false);
   });
@@ -145,6 +160,20 @@ describe("applyLocalStatusChange", () => {
     });
     expect(result.paid).toHaveLength(0);
     expect(result.inProgress[0]?.status).toBe("confirmed");
+  });
+
+  it("keeps na_sacolinha in in-progress until completed", () => {
+    const inProgress = [fakeOrder({ id: "a", status: "confirmed" })];
+    const ready = applyLocalStatusChange([], inProgress, "a", {
+      status: "na_sacolinha",
+    });
+    expect(ready.inProgress[0]?.status).toBe("na_sacolinha");
+    expect(ready.paid).toHaveLength(0);
+
+    const done = applyLocalStatusChange([], ready.inProgress, "a", {
+      status: "completed",
+    });
+    expect(done.inProgress).toHaveLength(0);
   });
 
   it("removes completed from in-progress", () => {

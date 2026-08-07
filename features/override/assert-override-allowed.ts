@@ -27,7 +27,7 @@ export function assertOverrideAllowed(
     return { ok: true };
   }
 
-  // Issue AC: paid → already_paid. Also block confirmed/ready/shipped/completed
+  // Issue AC: paid → already_paid. Also block confirmed/ready/sacolinha/shipped/completed
   // (same inventory priority — payment already won).
   if (order.status === "paid" || isOrderPastPendingPayment(order.status)) {
     return { ok: false, reason: "already_paid" };

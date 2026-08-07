@@ -2236,6 +2236,7 @@ manual. (4) Rota `/admin/produtos/intake-ia`; XLSX permanece.
 **Consequência**: Migration `20260807192000_label_print_jobs`; orchestrator
 aplica no projeto compartilhado + secrets AI/bridge quando homologar.
 
+---
 
 ## D118 — Frete P1: geocode CEP (Nominatim/Photon) + knobs em `settings` (#127)
 
@@ -2253,3 +2254,23 @@ frete no server e persiste em `orders.shipping_amount` +
 `pricing_snapshot_json.frete`. Correios / tabela de bairros fora.
 **Consequência**: Migration `20260807200000_delivery_frete_settings`;
 orchestrator aplica no projeto compartilhado + regen types se divergir.
+
+---
+
+## D119 — Buyer magic link + `customers.auth_user_id` + painel `/sacolinha` (#129)
+
+**Data**: 2026-08-07
+**Contexto**: SO-03 / D103 / D106 / D109 — guest-first; pós-MP soft nudge;
+área agregada Sacolinha. (D118 = frete #127; este ticket era D118 no branch
+paralelo — renumerado no rebase.)
+**Decisão**: (1) Coluna `customers.auth_user_id` (unique parcial) liga Auth
+user do comprador; gate `requireBuyerSession()` ≠ `requireAdminSession()`.
+(2) Magic link via `signInWithOtp` → `/auth/callback` → merge por e-mail +
+anexa `hold_sessions` do cookie `rp_cart_session`. E-mails de admin ativo
+não recebem OTP buyer (anti bypass de senha). (3) MP `back_urls` →
+`/pedido/[codigo]` (não `/checkout/sucesso`); nudge sheet dismissível.
+(4) Painel `/sacolinha` lista itens em `paid|confirmed|ready_for_pickup|na_sacolinha`.
+**Consequência**: Migration `20260807210000_customers_auth_user_id`;
+orchestrator aplica + configura Redirect URLs do Supabase Auth
+(`…/auth/callback`) local + Vercel.
+

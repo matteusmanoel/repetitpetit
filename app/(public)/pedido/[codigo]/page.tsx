@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 
 import { PayWithMercadoPagoButton } from "@/features/checkout/components/PayWithMercadoPagoButton";
 import { formatPrice } from "@/features/catalog/format-price";
+import { PedidoAuthNudge } from "@/features/buyer/components/PedidoAuthNudge";
+import { PedidoPaymentSync } from "@/features/buyer/components/PedidoPaymentSync";
+import { getBuyerSession } from "@/features/buyer/session";
 import {
   getFulfillmentLabel,
   getOrderStatusLabel,
@@ -18,6 +21,12 @@ import { env } from "@/lib/env";
 
 type PageProps = {
   params: Promise<{ codigo: string }>;
+  searchParams: Promise<{
+    status?: string;
+    payment_id?: string;
+    external_reference?: string;
+    preference_id?: string;
+  }>;
 };
 
 export async function generateMetadata({
@@ -32,17 +41,21 @@ export async function generateMetadata({
 
 /**
  * Página pública do pedido (T18) — acesso só por `public_code`, sem login.
- * Expande o stub da T15 (D43); rota permanece `/pedido/[codigo]`.
- * CTA Checkout Pro (T16) quando ainda pending_payment.
+ * SO-03 / D109: retorno MP aterrissa aqui; nudge soft de magic link (não wall).
  */
-export default async function PedidoPublicoPage({ params }: PageProps) {
+export default async function PedidoPublicoPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { codigo } = await params;
+  const mpParams = await searchParams;
   const order = await getPublicOrder(codigo);
 
   if (!order) {
     notFound();
   }
 
+  const buyerSession = await getBuyerSession();
   const statusLabel = getOrderStatusLabel(order.status);
   const fulfillmentLabel = getFulfillmentLabel(order.fulfillmentType);
   const slaText = resolveSlaText(
@@ -53,6 +66,7 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
   const awaitingPayment =
     order.status === "pending_payment" && order.paymentStatus === "pending";
   const isFailed = isTerminalFailureStatus(order.status);
+  const showAuthNudge = !awaitingPayment && !isFailed;
 
   return (
     <div className="mx-auto w-full max-w-lg flex-1 px-4 py-10 text-center sm:px-8 sm:py-12">
@@ -80,6 +94,12 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
       <p className="mt-1 text-sm text-muted-foreground">
         Status: <span className="font-medium text-foreground">{statusLabel}</span>
       </p>
+
+      <PedidoPaymentSync
+        publicCode={order.publicCode}
+        awaitingPayment={awaitingPayment}
+        mpReturnStatus={mpParams.status ?? null}
+      />
 
       {!isFailed ? (
         <div className="mt-6 rounded-3xl border border-border px-2 py-4 text-left sm:px-3">
@@ -114,6 +134,13 @@ export default async function PedidoPublicoPage({ params }: PageProps) {
           </div>
         </div>
       ) : null}
+
+      <PedidoAuthNudge
+        publicCode={order.publicCode}
+        customerEmail={order.customerEmail}
+        hasBuyerSession={Boolean(buyerSession)}
+        showNudge={showAuthNudge}
+      />
 
       <section className="mt-6 flex flex-col gap-3 rounded-3xl border border-border p-5 text-left">
         <h2 className="text-base font-bold text-foreground">

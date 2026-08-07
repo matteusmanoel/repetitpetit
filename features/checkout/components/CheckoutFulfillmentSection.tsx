@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 
 type CheckoutFulfillmentSectionProps = {
   value: FulfillmentType | "";
-  /** P0: frete haversine ainda não disponível (#127) — entrega é stub. */
-  deliveryFreteReady?: boolean;
+  /** Entrega imediata com knobs + CEP loja (D104 / #127). */
+  deliveryAvailable?: boolean;
   pickupAddress: string | null;
   error?: string;
   onChange: (value: FulfillmentType) => void;
@@ -20,7 +20,7 @@ type CheckoutFulfillmentSectionProps = {
  */
 export function CheckoutFulfillmentSection({
   value,
-  deliveryFreteReady = false,
+  deliveryAvailable = false,
   pickupAddress,
   error,
   onChange,
@@ -47,21 +47,22 @@ export function CheckoutFulfillmentSection({
         <FulfillmentCard
           selected={value === "delivery"}
           onSelect={() => onChange("delivery")}
+          disabled={!deliveryAvailable}
           icon={<MapPin className="size-5" aria-hidden />}
           title="Entrega imediata"
           description={
-            deliveryFreteReady
+            deliveryAvailable
               ? "Receba em casa — calcule o frete pelo CEP"
-              : "Em breve: frete pelo CEP antes de pagar"
+              : "Entrega indisponível no momento"
           }
-          detail="Foz do Iguaçu"
-          priceLabel={deliveryFreteReady ? "Calcular frete" : "Em breve"}
+          detail="Foz do Iguaçu e região"
+          priceLabel={deliveryAvailable ? "Calcular frete" : "Indisponível"}
         />
       </div>
 
-      {value === "delivery" && !deliveryFreteReady ? (
+      {value === "delivery" && !deliveryAvailable ? (
         <p className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-          O cálculo de frete ainda não está disponível. Escolha{" "}
+          A entrega imediata não está configurada. Escolha{" "}
           <span className="font-medium text-foreground">Sacolinha</span> para
           concluir o pagamento agora — sem endereço.
         </p>
@@ -84,6 +85,7 @@ function FulfillmentCard({
   description,
   detail,
   priceLabel,
+  disabled = false,
 }: {
   selected: boolean;
   onSelect: () => void;
@@ -92,14 +94,17 @@ function FulfillmentCard({
   description: string;
   detail: string;
   priceLabel: string;
+  disabled?: boolean;
 }) {
   return (
     <label
       className={cn(
-        "flex min-h-11 cursor-pointer flex-col gap-2 rounded-xl border px-3 py-3 transition-colors",
-        selected
-          ? "border-primary bg-primary/5 text-foreground"
-          : "border-border bg-background hover:bg-muted/60",
+        "flex min-h-11 flex-col gap-2 rounded-xl border px-3 py-3 transition-colors",
+        disabled
+          ? "cursor-not-allowed border-border/60 bg-muted/30 text-muted-foreground opacity-70"
+          : selected
+            ? "cursor-pointer border-primary bg-primary/5 text-foreground"
+            : "cursor-pointer border-border bg-background hover:bg-muted/60",
       )}
     >
       <span className="flex items-start gap-3">
@@ -107,6 +112,7 @@ function FulfillmentCard({
           type="radio"
           name="fulfillmentType"
           checked={selected}
+          disabled={disabled}
           onChange={onSelect}
           className="mt-1 size-4 accent-[hsl(210_77%_37%)]"
         />
@@ -117,7 +123,14 @@ function FulfillmentCard({
           </span>
           <span className="text-sm text-muted-foreground">{description}</span>
           <span className="text-xs text-muted-foreground">{detail}</span>
-          <span className="text-sm font-medium text-primary">{priceLabel}</span>
+          <span
+            className={cn(
+              "text-sm font-medium",
+              disabled ? "text-muted-foreground" : "text-primary",
+            )}
+          >
+            {priceLabel}
+          </span>
         </span>
       </span>
     </label>

@@ -7,14 +7,14 @@ describe("isCheckoutPayEnabled", () => {
     expect(isCheckoutPayEnabled("pickup")).toBe(true);
   });
 
-  it("bloqueia entrega sem frete calculado (P0 / #127)", () => {
+  it("bloqueia entrega sem frete calculado (D104 / #127)", () => {
     expect(isCheckoutPayEnabled("delivery")).toBe(false);
     expect(isCheckoutPayEnabled("delivery", { deliveryFreteReady: false })).toBe(
       false,
     );
   });
 
-  it("habilita entrega quando frete estiver OK (P1)", () => {
+  it("habilita entrega quando frete haversine OK", () => {
     expect(isCheckoutPayEnabled("delivery", { deliveryFreteReady: true })).toBe(
       true,
     );

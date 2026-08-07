@@ -5,6 +5,7 @@ import {
   getHoldSession,
 } from "@/features/cart/hold-session";
 import { peekCartSessionId } from "@/features/cart/session";
+import { resolveDeliveryFreteForOrder } from "@/features/checkout/calculate-frete";
 import { nextPublicCode } from "@/features/checkout/public-code";
 import { planCustomerResolve } from "@/features/checkout/resolve-customer";
 import { createOrderSchema } from "@/features/checkout/schemas";
@@ -21,13 +22,6 @@ import { createCheckoutPreferenceForOrder } from "@/features/payments/create-che
 import type { Json } from "@/lib/supabase/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
 
-function normalizeCity(city: string): string {
-  return city
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .trim();
-}
 
 /**
  * Cria pedido `pending_payment` a partir da Hold Session (SN-04 / D61 / D66)
@@ -148,6 +142,7 @@ export async function createOrderAction(
   let shippingRuleId: string | null = null;
   let shippingAmount = 0;
   let estimatedFulfillment: string | null = null;
+  let freteSnapshot: Json | null = null;
 
   if (data.fulfillmentType === "pickup") {
     const pickupRule =
@@ -166,54 +161,36 @@ export async function createOrderAction(
     estimatedFulfillment =
       pickupRule?.description ?? "Retire em até 4h úteis";
   } else {
+    // D104: frete haversine recalculado no server — nunca confiar no client.
+    if (!data.address) {
+      return {
+        success: false,
+        error: "Preencha o endereço de entrega.",
+        code: "validation",
+      };
+    }
+
+    const frete = await resolveDeliveryFreteForOrder(data.address.postalCode);
+    if (!frete.ok) {
+      return {
+        success: false,
+        error: frete.error,
+        code: frete.code,
+      };
+    }
+
     const deliveryRule = shippingRules.find((r) => {
       const meta = r.metadata_json;
       if (!meta || typeof meta !== "object" || Array.isArray(meta)) return false;
-      const cities = (meta as { cities?: unknown }).cities;
-      return Array.isArray(cities) && cities.length > 0;
+      const typed = meta as { type?: string; cities?: unknown };
+      if (typed.type === "delivery" || typed.type === "haversine") return true;
+      return Array.isArray(typed.cities) && typed.cities.length > 0;
     });
 
-    if (!deliveryRule) {
-      return {
-        success: false,
-        error: "Entrega não está disponível no momento.",
-        code: "shipping",
-      };
-    }
-
-    const meta = deliveryRule.metadata_json as {
-      cities?: string[];
-      state?: string;
-    };
-    const allowedCities = (meta.cities ?? []).map(normalizeCity);
-    const addressCity = normalizeCity(data.address!.city);
-
-    if (
-      allowedCities.length > 0 &&
-      !allowedCities.includes(addressCity)
-    ) {
-      return {
-        success: false,
-        error: `Entrega disponível apenas para ${meta.cities?.join(", ") ?? "Foz do Iguaçu"}.`,
-        code: "shipping",
-      };
-    }
-
-    if (
-      meta.state &&
-      data.address!.state.toUpperCase() !== meta.state.toUpperCase()
-    ) {
-      return {
-        success: false,
-        error: `Entrega disponível apenas para o estado ${meta.state}.`,
-        code: "shipping",
-      };
-    }
-
-    shippingRuleId = deliveryRule.id;
-    shippingAmount = Number(deliveryRule.amount);
-    estimatedFulfillment =
-      deliveryRule.description ?? "Entrega em até 24h úteis";
+    shippingRuleId = deliveryRule?.id ?? null;
+    shippingAmount = frete.amount;
+    estimatedFulfillment = frete.estimatedFulfillment;
+    freteSnapshot = frete.snapshot as Json;
   }
 
   const total = subtotal + shippingAmount;
@@ -361,6 +338,7 @@ export async function createOrderAction(
       shipping_amount: shippingAmount,
       total,
       hold_session_id: gate.holdSessionId,
+      ...(freteSnapshot ? { frete: freteSnapshot } : {}),
     };
 
     const expiresAt = new Date(

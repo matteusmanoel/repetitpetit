@@ -1028,11 +1028,18 @@ export type Database = {
           correios_enabled: boolean
           created_at: string
           delivery_enabled: boolean
+          delivery_max_radius_km: number
+          delivery_min_amount: number
+          delivery_multiplier: number
+          delivery_rate_per_km: number
           id: string
           logo_url: string | null
           pickup_address: string | null
           pickup_enabled: boolean
+          store_latitude: number | null
+          store_longitude: number | null
           store_name: string
+          store_postal_code: string | null
           support_email: string | null
           support_phone: string | null
           theme_json: Json | null
@@ -1042,11 +1049,18 @@ export type Database = {
           correios_enabled?: boolean
           created_at?: string
           delivery_enabled?: boolean
+          delivery_max_radius_km?: number
+          delivery_min_amount?: number
+          delivery_multiplier?: number
+          delivery_rate_per_km?: number
           id?: string
           logo_url?: string | null
           pickup_address?: string | null
           pickup_enabled?: boolean
+          store_latitude?: number | null
+          store_longitude?: number | null
           store_name?: string
+          store_postal_code?: string | null
           support_email?: string | null
           support_phone?: string | null
           theme_json?: Json | null
@@ -1056,11 +1070,18 @@ export type Database = {
           correios_enabled?: boolean
           created_at?: string
           delivery_enabled?: boolean
+          delivery_max_radius_km?: number
+          delivery_min_amount?: number
+          delivery_multiplier?: number
+          delivery_rate_per_km?: number
           id?: string
           logo_url?: string | null
           pickup_address?: string | null
           pickup_enabled?: boolean
+          store_latitude?: number | null
+          store_longitude?: number | null
           store_name?: string
+          store_postal_code?: string | null
           support_email?: string | null
           support_phone?: string | null
           theme_json?: Json | null

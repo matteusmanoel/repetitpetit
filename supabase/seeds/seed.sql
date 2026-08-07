@@ -3,7 +3,22 @@
 -- Run via: supabase db reset OR execute via Supabase MCP execute_sql
 
 -- ─── Settings ────────────────────────────────────────────────────────────────
-INSERT INTO settings (store_name, support_phone, support_email, pickup_address, pickup_enabled, delivery_enabled, correios_enabled)
+INSERT INTO settings (
+  store_name,
+  support_phone,
+  support_email,
+  pickup_address,
+  pickup_enabled,
+  delivery_enabled,
+  correios_enabled,
+  store_postal_code,
+  store_latitude,
+  store_longitude,
+  delivery_rate_per_km,
+  delivery_multiplier,
+  delivery_min_amount,
+  delivery_max_radius_km
+)
 VALUES (
   'Repeti Petit',
   '554545999999999',
@@ -11,14 +26,21 @@ VALUES (
   'Av. República Argentina, 2554 — Foz do Iguaçu, PR',
   true,
   true,
-  false
+  false,
+  '85851207',
+  -25.5344006,
+  -54.5794834,
+  2.50,
+  1.00,
+  8.00,
+  15.00
 )
 ON CONFLICT DO NOTHING;
 
 -- ─── Shipping rules ──────────────────────────────────────────────────────────
 INSERT INTO shipping_rules (name, rule_type, amount, description, is_active, sort_order, metadata_json) VALUES
   ('Retirada na loja', 'fixed', 0.00, 'Retire em até 4h úteis', true, 0, '{"type":"pickup"}'),
-  ('Entrega em Foz do Iguaçu', 'fixed', 15.00, 'Entrega em até 24h úteis', true, 1, '{"cities":["Foz do Iguaçu"],"state":"PR"}'),
+  ('Entrega em Foz do Iguaçu', 'haversine', 0.00, 'Entrega em até 24h úteis — frete por CEP', true, 1, '{"type":"delivery","method":"haversine"}'),
   ('Correios (PAC/SEDEX)', 'fixed', 25.00, 'Postado em até 1 dia útil após pagamento', false, 2, '{"type":"correios"}')
 ON CONFLICT DO NOTHING;
 

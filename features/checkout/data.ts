@@ -50,7 +50,9 @@ export async function getCheckoutPageData(): Promise<CheckoutPageData> {
   const [settingsResult, rulesResult] = await Promise.all([
     supabase
       .from("settings")
-      .select("pickup_address, pickup_enabled, delivery_enabled")
+      .select(
+        "pickup_address, pickup_enabled, delivery_enabled, store_postal_code, store_latitude, store_longitude",
+      )
       .limit(1)
       .maybeSingle(),
     supabase
@@ -71,9 +73,22 @@ export async function getCheckoutPageData(): Promise<CheckoutPageData> {
   const deliveryRule =
     rules.find((r) => r.cities.length > 0 || r.amount > 0) ?? null;
 
+  const storePostalOk =
+    typeof settings?.store_postal_code === "string" &&
+    /^\d{8}$/.test(settings.store_postal_code);
+  const storeCoordsOk =
+    settings?.store_latitude != null &&
+    settings?.store_longitude != null &&
+    Number.isFinite(Number(settings.store_latitude)) &&
+    Number.isFinite(Number(settings.store_longitude));
+  const deliveryEnabled = settings?.delivery_enabled ?? true;
+
   return {
     pickupEnabled: settings?.pickup_enabled ?? true,
-    deliveryEnabled: settings?.delivery_enabled ?? true,
+    deliveryEnabled,
+    deliveryFreteConfigured: Boolean(
+      deliveryEnabled && storePostalOk && storeCoordsOk,
+    ),
     pickupAddress: settings?.pickup_address ?? null,
     deliveryRule,
     pickupRule,

@@ -1,8 +1,8 @@
 import type { FulfillmentType } from "@/features/checkout/types";
 
 /**
- * P0 (D102 / #124): pagamento só no path Sacolinha (`pickup`).
- * Entrega imediata fica selecionável como stub até frete haversine (#127 / D104).
+ * D102 / D104 (#127): Sacolinha sempre paga; entrega só com frete
+ * haversine calculado e dentro do raio (`deliveryFreteReady`).
  */
 export function isCheckoutPayEnabled(
   fulfillmentType: FulfillmentType | "",

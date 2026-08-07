@@ -2,7 +2,8 @@
 
 Guia para cloud agents. Decisões: **D101–D114** em `docs/09-decisions.md`.
 Protótipo: `app/prototype/tiptop-redesign?variant=T` (vencedor T rev.3 — ver `VERDICT.md`).
-**HITL OK 2026-08-07** — dispatch D0 (#122) liberado. Admin UI polish fica pós-features.
+**HITL OK 2026-08-07** · **D0 merged** (#122 / D114). Admin UI polish fica pós-features.
+Wave 2 P0 frontier: #124 · #125 (depois #126 com secret AI).
 
 ## Glossário
 

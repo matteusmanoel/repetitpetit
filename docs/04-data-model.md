@@ -56,9 +56,10 @@ CREATE TYPE order_status AS ENUM (
   'expired'            -- não pago no prazo
 );
 
--- Tipo de pedido (extensível para Sacolinha)
--- Legado: 'sacolinha' no enum NÃO modela a Sacolinha de negócio (D60/D101).
--- Purge em migration dedicada (Slice O). Preferir sempre 'standard' em código novo.
+-- Tipo de pedido.
+-- Legado: label 'sacolinha' no enum NÃO modela a Sacolinha de negócio (D60/D101).
+-- Purge #123 / D113: CHECK `orders_order_type_no_legacy_sacolinha` bloqueia writes;
+-- código novo usa sempre 'standard' (`ORDER_TYPE_STANDARD`). Label permanece no tipo PG.
 CREATE TYPE order_type AS ENUM ('standard', 'sacolinha');
 
 -- Status do pagamento
@@ -287,6 +288,7 @@ CREATE TABLE orders (
   public_code             text NOT NULL UNIQUE, -- ex.: "RP-2024-0042"
   customer_id             uuid REFERENCES customers(id),
   order_type              order_type NOT NULL DEFAULT 'standard',
+  -- CHECK orders_order_type_no_legacy_sacolinha: order_type <> 'sacolinha' (#123)
   status                  order_status NOT NULL DEFAULT 'pending_payment',
   payment_status          payment_status NOT NULL DEFAULT 'pending',
   fulfillment_type        fulfillment_type NOT NULL,

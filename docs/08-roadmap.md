@@ -83,7 +83,7 @@
 
 | Feature             | Descrição                                                |
 | ------------------- | -------------------------------------------------------- |
-| Sacolinha (portal)  | Área do comprador: peças pagas aguardando retirada (D60/D101; Slice O) |
+| Sacolinha (portal)  | Área do comprador: peças pagas aguardando retirada (D60/D101/D113; Slice O) |
 | WhatsApp AI         | Agente conversacional para suporte e vendas              |
 | Motor de cupons     | Cupons reais vinculados a `leads`                        |
 | Área do cliente     | Magic link + histórico completo (além do portal Sacolinha) |

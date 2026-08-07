@@ -13,7 +13,10 @@ import {
   interpretConvertHoldResult,
   planHoldCheckoutGate,
 } from "@/features/checkout/validate-hold";
-import { PENDING_PAYMENT_TTL_MINUTES } from "@/features/orders/constants";
+import {
+  ORDER_TYPE_STANDARD,
+  PENDING_PAYMENT_TTL_MINUTES,
+} from "@/features/orders/constants";
 import { createCheckoutPreferenceForOrder } from "@/features/payments/create-checkout-preference";
 import type { Json } from "@/lib/supabase/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
@@ -369,7 +372,7 @@ export async function createOrderAction(
       .insert({
         public_code: publicCode,
         customer_id: customerId,
-        order_type: "standard",
+        order_type: ORDER_TYPE_STANDARD,
         status: "pending_payment",
         payment_status: "pending",
         fulfillment_type: data.fulfillmentType,

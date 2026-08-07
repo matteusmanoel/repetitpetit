@@ -29,13 +29,13 @@ Fonte: `app/prototype/tiptop-redesign/VERDICT.md`. **Não implementar D0 até HI
 6. **Carrinho**: sheet desktop; **fullscreen mobile**.
 7. **Mobile**: BottomBar Home/Catálogo/Sacolinha/Conta; hambúrguer para Desapegue/Sobre/Legal.
 8. **Sobre/FAQ + Privacidade + Termos** + footer soft em todas as rotas públicas.
-9. **Tipografia**: Omnes + Becca em escala grande (stand-ins Fredoka/Caveat — D113).
+9. **Tipografia**: Omnes + Becca em escala grande (stand-ins Fredoka/Caveat — D114).
 
 ### Escopo do rollout D0
 
 Home, catálogo, PDP, cart sheet, checkout, `/pedido/[codigo]`, header/footer,
 `/sobre`, `/privacidade`, `/termos`. Admin herda density/radius mas mantém
-identidade ferramenta (Inter). **Status**: implementado em #122 (D113).
+identidade ferramenta (Inter). **Status**: implementado em #122 (D114).
 
 ## Tokens de condição e gênero (D57)
 
@@ -86,7 +86,7 @@ continuam intocados — filtros são só apresentação.
   `fetch("/api/hold/reserve")` nem na máquina de estados de
   `AddToCartButton.tsx`.
 - "Você pode gostar também": grid TipTop (`RelatedProductsSection`) com título
-  `font-display` (Becca/Caveat) na PDP e no checkout (D112/D113).
+  `font-display` (Becca/Caveat) na PDP e no checkout (D112/D114).
 
 ## Carrinho
 

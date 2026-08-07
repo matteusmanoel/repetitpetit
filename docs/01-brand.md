@@ -61,7 +61,7 @@ Regras:
 Nunito é arredondada e acolhedora — combina com o traço lúdico do logo sem ser infantil
 demais. Inter mantém legibilidade em tamanhos pequenos.
 
-### Slice O / TipTop→Repeti (D108 / D110 / **D111** / **D113**)
+### Slice O / TipTop→Repeti (D108 / D110 / **D111** / **D114**)
 
 Referência de **estrutura**: TipTop (pill search, nav com ícones, filtro por idade,
 catálogo com sidebar, PDP card, mini-cart, CTAs pill). Referência de **identidade**:

@@ -1,7 +1,10 @@
 export { OrderItemsList } from "@/features/orders/components/OrderItemsList";
 export { OrderProgressBar } from "@/features/orders/components/OrderProgressBar";
 export { OrderSupportLink } from "@/features/orders/components/OrderSupportLink";
-export { PENDING_PAYMENT_TTL_MINUTES } from "@/features/orders/constants";
+export {
+  ORDER_TYPE_STANDARD,
+  PENDING_PAYMENT_TTL_MINUTES,
+} from "@/features/orders/constants";
 export {
   expireDuePendingPaymentOrders,
   planPendingPaymentExpire,
@@ -21,4 +24,5 @@ export type {
   OrderStatus,
   PublicOrder,
   PublicOrderItem,
+  WritableOrderType,
 } from "@/features/orders/types";

@@ -2008,6 +2008,7 @@ qualquer referência a consignação / assinatura mensal / “Sacolinha mensal�
 (3) `order_type = 'sacolinha'` permanece enum legado no schema até migration de
 purge (ticket dedicado) — **não** modela o conceito de negócio.
 **Consequência**: Agentes usam só D60/D101 + `CONTEXT.md`. Ver `docs/slice-o/`.
+*(Purge concluído em D113 / #123 — CHECK bloqueia writes; label PG permanece.)*
 
 ---
 
@@ -2153,4 +2154,21 @@ hambúrguer para o resto; cart mobile fullscreen. (5) “Você pode gostar tamb�
 com footer soft compartilhado; textos legais **adaptados** a Repeti (não copiar
 lista de chá TipTop). (7) D0 permanece gated a HITL do T.
 **Consequência**: VERDICT rev.3; #122 só após aceite.
+
+---
+
+## D113 — Purge: `order_type = 'sacolinha'` retired (writes blocked)
+
+**Data**: 2026-08-07
+**Contexto**: D101 pediu migration dedicada (#123) para aposentar o misuse do enum
+como “Sacolinha mensal / consignação”. Sacolinha de negócio continua = bolsa de
+peças pagas (D60), fora deste enum.
+**Decisão**: (1) Migration aditiva `20260807184500_retire_legacy_order_type_sacolinha`:
+normaliza rows `order_type = 'sacolinha'` → `'standard'`; COMMENT no type/coluna;
+CHECK `orders_order_type_no_legacy_sacolinha` impede novos writes do label legado.
+(2) Label `sacolinha` permanece no enum Postgres (drop de enum value é invasivo).
+(3) App: `ORDER_TYPE_STANDARD` em inserts (checkout + POS). (4) Docs de produto
+não ensinam consignação como Sacolinha; D11 permanece só histórico.
+**Consequência**: Orchestrator aplica a migration no projeto shared após merge.
+Tipos gerados podem ainda listar o label legado — código não o escreve.
 

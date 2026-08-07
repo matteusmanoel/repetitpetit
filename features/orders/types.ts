@@ -33,4 +33,6 @@ export type PublicOrder = {
   trackingCode: string | null;
   createdAt: string;
   items: PublicOrderItem[];
+  /** E-mail do customer (pré-preenche magic link; código público é o segredo). */
+  customerEmail: string | null;
 };

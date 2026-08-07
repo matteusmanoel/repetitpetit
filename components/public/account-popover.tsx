@@ -4,11 +4,11 @@ import { User } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { useCartStore } from "@/features/cart/store";
 import { cn } from "@/lib/utils";
 
 /**
- * Conta popover (D112) — visitor greeting + placeholders until SO-03 magic link.
+ * Conta popover (D112 + SO-03): Entrar (magic link) + Minha Sacolinha panel.
+ * Carrinho permanece no ícone Sacolinha do header/bottom bar.
  */
 export function AccountPopover({
   className,
@@ -19,7 +19,6 @@ export function AccountPopover({
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const openCart = useCartStore((s) => s.openCart);
 
   useEffect(() => {
     if (!open) return;
@@ -60,27 +59,16 @@ export function AccountPopover({
           aria-label="Menu da conta"
           className="absolute right-0 top-full z-40 mt-2 w-52 rounded-2xl border border-border bg-card p-3 shadow-xl"
         >
-          <p className="text-sm font-bold text-foreground">Olá, visitante</p>
+          <p className="text-sm font-bold text-foreground">Olá!</p>
           <ul className="mt-2 space-y-2 text-sm text-foreground/80">
             <li>
-              <span className="block cursor-default text-muted-foreground">
-                Meus pedidos
-                <span className="ml-1 text-[10px] uppercase tracking-wide">
-                  em breve
-                </span>
-              </span>
-            </li>
-            <li>
-              <button
-                type="button"
+              <Link
+                href="/sacolinha"
                 className="cursor-pointer hover:text-primary"
-                onClick={() => {
-                  setOpen(false);
-                  openCart();
-                }}
+                onClick={() => setOpen(false)}
               >
                 Minha Sacolinha
-              </button>
+              </Link>
             </li>
             <li>
               <Link
@@ -92,12 +80,13 @@ export function AccountPopover({
               </Link>
             </li>
             <li>
-              <span className="block cursor-default text-muted-foreground">
+              <Link
+                href="/entrar"
+                className="cursor-pointer hover:text-primary"
+                onClick={() => setOpen(false)}
+              >
                 Entrar
-                <span className="ml-1 text-[10px] uppercase tracking-wide">
-                  em breve
-                </span>
-              </span>
+              </Link>
             </li>
           </ul>
         </div>

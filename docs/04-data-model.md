@@ -244,15 +244,21 @@ SELECT cron.schedule(
 
 ```sql
 CREATE TABLE customers (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  full_name  text NOT NULL,
-  phone      text NOT NULL,   -- formato: 5545999999999
-  email      text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name    text NOT NULL,
+  phone        text NOT NULL,   -- formato: 5545999999999
+  email        text,
+  auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL, -- buyer magic link (SO-03 / D119)
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
 );
+-- UNIQUE (email) WHERE email IS NOT NULL
+-- UNIQUE (auth_user_id) WHERE auth_user_id IS NOT NULL
 ```
 
+Buyer identity (`auth_user_id`) is **distinct** from `admins.auth_user_id`.
+`requireAdminSession()` never gates buyer routes; Sacolinha uses
+`requireBuyerSession()` → `customers.auth_user_id`.
 ### addresses
 
 ```sql

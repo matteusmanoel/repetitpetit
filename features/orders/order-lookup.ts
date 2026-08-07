@@ -33,6 +33,9 @@ export async function getPublicOrder(
       estimated_fulfillment,
       tracking_code,
       created_at,
+      customers (
+        email
+      ),
       order_items (
         id,
         product_name_snapshot,
@@ -61,6 +64,14 @@ export async function getPublicOrder(
     lineTotal: Number(item.line_total),
   }));
 
+  const customerRelation = data.customers as
+    | { email: string | null }
+    | { email: string | null }[]
+    | null;
+  const customerEmail = Array.isArray(customerRelation)
+    ? (customerRelation[0]?.email ?? null)
+    : (customerRelation?.email ?? null);
+
   return {
     publicCode: data.public_code,
     status: data.status,
@@ -73,5 +84,6 @@ export async function getPublicOrder(
     trackingCode: data.tracking_code,
     createdAt: data.created_at,
     items,
+    customerEmail,
   };
 }

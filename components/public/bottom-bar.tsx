@@ -39,7 +39,10 @@ export function BottomBar() {
   const catalogActive =
     pathname.startsWith("/catalogo") || pathname.startsWith("/produto");
   const cartActive = pathname.startsWith("/checkout");
-  const accountActive = pathname.startsWith("/sobre");
+  const accountActive =
+    pathname.startsWith("/sobre") ||
+    pathname.startsWith("/entrar") ||
+    pathname.startsWith("/sacolinha");
 
   return (
     <nav
@@ -116,23 +119,16 @@ export function BottomBar() {
               aria-label="Menu da conta"
               className="absolute bottom-full right-0 z-50 mb-2 w-52 rounded-2xl border border-border bg-card p-3 shadow-xl"
             >
-              <p className="text-sm font-bold text-foreground">Olá, visitante</p>
+              <p className="text-sm font-bold text-foreground">Olá!</p>
               <ul className="mt-2 space-y-2 text-sm text-foreground/80">
-                <li className="text-muted-foreground">
-                  Meus pedidos{" "}
-                  <span className="text-[10px] uppercase">em breve</span>
-                </li>
                 <li>
-                  <button
-                    type="button"
+                  <Link
+                    href="/sacolinha"
                     className="cursor-pointer hover:text-primary"
-                    onClick={() => {
-                      setAccountOpen(false);
-                      openCart();
-                    }}
+                    onClick={() => setAccountOpen(false)}
                   >
                     Minha Sacolinha
-                  </button>
+                  </Link>
                 </li>
                 <li>
                   <Link
@@ -143,9 +139,14 @@ export function BottomBar() {
                     Sobre / FAQ
                   </Link>
                 </li>
-                <li className="text-muted-foreground">
-                  Entrar{" "}
-                  <span className="text-[10px] uppercase">em breve</span>
+                <li>
+                  <Link
+                    href="/entrar"
+                    className="cursor-pointer hover:text-primary"
+                    onClick={() => setAccountOpen(false)}
+                  >
+                    Entrar
+                  </Link>
                 </li>
               </ul>
             </div>

@@ -1,30 +1,27 @@
 "use client";
 
-import { MapPin, Store } from "lucide-react";
+import { MapPin, ShoppingBag } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { FulfillmentType } from "@/features/checkout/types";
-import { formatPrice } from "@/features/catalog/format-price";
 import { cn } from "@/lib/utils";
 
 type CheckoutFulfillmentSectionProps = {
   value: FulfillmentType | "";
-  pickupEnabled: boolean;
-  deliveryEnabled: boolean;
+  /** P0: frete haversine ainda não disponível (#127) — entrega é stub. */
+  deliveryFreteReady?: boolean;
   pickupAddress: string | null;
-  deliveryAmount: number | null;
-  deliveryDescription: string | null;
   error?: string;
   onChange: (value: FulfillmentType) => void;
 };
 
+/**
+ * Escolha binária D102: Sacolinha pré-selecionada; entrega imediata opcional.
+ */
 export function CheckoutFulfillmentSection({
   value,
-  pickupEnabled,
-  deliveryEnabled,
+  deliveryFreteReady = false,
   pickupAddress,
-  deliveryAmount,
-  deliveryDescription,
   error,
   onChange,
 }: CheckoutFulfillmentSectionProps) {
@@ -33,38 +30,42 @@ export function CheckoutFulfillmentSection({
       <legend className="sr-only">Como você quer receber</legend>
 
       <div className="grid gap-2 sm:grid-cols-2">
-        {pickupEnabled ? (
-          <FulfillmentCard
-            selected={value === "pickup"}
-            onSelect={() => onChange("pickup")}
-            icon={<Store className="size-5" aria-hidden />}
-            title="Retirada"
-            description={
-              pickupAddress
-                ? `Na loja · ${pickupAddress}`
-                : "Retire na loja em Foz do Iguaçu"
-            }
-            priceLabel="Grátis"
-          />
-        ) : null}
+        <FulfillmentCard
+          selected={value === "pickup"}
+          onSelect={() => onChange("pickup")}
+          icon={<ShoppingBag className="size-5" aria-hidden />}
+          title="Sacolinha"
+          description="Guarde na Sacolinha — retire quando quiser"
+          detail={
+            pickupAddress
+              ? `Retire na loja · ${pickupAddress}`
+              : "Retire na loja em Foz do Iguaçu"
+          }
+          priceLabel="Grátis"
+        />
 
-        {deliveryEnabled ? (
-          <FulfillmentCard
-            selected={value === "delivery"}
-            onSelect={() => onChange("delivery")}
-            icon={<MapPin className="size-5" aria-hidden />}
-            title="Entrega"
-            description={
-              deliveryDescription ?? "Entrega em Foz do Iguaçu"
-            }
-            priceLabel={
-              deliveryAmount != null
-                ? formatPrice(deliveryAmount)
-                : "Consulte"
-            }
-          />
-        ) : null}
+        <FulfillmentCard
+          selected={value === "delivery"}
+          onSelect={() => onChange("delivery")}
+          icon={<MapPin className="size-5" aria-hidden />}
+          title="Entrega imediata"
+          description={
+            deliveryFreteReady
+              ? "Receba em casa — calcule o frete pelo CEP"
+              : "Em breve: frete pelo CEP antes de pagar"
+          }
+          detail="Foz do Iguaçu"
+          priceLabel={deliveryFreteReady ? "Calcular frete" : "Em breve"}
+        />
       </div>
+
+      {value === "delivery" && !deliveryFreteReady ? (
+        <p className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          O cálculo de frete ainda não está disponível. Escolha{" "}
+          <span className="font-medium text-foreground">Sacolinha</span> para
+          concluir o pagamento agora — sem endereço.
+        </p>
+      ) : null}
 
       {error ? (
         <p role="alert" className="text-sm text-destructive">
@@ -81,6 +82,7 @@ function FulfillmentCard({
   icon,
   title,
   description,
+  detail,
   priceLabel,
 }: {
   selected: boolean;
@@ -88,6 +90,7 @@ function FulfillmentCard({
   icon: ReactNode;
   title: string;
   description: string;
+  detail: string;
   priceLabel: string;
 }) {
   return (
@@ -113,6 +116,7 @@ function FulfillmentCard({
             {title}
           </span>
           <span className="text-sm text-muted-foreground">{description}</span>
+          <span className="text-xs text-muted-foreground">{detail}</span>
           <span className="text-sm font-medium text-primary">{priceLabel}</span>
         </span>
       </span>

@@ -2440,3 +2440,20 @@ D119 painel mínimo; Auth HTML brand e filtros catálogo ficam após VIP estáve
 
 ---
 
+## D129 — Magic link: `next` via query + cookie; callback endurecido (#152)
+
+**Data**: 2026-08-08
+**Contexto**: D128 / HITL — clique no magic link caía na home sem `/sacolinha`;
+`emailRedirectTo?next=` pode ser stripado ou Site URL recebe `?code=` fora de
+`/auth/callback`.
+**Decisão**: (1) Ao enviar OTP, gravar `rp_buyer_auth_next` (httpOnly, 1h) **e**
+`emailRedirectTo=…/auth/callback?next=`. (2) Callback resolve `next` =
+query → cookie → `/sacolinha`; cookies de sessão no `NextResponse` do 302;
+suporta `code` (PKCE) e `token_hash`+`type`. (3) Middleware encaminha
+`?code=` / `token_hash` de qualquer path para `/auth/callback`. (4) Nudge
+pós-pago usa `next=/sacolinha`. Redirect URLs + templates PT = HITL
+orchestrator (não cloud).
+**Consequência**: Painel rico e HTML brand Auth continuam fora (D128).
+
+---
+

@@ -29,8 +29,11 @@ export default async function AdminAiIntakePage() {
           Cadastro em massa
         </h1>
         <p className="text-sm text-muted-foreground">
-          Série de fotos + áudio opcional → preview editável → confirmação cria
-          as peças e o código RP, depois imprime etiquetas uma a uma.
+          Foto → áudio opcional → próxima peça. Ao terminar a série, use{" "}
+          <strong className="font-medium text-foreground">
+            Gerar preview
+          </strong>{" "}
+          (ou o upload se a câmera pedir permissão/HTTPS). Revise e confirme.
         </p>
       </div>
 

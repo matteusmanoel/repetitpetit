@@ -6,6 +6,12 @@ import {
 
 export type MicHint = "none" | "lock" | "cancel";
 
+export type CameraErrorKind =
+  | "insecure_context"
+  | "permission_denied"
+  | "not_found"
+  | "unavailable";
+
 /** Touch/pen → hold+lock; mouse → tap toggle (SP-3 / D121). */
 export function isHoldLockPointer(pointerType: string): boolean {
   return pointerType === "touch" || pointerType === "pen";
@@ -29,6 +35,60 @@ export function resolveHoldLockHint(
 
 export function shouldCancelOnRelease(dx: number, hint: MicHint): boolean {
   return dx < -56 || hint === "cancel";
+}
+
+/**
+ * Classify getUserMedia / MediaDevices failures for actionable PT copy.
+ * Call with `window.isSecureContext` from the browser.
+ */
+export function classifyCameraError(
+  error: unknown,
+  isSecureContext: boolean,
+  mediaDevicesAvailable = true,
+): CameraErrorKind {
+  if (!isSecureContext || !mediaDevicesAvailable) {
+    return "insecure_context";
+  }
+  const name =
+    error && typeof error === "object" && "name" in error
+      ? String((error as { name: string }).name)
+      : "";
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return "permission_denied";
+  }
+  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+    return "not_found";
+  }
+  return "unavailable";
+}
+
+export function cameraErrorMessagePt(kind: CameraErrorKind): string {
+  switch (kind) {
+    case "insecure_context":
+      return "A câmera só funciona em HTTPS (ou localhost). Abra o admin em HTTPS ou use o upload de foto.";
+    case "permission_denied":
+      return "Permissão de câmera negada. Libere o acesso nas configurações do navegador ou use o upload de foto.";
+    case "not_found":
+      return "Nenhuma câmera encontrada neste dispositivo. Use o upload de foto.";
+    default:
+      return "Câmera indisponível. Use o upload de foto.";
+  }
+}
+
+/** Primary capture CTA — ends series and opens editable preview (D123). */
+export function generatePreviewCtaLabel(options: {
+  aiConfigured: boolean;
+  capturedCount: number;
+}): string {
+  const { aiConfigured, capturedCount } = options;
+  if (capturedCount <= 0) {
+    return aiConfigured ? "Gerar preview IA" : "Abrir preview";
+  }
+  const countLabel =
+    capturedCount === 1 ? "1 peça" : `${capturedCount} peças`;
+  return aiConfigured
+    ? `Gerar preview IA (${countLabel})`
+    : `Abrir preview (${countLabel})`;
 }
 
 /**

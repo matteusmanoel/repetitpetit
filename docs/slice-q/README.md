@@ -62,9 +62,9 @@ Guia vivo do grill 2026-08-08 após smoke VIP / storefront. Decisão guarda-chuv
 
 ## Checklist HITL Auth (orchestrator — não agent cloud)
 
-- [ ] Supabase Auth → URL Configuration: Site URL = `https://repetitpetit.vercel.app` (ou domínio final)
-- [ ] Redirect URLs allowlist inclui `https://repetitpetit.vercel.app/auth/callback` e `…/auth/callback?**`
-- [ ] Templates Magic Link / Confirm signup em **PT** (copy mínima; HTML brand = issue futuro)
+- [x] Supabase Auth Site URL = `https://repetitpetit.vercel.app` (era `http://` — causa provável do redirect quebrado; corrigido 2026-08-08 via Management API)
+- [x] Redirect URLs: `https://repetitpetit.vercel.app/**` + `/auth/callback` (+ localhost:3000)
+- [ ] Templates Magic Link / Confirm em **PT** — **bloqueado no free tier** com SMTP default (“Email template modification is not available…”). Brand/PT HTML = upgrade SMTP ou plano + ticket futuro
 - [ ] Smoke: pago → nudge → e-mail → clique → aterrissa em `/sacolinha` (não home) com sessão
 
 ## Artefatos

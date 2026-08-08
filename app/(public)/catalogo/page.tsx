@@ -19,6 +19,13 @@ export const metadata: Metadata = {
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+function firstParam(
+  value: string | string[] | undefined,
+): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
 export default async function CatalogoPage({
   searchParams,
 }: {
@@ -26,7 +33,8 @@ export default async function CatalogoPage({
 }) {
   const params = await searchParams;
   const filters = parseCatalogFilters(params);
-  const listKey = catalogFiltersToQueryString(filters) || "all";
+  const searchQuery = (firstParam(params.q) ?? "").trim();
+  const listKey = `${catalogFiltersToQueryString(filters)}|q=${searchQuery}`;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 md:py-8">
@@ -38,6 +46,12 @@ export default async function CatalogoPage({
         <p className="max-w-xl text-sm text-primary md:text-base">
           Peças únicas — filtre e reserve antes que acabe.
         </p>
+        {searchQuery ? (
+          <p className="text-sm text-muted-foreground">
+            Busca:{" "}
+            <span className="font-medium text-foreground">{searchQuery}</span>
+          </p>
+        ) : null}
       </header>
 
       <div className="grid gap-6 md:grid-cols-[220px_1fr] md:gap-8">
@@ -49,7 +63,7 @@ export default async function CatalogoPage({
           </Suspense>
 
           <Suspense key={listKey} fallback={<ProductCardSkeletonGrid />}>
-            <CatalogProductList filters={filters} />
+            <CatalogProductList filters={filters} searchQuery={searchQuery} />
           </Suspense>
         </div>
       </div>

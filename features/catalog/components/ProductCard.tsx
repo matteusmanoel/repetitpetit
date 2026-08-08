@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { MediaThumb } from "@/components/shared/media-thumb";
+import { ProductCardQuickAdd } from "@/features/catalog/components/ProductCardQuickAdd";
 import { formatPrice } from "@/features/catalog/format-price";
 import type { CatalogProduct } from "@/features/catalog/types";
 import { cn } from "@/lib/utils";
@@ -18,12 +19,13 @@ function genderAccentClass(gender: CatalogProduct["gender"]): string {
 }
 
 /**
- * Card TipTop→Repeti (D112 / SQ-3): altura fixa + nome truncado, preço verde,
- * acento de gênero no tamanho — sem borda grossa de gênero.
+ * Card TipTop→Repeti (D112 / SQ-3 / SS-3): altura fixa + nome truncado,
+ * hover ATC no desktop sem mudar altura.
  */
 export function ProductCard({ product, priority = false }: ProductCardProps) {
   const compareAt = product.compare_at_price;
   const hasCompare = compareAt != null && compareAt > product.price;
+  const canQuickAdd = product.status === "available";
 
   return (
     <Link
@@ -48,6 +50,17 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             <Badge className="absolute top-2 left-2 z-10 h-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground uppercase shadow-sm">
               Única
             </Badge>
+          ) : null}
+          {canQuickAdd ? (
+            <div className="absolute inset-x-0 bottom-0 hidden p-2 md:block">
+              <ProductCardQuickAdd
+                productId={product.id}
+                name={product.name}
+                slug={product.slug}
+                price={product.price}
+                coverImageUrl={product.cover_image_url}
+              />
+            </div>
           ) : null}
         </div>
 

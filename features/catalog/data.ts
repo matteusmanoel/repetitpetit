@@ -4,7 +4,6 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 
 import {
-  PRICE_RANGE_BOUNDS,
   type CatalogFilters,
   resolveEffectiveSizeGroups,
 } from "./filters";
@@ -32,9 +31,10 @@ export async function getAvailableProducts(
     faixa: null,
     marca: [],
     conservacao: [],
-    preco: null,
+    precoMax: null,
     soDisponiveis: false,
   },
+  options?: { searchQuery?: string | null },
 ): Promise<CatalogProduct[]> {
   const supabase = await createServerSupabaseClient();
 
@@ -70,13 +70,17 @@ export async function getAvailableProducts(
     query = query.in("condition", filters.conservacao);
   }
 
-  if (filters.preco) {
-    const bounds = PRICE_RANGE_BOUNDS[filters.preco];
-    if (bounds.gt != null) {
-      query = query.gt("price", bounds.gt);
-    }
-    if (bounds.lte != null) {
-      query = query.lte("price", bounds.lte);
+  if (filters.precoMax != null) {
+    query = query.lte("price", filters.precoMax);
+  }
+
+  const q = options?.searchQuery?.trim();
+  if (q) {
+    const escaped = q.replace(/[%_]/g, "").slice(0, 80);
+    if (escaped) {
+      query = query.or(
+        `name.ilike.%${escaped}%,brand.ilike.%${escaped}%,size_label.ilike.%${escaped}%`,
+      );
     }
   }
 
@@ -115,6 +119,47 @@ export async function getAvailableBrands(): Promise<string[]> {
   return [...brands].sort((a, b) =>
     a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
   );
+}
+
+export type CatalogSearchSuggestion = {
+  id: string;
+  name: string;
+  slug: string;
+  brand: string | null;
+  size_label: string | null;
+  price: number;
+  cover_image_url: string | null;
+};
+
+/**
+ * Autocomplete do header (SS-2) — até 8 peças available|hold.
+ */
+export async function searchCatalogSuggestions(
+  rawQuery: string,
+  limit = 8,
+): Promise<CatalogSearchSuggestion[]> {
+  const q = rawQuery.trim().replace(/[%_]/g, "").slice(0, 80);
+  if (q.length < 2) return [];
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      "id, name, slug, brand, size_label, price, cover_image_url",
+    )
+    .in("status", [...CATALOG_STATUSES])
+    .or(
+      `name.ilike.%${q}%,brand.ilike.%${q}%,size_label.ilike.%${q}%`,
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("searchCatalogSuggestions:", error);
+    return [];
+  }
+
+  return data ?? [];
 }
 
 type ProductDetailRow = {

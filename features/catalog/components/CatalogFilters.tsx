@@ -9,13 +9,14 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { BrandMultiSelect } from "@/features/catalog/components/BrandMultiSelect";
+import { formatPrice } from "@/features/catalog/format-price";
 import {
   AGE_BANDS,
   AGE_BAND_LABELS,
-  PRICE_RANGES,
-  PRICE_RANGE_LABELS,
+  PRICE_SLIDER_CEILING,
   PRODUCT_CONDITIONS,
   PRODUCT_CONDITION_DESCRIPTIONS,
   PRODUCT_CONDITION_LABELS,
@@ -25,7 +26,6 @@ import {
   SIZE_GROUPS,
   toggleInList,
   type AgeBand,
-  type PriceRange,
   type ProductCondition,
   type ProductGender,
   type SizeGroup,
@@ -48,13 +48,23 @@ const CONDITION_ICONS: Record<ProductCondition, LucideIcon> = {
 function FilterSection({
   title,
   children,
+  srOnlyTitle,
 }: {
   title: string;
   children: ReactNode;
+  /** When true, title is visually hidden (control already communicates). */
+  srOnlyTitle?: boolean;
 }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+      <h2
+        className={cn(
+          "text-sm font-semibold text-foreground",
+          srOnlyTitle && "sr-only",
+        )}
+      >
+        {title}
+      </h2>
       {children}
     </section>
   );
@@ -92,11 +102,6 @@ function ChipButton({
   );
 }
 
-/**
- * Pill de conservação sempre colorida (mesmos tokens do `ProductCard`) — o
- * estado ativo é sinalizado por um ring, não por trocar a cor de fundo, para
- * a pill continuar comunicando a condição mesmo antes de ser tocada.
- */
 function ConditionChip({
   condition,
   pressed,
@@ -128,8 +133,17 @@ function ConditionChip({
   );
 }
 
+/**
+ * Painel de filtros Option A (D132): chips + checkbox + slider max-only,
+ * marca multiselect, sem “Mais filtros”, labels mínimas.
+ */
 export function CatalogFilters({ brands }: CatalogFiltersProps) {
   const { filters, replaceFilters, isPending } = useCatalogFilters();
+
+  const sliderValue =
+    filters.precoMax != null && filters.precoMax < PRICE_SLIDER_CEILING
+      ? filters.precoMax
+      : PRICE_SLIDER_CEILING;
 
   function setTamanho(size: SizeGroup) {
     replaceFilters({
@@ -159,10 +173,10 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
     });
   }
 
-  function setPreco(range: PriceRange) {
+  function setPrecoMax(value: number) {
     replaceFilters({
       ...filters,
-      preco: filters.preco === range ? null : range,
+      precoMax: value >= PRICE_SLIDER_CEILING ? null : value,
     });
   }
 
@@ -174,7 +188,7 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
       )}
       aria-busy={isPending || undefined}
     >
-      <FilterSection title="Disponibilidade">
+      <FilterSection title="Disponibilidade" srOnlyTitle>
         <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/60 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
           <input
             type="checkbox"
@@ -189,12 +203,9 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
           />
           <span>Só disponíveis</span>
         </label>
-        <p className="text-xs text-muted-foreground sm:text-sm">
-          Por padrão o catálogo também mostra peças reservadas.
-        </p>
       </FilterSection>
 
-      <FilterSection title="Tamanho">
+      <FilterSection title="Tamanho" srOnlyTitle>
         <div
           className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]"
           role="group"
@@ -213,7 +224,7 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
         </div>
       </FilterSection>
 
-      <FilterSection title="Sexo e idade">
+      <FilterSection title="Sexo e idade" srOnlyTitle>
         <ToggleGroup
           type="single"
           value={filters.genero ?? ""}
@@ -252,14 +263,10 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
               </ChipButton>
             ))}
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            Escolha Meninas, Meninos ou Unissex para ver as faixas de idade.
-          </p>
-        )}
+        ) : null}
       </FilterSection>
 
-      <FilterSection title="Marca">
+      <FilterSection title="Marca" srOnlyTitle>
         <BrandMultiSelect
           brands={brands}
           selected={filters.marca}
@@ -268,7 +275,7 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
         />
       </FilterSection>
 
-      <FilterSection title="Conservação">
+      <FilterSection title="Conservação" srOnlyTitle>
         <div
           className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]"
           role="group"
@@ -283,26 +290,27 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
             />
           ))}
         </div>
-        <p className="text-xs text-muted-foreground sm:text-sm">
-          Toque na pill para ver o significado da conservação.
-        </p>
       </FilterSection>
 
-      <FilterSection title="Preço">
-        <div
-          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]"
-          role="group"
-          aria-label="Filtrar por preço"
-        >
-          {PRICE_RANGES.map((range) => (
-            <ChipButton
-              key={range}
-              pressed={filters.preco === range}
-              onClick={() => setPreco(range)}
-            >
-              {PRICE_RANGE_LABELS[range]}
-            </ChipButton>
-          ))}
+      <FilterSection title="Preço máximo">
+        <div className="flex flex-col gap-3 px-1">
+          <p className="text-sm font-medium text-foreground">
+            {sliderValue >= PRICE_SLIDER_CEILING
+              ? "Qualquer preço"
+              : `Até ${formatPrice(sliderValue)}`}
+          </p>
+          <Slider
+            min={0}
+            max={PRICE_SLIDER_CEILING}
+            step={5}
+            value={[sliderValue]}
+            onValueChange={(values) => {
+              const next = values[0] ?? PRICE_SLIDER_CEILING;
+              setPrecoMax(next);
+            }}
+            aria-label="Preço máximo"
+            className="w-full"
+          />
         </div>
       </FilterSection>
     </div>

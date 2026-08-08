@@ -1,35 +1,26 @@
 "use client";
 
-import { Heart, MapPin, Menu, Search, ShoppingBag } from "lucide-react";
+import { Heart, MapPin, Menu, ShoppingBag } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 
 import { AccountPopover } from "@/components/public/account-popover";
 import { MobileNavDrawer } from "@/components/public/mobile-nav-drawer";
+import { StorefrontSearch } from "@/components/public/storefront-search";
 import { BrandLogo } from "@/components/shared/BrandEmptyState";
 import { useCartStore } from "@/features/cart/store";
 import { navToneClass, STOREFRONT_NAV } from "@/features/storefront/nav";
 
 /**
- * TipTop→Repeti header (D112): logo, busca pill, Conta popover,
- * categorias texto+Lucide centradas, hamburger mobile.
+ * TipTop→Repeti header (D112): logo, busca pill + autocomplete (SS-2),
+ * Conta popover, categorias texto+Lucide centradas, hamburger mobile.
  */
 export function SiteHeader() {
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const openCart = useCartStore((s) => s.openCart);
   const itemCount = useCartStore((s) => s.items.length);
   const hasHydrated = useCartStore((s) => s.hasHydrated);
   const count = hasHydrated ? itemCount : 0;
-
-  function handleSearch(event: FormEvent) {
-    event.preventDefault();
-    // Full-text search is out of D0 — pill chrome navigates to catalog.
-    void query;
-    router.push("/catalogo");
-  }
 
   return (
     <>
@@ -55,28 +46,10 @@ export function SiteHeader() {
             />
           </Link>
 
-          <form
-            onSubmit={handleSearch}
-            className="relative hidden min-w-0 flex-1 items-center sm:flex"
-          >
-            <label className="sr-only" htmlFor="storefront-search">
-              Buscar
-            </label>
-            <input
-              id="storefront-search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="O que você procura?"
-              className="h-12 w-full rounded-full border-2 border-primary/50 bg-card px-5 pr-12 text-base text-foreground placeholder:text-foreground/40 md:h-[3.25rem] md:text-lg"
-            />
-            <button
-              type="submit"
-              className="absolute right-3 flex size-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
-              aria-label="Buscar"
-            >
-              <Search className="size-5" />
-            </button>
-          </form>
+          <StorefrontSearch
+            variant="desktop"
+            className="hidden min-w-0 flex-1 sm:block"
+          />
 
           <div className="ml-auto hidden items-center gap-1 md:flex lg:gap-2">
             <a
@@ -159,29 +132,10 @@ export function SiteHeader() {
           })}
         </nav>
 
-        {/* Mobile search under logo row */}
-        <form
-          onSubmit={handleSearch}
-          className="relative px-4 pb-3 sm:hidden"
-        >
-          <label className="sr-only" htmlFor="storefront-search-mobile">
-            Buscar
-          </label>
-          <input
-            id="storefront-search-mobile"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="O que você procura?"
-            className="h-11 w-full rounded-full border-2 border-primary/50 bg-card px-5 pr-12 text-base text-foreground placeholder:text-foreground/40"
-          />
-          <button
-            type="submit"
-            className="absolute right-6 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center text-primary"
-            aria-label="Buscar"
-          >
-            <Search className="size-5" />
-          </button>
-        </form>
+        <StorefrontSearch
+          variant="mobile"
+          className="px-4 pb-3 sm:hidden"
+        />
       </header>
 
       <MobileNavDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />

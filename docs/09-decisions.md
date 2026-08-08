@@ -2418,3 +2418,25 @@ smoke rotas admin / preview Vercel.
 
 ---
 
+## D128 — Slice Q: HITL pós-prod (frete geocode + Sacolinha + polish)
+
+**Data**: 2026-08-08
+**Contexto**: Smoke VIP/storefront após Slice P; frete “ViaCEP preenche mas
+Calcular frete falha”; magic link EN → home sem `/sacolinha`; polish UI +
+admin residual. Grill: `docs/slice-q/README.md`.
+**Decisão**: (1) **P0 compra**: consertar geocode frete (D104/D118) — settings
+loja já OK; Photon `lang=pt` é 400; Nominatim vazio em CEPs válidos. **Sem**
+fallback centro-município. (2) **P0 comprador**: consertar contrato D119 —
+callback/`next` → `/sacolinha` + sessão; Redirect URLs + templates **PT** =
+HITL orchestrator; **templates brand** = ticket futuro. Painel rico do
+cliente = fora. (3) **Parallel**: polish barato storefront (favicon, logo,
+Times, sexo+idade+chips, Instagram, cards, hold +10 min) **direto**;
+drawer/slider/autocomplete **só** após protótipo e **após** P0 verdes.
+(4) Admin: só **bugs funcionais** (intake preview/câmera) com P0; redesign
+visual (tabs/dialogs/Override) = grill depois. (5) Issues separados (não
+mega-issue).
+**Consequência**: Guia `docs/slice-q/README.md`; não reabrir D104 fórmula nem
+D119 painel mínimo; Auth HTML brand e filtros catálogo ficam após VIP estável.
+
+---
+

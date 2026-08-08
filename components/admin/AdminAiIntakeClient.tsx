@@ -40,6 +40,9 @@ import {
 } from "@/features/admin/ai-intake/actions";
 import {
   allIntakeDraftsReady,
+  cameraErrorMessagePt,
+  classifyCameraError,
+  generatePreviewCtaLabel,
   isHoldLockPointer,
   resolveHoldLockHint,
   shouldCancelOnRelease,
@@ -114,6 +117,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   const [pending, startTransition] = useTransition();
   const [uploading, setUploading] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const aiInflight = useRef(new Set<string>());
@@ -208,6 +212,21 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
     let stream: MediaStream | null = null;
     if (!cameraOn || tab !== "captura" || seriesClosed) return;
     void (async () => {
+      const mediaDevicesAvailable = Boolean(
+        typeof navigator !== "undefined" &&
+          navigator.mediaDevices?.getUserMedia,
+      );
+      const secure =
+        typeof window !== "undefined" ? window.isSecureContext : true;
+
+      if (!secure || !mediaDevicesAvailable) {
+        const message = cameraErrorMessagePt("insecure_context");
+        setCameraOn(false);
+        setCameraError(message);
+        toast.error(message);
+        return;
+      }
+
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
@@ -217,9 +236,13 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
-      } catch {
+        setCameraError(null);
+      } catch (err) {
+        const kind = classifyCameraError(err, secure, mediaDevicesAvailable);
+        const message = cameraErrorMessagePt(kind);
         setCameraOn(false);
-        toast.error("Câmera indisponível — use o upload de foto");
+        setCameraError(message);
+        toast.error(message);
       }
     })();
     return () => {
@@ -278,7 +301,9 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
           images: [{ image_url: url, alt_text: null }],
         }),
       );
-      toast.message("Foto capturada — grave o áudio (opcional)");
+      toast.message(
+        "Foto capturada — grave o áudio (opcional) ou tire a próxima",
+      );
       void runAiForSlot(nextSlot);
     } catch (uploadError) {
       setError(
@@ -346,7 +371,9 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
         audio_note: slot.audio_note || note,
       });
     }
-    toast.success("Áudio vinculado à foto");
+    toast.success(
+      "Áudio ok — tire a próxima foto ou toque em Gerar preview",
+    );
     setSelectedId(null);
   }
 
@@ -380,10 +407,21 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
     ensureManualDrafts();
     setSeriesClosed(true);
     setTab("preview");
+    setCameraOn(false);
     if (!aiConfigured) {
       setPreviewMode("manual");
       setWarning(
-        "IA não configurada — preencha o preview manualmente.",
+        "IA não configurada — preencha o preview manualmente e toque em Finalizar.",
+      );
+      toast.message("Preview manual aberto — revise e finalize");
+    } else {
+      const pendingAi = capturedSlots.some(
+        (s) => s.ai_status === "idle" || s.ai_status === "running",
+      );
+      toast.message(
+        pendingAi
+          ? "Gerando preview IA — revise os campos e finalize"
+          : "Preview pronto — revise e toque em Finalizar",
       );
     }
     // Kick remaining AI best-effort without blocking preview
@@ -457,6 +495,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
     setError(null);
     setConfirmOpen(false);
     setCameraOn(false);
+    setCameraError(null);
   }
 
   if (batchId) {
@@ -493,8 +532,8 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
         <div className="min-w-0">
           <p className="text-sm text-muted-foreground">
             {aiConfigured
-              ? "Série foto + áudio → IA em background → revise e confirme."
-              : "IA sem chave — preview manual. Cadastro e etiquetas funcionam igual."}
+              ? "Foto → áudio (opcional) → próxima. Ao terminar, Gerar preview IA → revise → Finalizar."
+              : "Foto → áudio (opcional) → próxima. Ao terminar, Abra o preview → preencha → Finalizar."}
           </p>
         </div>
         <Button
@@ -504,6 +543,13 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
           disabled={!canFinalize}
           onClick={() => setConfirmOpen(true)}
           className="shrink-0 border-[var(--brand-green)]/40 text-[var(--brand-green)]"
+          title={
+            canFinalize
+              ? undefined
+              : tab !== "preview"
+                ? "Primeiro gere o preview e preencha os campos obrigatórios"
+                : "Preencha nome, preço e tamanho em todas as peças"
+          }
         >
           <CheckCircle2 className="mr-1.5 size-4" />
           Finalizar
@@ -533,7 +579,12 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
             { id: "captura" as const, label: "Captura" },
             {
               id: "preview" as const,
-              label: `Preview (${capturedSlots.length})`,
+              label:
+                !seriesClosed && capturedSlots.length > 0
+                  ? aiConfigured
+                    ? `Gerar preview (${capturedSlots.length})`
+                    : `Abrir preview (${capturedSlots.length})`
+                  : `Preview (${capturedSlots.length})`,
             },
           ] as const
         ).map((t) => {
@@ -566,7 +617,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
                 previewBlocked
                   ? "Capture ao menos uma foto para abrir o preview"
                   : !seriesClosed && t.id === "preview"
-                    ? "Encerra a série e abre o preview"
+                    ? "Encerra a série e gera o preview editável"
                     : undefined
               }
             >
@@ -581,10 +632,15 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
           slots={slots}
           activeSlot={activeSlot}
           cameraOn={cameraOn}
+          cameraError={cameraError}
           uploading={uploading}
+          aiConfigured={aiConfigured}
           videoRef={videoRef}
           fileRef={fileRef}
-          onOpenCamera={() => setCameraOn(true)}
+          onOpenCamera={() => {
+            setCameraError(null);
+            setCameraOn(true);
+          }}
           onSnap={snapFromCamera}
           onSelectSlot={setSelectedId}
           onFile={(file) => {
@@ -647,7 +703,9 @@ function CapturePane({
   slots,
   activeSlot,
   cameraOn,
+  cameraError,
   uploading,
+  aiConfigured,
   videoRef,
   fileRef,
   onOpenCamera,
@@ -661,7 +719,9 @@ function CapturePane({
   slots: CaptureSlot[];
   activeSlot: CaptureSlot | null;
   cameraOn: boolean;
+  cameraError: string | null;
   uploading: boolean;
+  aiConfigured: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   fileRef: RefObject<HTMLInputElement | null>;
   onOpenCamera: () => void;
@@ -672,6 +732,11 @@ function CapturePane({
   onEndSeries: () => void;
   capturedCount: number;
 }) {
+  const previewCta = generatePreviewCtaLabel({
+    aiConfigured,
+    capturedCount,
+  });
+
   return (
     <div className="flex min-h-[min(70dvh,36rem)] flex-col gap-3 overflow-hidden">
       {/* Reserved strip — always present to avoid layout jump */}
@@ -745,7 +810,7 @@ function CapturePane({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-4 text-white">
+          <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center text-white">
             <Camera className="size-12 opacity-80" />
             <button
               type="button"
@@ -763,6 +828,18 @@ function CapturePane({
               <Upload className="size-3.5" />
               {uploading ? "Enviando…" : "Enviar foto"}
             </button>
+            <p className="max-w-xs text-xs text-white/70">
+              No celular: permita a câmera quando o navegador pedir. A câmera
+              exige HTTPS (ou localhost).
+            </p>
+            {cameraError ? (
+              <p
+                className="max-w-sm rounded-xl bg-white/10 px-3 py-2 text-xs text-white"
+                role="alert"
+              >
+                {cameraError}
+              </p>
+            ) : null}
           </div>
         )}
         {cameraOn ? (
@@ -788,7 +865,7 @@ function CapturePane({
         />
       </div>
 
-      <p className="h-5 shrink-0 text-center text-sm text-muted-foreground">
+      <p className="min-h-5 shrink-0 text-center text-sm text-muted-foreground">
         {activeSlot?.image_url ? (
           <>
             Slot{" "}
@@ -807,12 +884,12 @@ function CapturePane({
       <div className="flex shrink-0 items-center justify-between gap-3 pb-2">
         <Button
           type="button"
-          variant="outline"
-          size="sm"
-          disabled={capturedCount === 0}
+          className="h-12 min-w-0 flex-1 bg-[var(--brand-green)] text-white hover:bg-[var(--brand-green)]/90"
+          disabled={capturedCount === 0 || uploading}
           onClick={onEndSeries}
         >
-          Encerrar série
+          <Sparkles className="mr-1.5 size-4 shrink-0" />
+          <span className="truncate">{previewCta}</span>
         </Button>
         <HoldLockMic
           disabled={!activeSlot?.image_url || uploading}

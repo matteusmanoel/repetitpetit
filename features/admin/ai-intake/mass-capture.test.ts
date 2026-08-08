@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   allIntakeDraftsReady,
+  cameraErrorMessagePt,
+  classifyCameraError,
+  generatePreviewCtaLabel,
   isHoldLockPointer,
   isIntakeDraftReady,
   resolveHoldLockHint,
@@ -31,6 +34,40 @@ describe("mass-capture helpers", () => {
     expect(shouldCancelOnRelease(-60, "none")).toBe(true);
     expect(shouldCancelOnRelease(0, "cancel")).toBe(true);
     expect(shouldCancelOnRelease(0, "none")).toBe(false);
+  });
+
+  it("classifies camera failures with actionable PT messages", () => {
+    expect(classifyCameraError(null, false)).toBe("insecure_context");
+    expect(classifyCameraError(null, true, false)).toBe("insecure_context");
+    expect(
+      classifyCameraError({ name: "NotAllowedError" }, true),
+    ).toBe("permission_denied");
+    expect(classifyCameraError({ name: "NotFoundError" }, true)).toBe(
+      "not_found",
+    );
+    expect(classifyCameraError({ name: "NotReadableError" }, true)).toBe(
+      "unavailable",
+    );
+
+    expect(cameraErrorMessagePt("insecure_context")).toMatch(/HTTPS/);
+    expect(cameraErrorMessagePt("permission_denied")).toMatch(/Permissão/);
+    expect(cameraErrorMessagePt("not_found")).toMatch(/Nenhuma câmera/);
+    expect(cameraErrorMessagePt("unavailable")).toMatch(/upload/);
+  });
+
+  it("labels Gerar preview CTA with piece count and AI mode", () => {
+    expect(
+      generatePreviewCtaLabel({ aiConfigured: true, capturedCount: 0 }),
+    ).toBe("Gerar preview IA");
+    expect(
+      generatePreviewCtaLabel({ aiConfigured: true, capturedCount: 1 }),
+    ).toBe("Gerar preview IA (1 peça)");
+    expect(
+      generatePreviewCtaLabel({ aiConfigured: true, capturedCount: 3 }),
+    ).toBe("Gerar preview IA (3 peças)");
+    expect(
+      generatePreviewCtaLabel({ aiConfigured: false, capturedCount: 2 }),
+    ).toBe("Abrir preview (2 peças)");
   });
 
   it("gates Finalizar on required preview fields", () => {

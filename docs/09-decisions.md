@@ -2418,3 +2418,58 @@ smoke rotas admin / preview Vercel.
 
 ---
 
+## D128 — Slice Q: HITL pós-prod (frete geocode + Sacolinha + polish)
+
+**Data**: 2026-08-08
+**Contexto**: Smoke VIP/storefront após Slice P; frete “ViaCEP preenche mas
+Calcular frete falha”; magic link EN → home sem `/sacolinha`; polish UI +
+admin residual. Grill: `docs/slice-q/README.md`.
+**Decisão**: (1) **P0 compra**: consertar geocode frete (D104/D118) — settings
+loja já OK; Photon `lang=pt` é 400; Nominatim vazio em CEPs válidos. **Sem**
+fallback centro-município. (2) **P0 comprador**: consertar contrato D119 —
+callback/`next` → `/sacolinha` + sessão; Redirect URLs + templates **PT** =
+HITL orchestrator; **templates brand** = ticket futuro. Painel rico do
+cliente = fora. (3) **Parallel**: polish barato storefront (favicon, logo,
+Times, sexo+idade+chips, Instagram, cards, hold +10 min) **direto**;
+drawer/slider/autocomplete **só** após protótipo e **após** P0 verdes.
+(4) Admin: só **bugs funcionais** (intake preview/câmera) com P0; redesign
+visual (tabs/dialogs/Override) = grill depois. (5) Issues separados (não
+mega-issue).
+**Consequência**: Guia `docs/slice-q/README.md`; não reabrir D104 fórmula nem
+D119 painel mínimo; Auth HTML brand e filtros catálogo ficam após VIP estável.
+
+---
+
+## D129 — Magic link: `next` via query + cookie; callback endurecido (#152)
+
+**Data**: 2026-08-08
+**Contexto**: D128 / HITL — clique no magic link caía na home sem `/sacolinha`;
+`emailRedirectTo?next=` pode ser stripado ou Site URL recebe `?code=` fora de
+`/auth/callback`.
+**Decisão**: (1) Ao enviar OTP, gravar `rp_buyer_auth_next` (httpOnly, 1h) **e**
+`emailRedirectTo=…/auth/callback?next=`. (2) Callback resolve `next` =
+query → cookie → `/sacolinha`; cookies de sessão no `NextResponse` do 302;
+suporta `code` (PKCE) e `token_hash`+`type`. (3) Middleware encaminha
+`?code=` / `token_hash` de qualquer path para `/auth/callback`. (4) Nudge
+pós-pago usa `next=/sacolinha`. Redirect URLs + templates PT = HITL
+orchestrator (não cloud).
+**Consequência**: Painel rico e HTML brand Auth continuam fora (D128).
+
+---
+
+## D130 — Storefront polish SQ-3: font vars no html + brand mark favicon
+
+**Data**: 2026-08-08
+**Contexto**: Smoke VIP via #153 — Times no storefront; favicon quebrado;
+logo header minúsculo; Heart no Instagram; cards com altura irregular.
+**Decisão**: (1) CSS vars de `next/font` no `<html>` (não só no `body`) +
+fallbacks `ui-sans-serif` — evita Times quando `--font-fredoka` não herdava.
+(2) Favicon/`icon.png` regenerados de `public/brand/file.svg`. (3) Header
+usa `BrandLogo` ~240px. (4) Home/catálogo: copy “sexo e idade”; chips de
+idade só após escolher sexo. (5) Hold copy: +~10 min ao ir ao pagamento
+(D92) no cart sheet e checkout.
+**Consequência**: Sem mudança de TTL; drawer/slider/autocomplete continua
+depois (D128 Q4–5).
+
+---
+

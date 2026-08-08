@@ -325,7 +325,7 @@ export function getActiveFilterChips(
     const gender = filters.genero;
     chips.push({
       id: `genero:${gender}`,
-      label: `Gênero: ${PRODUCT_GENDER_LABELS[gender]}`,
+      label: `Sexo: ${PRODUCT_GENDER_LABELS[gender]}`,
       remove: (current) => ({ ...current, genero: null }),
     });
   }

@@ -1,8 +1,9 @@
 "use client";
 
 import { X } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+
+import { BrandLogo } from "@/components/shared/BrandEmptyState";
 
 const MENU_LINKS = [
   { href: "/catalogo", label: "Catálogo" },
@@ -33,13 +34,7 @@ export function MobileNavDrawer({ open, onClose }: MobileNavDrawerProps) {
       />
       <aside className="absolute left-0 top-0 flex h-full w-[82%] max-w-sm flex-col bg-card p-5 shadow-2xl">
         <div className="mb-6 flex items-center justify-between">
-          <Image
-            src="/brand/logo.png"
-            alt="Repeti Petit"
-            width={110}
-            height={36}
-            className="h-9 w-auto"
-          />
+          <BrandLogo className="h-auto w-[160px]" />
           <button
             type="button"
             onClick={onClose}

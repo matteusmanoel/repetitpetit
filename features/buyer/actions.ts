@@ -2,20 +2,25 @@
 
 import { redirect } from "next/navigation";
 
+import { setBuyerAuthNextCookie } from "@/features/buyer/auth-next-cookie";
 import {
   BUYER_DEFAULT_NEXT_PATH,
   sanitizeBuyerNextPath,
 } from "@/features/buyer/constants";
 import type { MagicLinkActionState } from "@/features/buyer/magic-link-state";
+import { buildBuyerAuthCallbackUrl } from "@/features/buyer/resolve-auth-next";
 import { buyerMagicLinkSchema } from "@/features/buyer/schemas";
 import { env } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
 
 /**
- * Envia magic link Supabase Auth para comprador (D103).
+ * Envia magic link Supabase Auth para comprador (D103 / D128).
  * Não usa `requireAdminSession`. E-mails de admin ativo não recebem OTP
  * (evita bypass de senha do painel) — resposta idêntica por privacidade.
+ *
+ * Preserva `next` via `emailRedirectTo?next=` **e** cookie `rp_buyer_auth_next`
+ * (backup se o dashboard Auth stripar query params / cair no Site URL).
  */
 export async function sendBuyerMagicLinkAction(
   _prev: MagicLinkActionState,
@@ -49,8 +54,12 @@ export async function sendBuyerMagicLinkAction(
     return { ok: true, error: null, sent: true };
   }
 
-  const siteUrl = env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
-  const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`;
+  await setBuyerAuthNextCookie(next);
+
+  const redirectTo = buildBuyerAuthCallbackUrl(
+    env.NEXT_PUBLIC_SITE_URL,
+    next,
+  );
 
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.signInWithOtp({

@@ -190,6 +190,15 @@ export function CartSheet() {
                       {formatCountdown(expiresAt, nowMs)}
                     </p>
                   ) : null}
+                  {items.length > 0 ? (
+                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                      Ao ir ao pagamento, você ganha cerca de{" "}
+                      <span className="font-semibold text-foreground">
+                        10 minutos extras
+                      </span>{" "}
+                      para concluir no Mercado Pago.
+                    </p>
+                  ) : null}
                   <SheetPrimitive.Close asChild>
                     <Button
                       variant="ghost"

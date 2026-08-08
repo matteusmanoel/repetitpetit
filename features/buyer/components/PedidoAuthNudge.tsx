@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { BuyerMagicLinkForm } from "@/features/buyer/components/BuyerMagicLinkForm";
+import { BUYER_DEFAULT_NEXT_PATH } from "@/features/buyer/constants";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 
 type PedidoAuthNudgeProps = {
+  /** Kept for call-site stability; landing after OTP is `/sacolinha` (D128). */
   publicCode: string;
   customerEmail: string | null;
   /** Buyer already has Sacolinha session. */
@@ -28,9 +30,9 @@ type PedidoAuthNudgeProps = {
 /**
  * Soft post-payment nudge (D103 / D109): magic link or CTA Sacolinha.
  * Renders as bottom sheet on mobile-first; dismissible.
+ * Magic link `next` → `/sacolinha` (painel mínimo), not home (D128).
  */
 export function PedidoAuthNudge({
-  publicCode,
   customerEmail,
   hasBuyerSession,
   showNudge,
@@ -98,7 +100,7 @@ export function PedidoAuthNudge({
           <BuyerMagicLinkForm
             className="mt-4"
             defaultEmail={customerEmail}
-            nextPath={`/pedido/${publicCode}`}
+            nextPath={BUYER_DEFAULT_NEXT_PATH}
             submitLabel="Enviar magic link"
           />
         </SheetContent>

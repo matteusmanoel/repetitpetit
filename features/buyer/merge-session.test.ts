@@ -8,6 +8,10 @@ import {
   planCustomerAuthLink,
   planHoldSessionAttach,
 } from "@/features/buyer/merge-session";
+import {
+  buildBuyerAuthCallbackUrl,
+  resolveBuyerAuthNextPath,
+} from "@/features/buyer/resolve-auth-next";
 import { resolveBuyerSession } from "@/features/buyer/resolve-buyer-session";
 import type { User } from "@supabase/supabase-js";
 
@@ -174,5 +178,48 @@ describe("sanitizeBuyerNextPath", () => {
     expect(sanitizeBuyerNextPath("//evil.com")).toBe(BUYER_DEFAULT_NEXT_PATH);
     expect(sanitizeBuyerNextPath("/admin")).toBe(BUYER_DEFAULT_NEXT_PATH);
     expect(sanitizeBuyerNextPath("/api/secret")).toBe(BUYER_DEFAULT_NEXT_PATH);
+  });
+});
+
+describe("resolveBuyerAuthNextPath", () => {
+  it("prefers query next over cookie", () => {
+    expect(
+      resolveBuyerAuthNextPath({
+        queryNext: "/pedido/RP-1",
+        cookieNext: "/sacolinha",
+      }),
+    ).toBe("/pedido/RP-1");
+  });
+
+  it("falls back to cookie when query is missing (Supabase strip)", () => {
+    expect(
+      resolveBuyerAuthNextPath({
+        queryNext: null,
+        cookieNext: "/sacolinha",
+      }),
+    ).toBe("/sacolinha");
+  });
+
+  it("defaults to /sacolinha when both missing", () => {
+    expect(resolveBuyerAuthNextPath({})).toBe(BUYER_DEFAULT_NEXT_PATH);
+  });
+
+  it("sanitizes hostile cookie/query values", () => {
+    expect(
+      resolveBuyerAuthNextPath({
+        queryNext: "https://evil.com",
+        cookieNext: "//evil.com",
+      }),
+    ).toBe(BUYER_DEFAULT_NEXT_PATH);
+  });
+});
+
+describe("buildBuyerAuthCallbackUrl", () => {
+  it("embeds sanitized next on /auth/callback", () => {
+    expect(
+      buildBuyerAuthCallbackUrl("https://repetipetit.com.br/", "/sacolinha"),
+    ).toBe(
+      "https://repetipetit.com.br/auth/callback?next=%2Fsacolinha",
+    );
   });
 });

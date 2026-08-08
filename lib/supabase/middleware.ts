@@ -15,8 +15,23 @@ import type { Database } from "@/lib/supabase/types";
  *
  * Não decide autorização (isso é responsabilidade de `requireAdminSession()`
  * em `features/admin/session.ts`) — apenas mantém a sessão fresca.
+ *
+ * D128: se o Auth dashboard cair no Site URL (`/`) com `?code=` / `token_hash`,
+ * encaminha para `/auth/callback` preservando query (e cookie `next`).
  */
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const params = request.nextUrl.searchParams;
+  const hasAuthCode = params.has("code");
+  const hasTokenHash = params.has("token_hash") && params.has("type");
+  const isCallback = pathname === "/auth/callback";
+
+  if (!isCallback && (hasAuthCode || hasTokenHash)) {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = "/auth/callback";
+    return NextResponse.redirect(callbackUrl);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient<Database>(

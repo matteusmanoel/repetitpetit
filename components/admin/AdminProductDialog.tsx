@@ -130,7 +130,7 @@ function AdminProductDialogForm({
   onCancel: () => void;
 }) {
   const [name, setName] = useState(product?.name ?? "");
-  const [slugManual, setSlugManual] = useState(product?.slug ?? "");
+  const [slugManual] = useState(product?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(mode === "edit");
   const [description, setDescription] = useState(product?.description ?? "");
   const [price, setPrice] = useState(

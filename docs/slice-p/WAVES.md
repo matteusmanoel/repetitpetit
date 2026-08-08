@@ -19,11 +19,12 @@
 
 ### Wave 1 — Shell frontier
 
-| Issue | Title | Blocked by |
-|---|---|---|
-| #138 | SP-1 Admin shell (rail + bottom bar + hamburger) | — |
+| Issue | Title | Blocked by | Status |
+|---|---|---|---|
+| #138 | SP-1 Admin shell (rail + bottom bar + hamburger) | — | **MERGED** #144 2026-08-08 |
 
-**Gate:** PR merged to `develop`; CI green; smoke `/admin` mobile 375 + desktop rail.
+**Gate:** PR merged to `develop`; CI green; smoke `/admin` mobile 375 + desktop rail. **OPEN for Wave 2.**
+
 
 ### Wave 2 — Parallel surfaces (after #138 closed)
 
@@ -50,4 +51,4 @@
 
 ## Frontier
 
-Start: **#138 only**. After merge → dispatch #139–#143.
+Wave 1 closed (#138 / #144). **Dispatch #139–#143** (disjoint ownership).

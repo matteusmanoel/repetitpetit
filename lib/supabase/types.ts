@@ -575,6 +575,7 @@ export type Database = {
           id: string
           line_total: number
           order_id: string
+          packed_at: string | null
           product_id: string | null
           product_name_snapshot: string
           product_slug_snapshot: string | null
@@ -587,6 +588,7 @@ export type Database = {
           id?: string
           line_total: number
           order_id: string
+          packed_at?: string | null
           product_id?: string | null
           product_name_snapshot: string
           product_slug_snapshot?: string | null
@@ -599,6 +601,7 @@ export type Database = {
           id?: string
           line_total?: number
           order_id?: string
+          packed_at?: string | null
           product_id?: string | null
           product_name_snapshot?: string
           product_slug_snapshot?: string | null

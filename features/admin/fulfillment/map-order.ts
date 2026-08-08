@@ -28,6 +28,8 @@ type OrderWithRelations = Pick<
     | "cover_image_snapshot"
     | "quantity"
     | "line_total"
+    | "unit_price_snapshot"
+    | "packed_at"
   >[];
 };
 
@@ -40,6 +42,8 @@ function mapItems(
     coverImageUrl: item.cover_image_snapshot,
     quantity: item.quantity,
     lineTotal: Number(item.line_total),
+    unitPrice: Number(item.unit_price_snapshot),
+    packedAt: item.packed_at,
   }));
 }
 

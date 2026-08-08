@@ -2274,3 +2274,43 @@ não recebem OTP buyer (anti bypass de senha). (3) MP `back_urls` →
 orchestrator aplica + configura Redirect URLs do Supabase Auth
 (`…/auth/callback`) local + Vercel.
 
+---
+
+## D120 — Slice P: Admin Ops UX — protótipo antes do `/admin` real
+
+**Data**: 2026-08-08
+**Contexto**: Slice O fechado em código; admin ainda topnav/denso sem identidade
+do storefront; ops precisa Separação peça-cêntrica, Cadastro Rápido mobile e
+radar de notificações. Grill em `docs/slice-p/README.md`.
+**Decisão**: (1) Entregar protótipo HITL `app/prototype/admin-ops-ux` (variantes
+A/B/C: shell + hub Separação) antes de tickets no `/admin`. (2) Dois modos:
+Fila de Pedidos + Painel de Separação; mobile default = Separação; âncora visual
+= data/hora + nome do Customer. (3) Separação check por item persistido sem
+auto-avançar pedido (ADR 0002). (4) Cadastro Rápido evolui intake-ia (1 foto,
+áudio hold+lock, IA background, preview pós-série). (5) Notif v1: entrega
+urgente > venda nova > Sacolinha prazo. (6) Dashboard ops + séries; acessos só
+mock; analytics real fora do epic. (7) Identidade híbrida; bottom bar
+Separação · Cadastro · Produtos · Painel · Mais.
+**Consequência**: Não promover `/prototype/*`; pós-veredito → issues SP-* /
+D121+; migration `packed_at` só na onda de implementação.
+
+---
+
+## D121 — Slice P: Variant C aprovada (Admin Ops UX)
+
+**Data**: 2026-08-08
+**Contexto**: HITL em `app/prototype/admin-ops-ux`; A/B/C exploraram shell +
+hub Separação; feedback fechou C como alvo.
+**Decisão**: (1) **Variant C** é o contrato visual/ops: rail azul hover +
+Separação split (cards cliente + grade) + Cadastro em massa + Produtos dialog +
+Notif drawer + Dashboard echarts. (2) Bottom bar mobile =
+Separação · Em massa · Produtos · Painel; hamburger fullscreen espelha sidebar.
+(3) Próxima ação pós-checklist: desktop ao lado das chips; mobile ícones no card
+do cliente. (4) Modal produto: shadcn Input/Select; Categoria+Status ½;
+multi-foto; Áudio + Processar; status labels PT. (5) Spec:
+`app/prototype/admin-ops-ux/VERDICT.md` + `docs/slice-p/README.md`.
+**Consequência**: Issues SP-1…SP-6 no `/admin` real; não copiar o protótipo à
+produção — reimplementar contra contratos/AC. `packed_at` na SP-2 (ADR 0002).
+
+---
+

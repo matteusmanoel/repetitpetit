@@ -122,6 +122,38 @@ Receive → photos + voice → AI draft → human review/approve → QR/label �
 AI drafts only; humans approve. Optimize for one touch per garment.
 _Avoid_: autonomous AI publish; form-first bulk entry as the long-term ideal
 
+**Cadastro em massa**:
+Mobile-first capture loop for Intake Pipeline (formerly “Cadastro Rápido”): one
+photo → optional voice note → next Peça, repeated as a series. Voice on mobile is
+hold-to-record with slide-up to lock (WhatsApp-like); on desktop, tap to
+start/stop. AI may draft in the background per item; the editable preview batch
+appears only after the series ends. Then human corrects and prints labels
+one-by-one. Same pipeline as admin AI intake; different capture UX. Single-item
+CRUD may also record audio and “Processar” to fill form fields.
+_Avoid_: waiting on AI between garments; multi-photo during the rapid loop;
+generating the full preview before the series finishes
+
+**Fila de Pedidos**:
+Order-centric fulfillment view (paid → separate → handoff). Primary visual
+anchors are purchase date/time and Customer name — not the public order code.
+_Avoid_: leading with order number as the title; conflating with Hold Session
+
+**Painel de Separação**:
+Peça-centric ops grid (catalog-like) with badges for hold, sold-awaiting-pack,
+separated-by-customer, etc., plus staff filters. Complements Fila de Pedidos;
+mobile ops default lands here. Fulfillment **status** stays on the Order; each
+sold Peça on an open fulfillment Order may have a staff **Separação check**
+(`packed_at`) so pickers see done vs pending inside that Order — checks do not
+auto-advance Order status.
+_Avoid_: replacing the order queue entirely; treating this as the public catalog;
+auto-confirming the Order when all items are checked; session-only checks as the
+source of truth
+
+**Central de Notificações**:
+Staff ops radar (drawer): prioritized alerts for urgent delivery, new paid sale,
+and Sacolinha nearing pickup deadline. Not a general system log.
+_Avoid_: dumping holds, print failures, or config noise into the v1 drawer
+
 ### Discarded
 
 Sacolinha-as-monthly-package / consignação (D11 → D60 → D101 → D113). Do not reintroduce.

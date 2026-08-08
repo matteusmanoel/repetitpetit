@@ -1,7 +1,8 @@
-import { Heart, MessageCircle } from "lucide-react";
-import Image from "next/image";
+import { MessageCircle } from "lucide-react";
 import Link from "next/link";
 
+import { InstagramIcon } from "@/components/icons/instagram";
+import { BrandLogo } from "@/components/shared/BrandEmptyState";
 import { publicEnv } from "@/lib/env/public";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
 
@@ -28,13 +29,7 @@ export function SiteFooter() {
       <div className="pointer-events-none absolute inset-x-0 -top-6 h-8 bg-background [clip-path:ellipse(55%_100%_at_50%_0%)]" />
       <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 md:grid-cols-3 md:py-16">
         <div>
-          <Image
-            src="/brand/logo.png"
-            alt="Repeti Petit"
-            width={120}
-            height={40}
-            className="h-10 w-auto"
-          />
+          <BrandLogo className="h-auto w-[140px]" />
           <p className="mt-3 text-sm leading-relaxed text-brand-blue/80">
             Brechó infantil em Foz do Iguaçu. Peça única, Sacolinha sem pressa e
             compra simples.
@@ -79,7 +74,7 @@ export function SiteFooter() {
                 aria-label={social.label}
                 className="flex size-11 cursor-pointer items-center justify-center rounded-full bg-card text-primary shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                <Heart className="size-5" />
+                <InstagramIcon className="size-5" strokeWidth={1.75} />
               </a>
             ))}
             {whatsapp ? (

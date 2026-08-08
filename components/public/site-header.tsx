@@ -1,13 +1,13 @@
 "use client";
 
 import { Heart, MapPin, Menu, Search, ShoppingBag } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { AccountPopover } from "@/components/public/account-popover";
 import { MobileNavDrawer } from "@/components/public/mobile-nav-drawer";
+import { BrandLogo } from "@/components/shared/BrandEmptyState";
 import { useCartStore } from "@/features/cart/store";
 import { navToneClass, STOREFRONT_NAV } from "@/features/storefront/nav";
 
@@ -49,13 +49,9 @@ export function SiteHeader() {
             aria-label="Repeti Petit — página inicial"
             className="shrink-0 transition hover:-translate-y-0.5"
           >
-            <Image
-              src="/brand/logo.png"
-              alt="Repeti Petit"
-              width={335}
-              height={597}
+            <BrandLogo
               priority
-              className="h-10 w-auto object-contain md:h-12"
+              className="!h-auto w-[min(240px,55vw)] max-w-[240px]"
             />
           </Link>
 

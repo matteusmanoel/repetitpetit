@@ -213,7 +213,7 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
         </div>
       </FilterSection>
 
-      <FilterSection title="Gênero">
+      <FilterSection title="Sexo e idade">
         <ToggleGroup
           type="single"
           value={filters.genero ?? ""}
@@ -221,7 +221,7 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
             setGenero((value || null) as ProductGender | null)
           }
           className="w-full gap-1 rounded-full bg-muted p-1"
-          aria-label="Filtrar por gênero"
+          aria-label="Filtrar por sexo"
         >
           {PRODUCT_GENDERS.map((gender) => (
             <ToggleGroupItem
@@ -236,24 +236,27 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-      </FilterSection>
-
-      <FilterSection title="Faixa etária">
-        <div
-          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]"
-          role="group"
-          aria-label="Filtrar por faixa etária"
-        >
-          {AGE_BANDS.map((band) => (
-            <ChipButton
-              key={band}
-              pressed={filters.faixa === band}
-              onClick={() => setFaixa(band)}
-            >
-              {AGE_BAND_LABELS[band]}
-            </ChipButton>
-          ))}
-        </div>
+        {filters.genero || filters.faixa ? (
+          <div
+            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]"
+            role="group"
+            aria-label="Filtrar por faixa etária"
+          >
+            {AGE_BANDS.map((band) => (
+              <ChipButton
+                key={band}
+                pressed={filters.faixa === band}
+                onClick={() => setFaixa(band)}
+              >
+                {AGE_BAND_LABELS[band]}
+              </ChipButton>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Escolha Meninas, Meninos ou Unissex para ver as faixas de idade.
+          </p>
+        )}
       </FilterSection>
 
       <FilterSection title="Marca">

@@ -2489,3 +2489,40 @@ contínuo quando o winner for promovido; query params PT permanecem.
 
 ---
 
+## D132 — Slice S: Option A filtros no storefront (supersede D131 promo)
+
+**Data**: 2026-08-08
+**Contexto**: Audit Slice S. D131 travou protótipo com preço dual-thumb +
+drawer (marca/conservação). Brief HITL Option A pediu card único limpo:
+chips + checkbox + **slider só máximo** (min implícito 0), marca multiselect,
+sem “Mais filtros”, labels só quando o controle não for sugestivo.
+**Decisão**: (1) **Promover Option A no `/catalogo` real** — supersede a promoção
+de D131 para produção (protótipo `/prototype/catalog-filters` permanece
+throwaway). (2) Query: preferir `preco_max` (centavos ou reais alinhados ao
+parse PT existente); ausência = sem teto; min sempre 0. Remover dependência de
+chips `PRICE_RANGES` na UI (parse legado dos chips pode aceitar até contract).
+(3) Controles no mesmo card/drawer mobile: sexo · idade (após sexo) ·
+disponibilidade · preço slider · tamanho · marca · conservação — sem trigger
+“Mais filtros”. (4) Unissex permanece no toggle (dado `gender`).
+**Consequência**: Tickets SS filtros implementam Option A; D131 vira histórico
+de protótipo. Append futuro se dual-thumb voltar a ser pedido.
+
+---
+
+## D133 — CTA pagamento: “Finalizar Pagamento” + “+10 minutos extras”
+
+**Data**: 2026-08-08
+**Contexto**: Audit Slice S. Copy em cart/checkout fala em “10 minutos extras”
+fora do botão; botão ainda “Pagar com Mercado Pago”. Backend (D92): ao criar
+pedido online, `pending_payment` com `expires_at = now + 10 min` — **não** é
+extensão do hold do carrinho (+10 sobre o TTL restante).
+**Decisão**: (1) CTA do checkout = título **Finalizar Pagamento** + subtítulo
+centrado em negrito **+10 minutos extras** (dentro do botão / stack do botão).
+(2) Copy comunica a **janela de pagamento** pós-criação do pedido (D92), não
+“hold + 10”. (3) Sem mudança de TTL/backend nesta decisão. (4) Remover
+parágrafo redundante no cart/checkout se duplicar o subtítulo do botão.
+**Consequência**: Ticket SS CTA só UI; qualquer mudança real de TTL exige ADR
+nova.
+
+---
+

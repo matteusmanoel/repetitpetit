@@ -88,9 +88,9 @@
 }
 
 /**
- * Admin (T8): identidade de ferramenta, não de loja. `.admin-shell` (raiz em
- * `AdminShell.tsx`) troca títulos e corpo para Inter 600 — sem lima/coral
- * lúdicos, sem pulso, sem spring. TipTop Fredoka/Caveat ficam só na loja.
+ * Admin (T8 + SP-1/D122): identidade de ferramenta, não de loja.
+ * `.admin-shell` (raiz em `AdminShell.tsx`) — Inter 600; canvas ops cinza
+ * no shell; brand na rail azul. Sem lima/coral lúdicos / TipTop display.
  */
 .admin-shell {
   font-family: var(--font-inter);

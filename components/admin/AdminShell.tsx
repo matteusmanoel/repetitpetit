@@ -1,15 +1,15 @@
 import type { ReactNode } from "react";
 
-import { AdminNav } from "@/components/admin/AdminNav";
-import { SignOutButton } from "@/components/admin/SignOutButton";
+import { AdminChrome } from "@/components/admin/AdminChrome";
 import { Toaster } from "@/components/ui/sonner";
 import type { AdminRow } from "@/features/admin/session";
 
 /**
- * Shell autenticado do admin — header com identidade + nav + sign-out.
- * Badge de "Pedidos" vive em `AdminNav` (client) via FulfillmentQueueProvider.
- * `.admin-shell` (globals.css, T8) troca a tipografia de títulos para Inter
- * 600 — sem Nunito/lima/coral lúdicos, identidade de ferramenta.
+ * Shell autenticado do admin — Variant C (D121 / Slice P SP-1).
+ * Canvas cinza ops (`#eceff3`); brand na rail azul. Nav: AdminChrome
+ * (rail hover desktop · bottom bar + hamburger mobile).
+ * Badge paid: FulfillmentQueueProvider → Separação.
+ * `.admin-shell` (globals.css) tipografia Inter 600 — ferramenta, não loja.
  */
 export function AdminShell({
   admin,
@@ -19,23 +19,8 @@ export function AdminShell({
   children: ReactNode;
 }) {
   return (
-    <div className="admin-shell flex min-h-screen flex-col font-sans">
-      <header className="border-b border-border bg-card">
-        <div className="flex items-center justify-between px-4 py-3 sm:px-8">
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-foreground">
-              Repeti Petit · Admin
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {admin.full_name ?? admin.email}
-            </span>
-          </div>
-          <SignOutButton />
-        </div>
-        <AdminNav />
-      </header>
-
-      <main className="flex-1 px-4 py-6 sm:px-8">{children}</main>
+    <div className="admin-shell min-h-screen bg-[#eceff3] font-sans antialiased">
+      <AdminChrome admin={admin}>{children}</AdminChrome>
       <Toaster position="top-center" richColors closeButton />
     </div>
   );

@@ -2314,3 +2314,20 @@ produção — reimplementar contra contratos/AC. `packed_at` na SP-2 (ADR 0002)
 
 ---
 
+## D122 — SP-1: Admin shell Variant C no `/admin` real
+
+**Data**: 2026-08-08
+**Contexto**: #138; D121; não promover `app/prototype/*`.
+**Decisão**: (1) `AdminShell` + `AdminChrome` substituem topnav: rail azul
+hover (md+), bottom bar 4 itens + hamburger fullscreen azul (mobile), canvas
+`#eceff3`, NotifBell stub até SP-5. (2) Mapa de rotas primary:
+Separação → `/admin/pedidos`; Em massa → `/admin/produtos/intake-ia`;
+Produtos → `/admin/produtos` (exclui intake-ia no match ativo); Painel →
+`/admin`. Secondary: Banners / POS / Override; conta: avatar + Configurações
+(`/admin/configuracoes`) + Sair (`signOutAction`). (3) Config compartilhada em
+`components/admin/admin-nav-config.ts`.
+**Consequência**: SP-2…SP-6 consomem nav existente; Categorias e rotas legadas
+permanecem por URL, fora da bottom bar.
+
+---
+

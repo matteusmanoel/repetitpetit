@@ -19,6 +19,10 @@ export {
 } from "@/features/buyer/merge-session";
 export { mergeBuyerSessionAfterAuth } from "@/features/buyer/merge-buyer-session";
 export {
+  buildBuyerAuthCallbackUrl,
+  resolveBuyerAuthNextPath,
+} from "@/features/buyer/resolve-auth-next";
+export {
   getBuyerSession,
   requireBuyerSession,
   resolveBuyerSession,

@@ -8,7 +8,7 @@ import {
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, LogOut, Menu, Settings, X } from "lucide-react";
+import { LogOut, Menu, Settings, X } from "lucide-react";
 
 import {
   ADMIN_PRIMARY_NAV,
@@ -18,32 +18,13 @@ import {
   isAdminNavActive,
   type AdminNavItem,
 } from "@/components/admin/admin-nav-config";
+import { AdminNotificationsHost } from "@/components/admin/AdminNotificationsDrawer";
 import { useFulfillmentQueue } from "@/components/admin/FulfillmentQueueProvider";
 import { Badge } from "@/components/ui/badge";
 import { BrandLogo } from "@/components/shared/BrandEmptyState";
 import { signOutAction } from "@/features/admin/sign-out-action";
 import type { AdminRow } from "@/features/admin/resolve-admin-session";
 import { cn } from "@/lib/utils";
-
-/**
- * Stub slot for SP-5 notifications drawer — keeps the header layout stable.
- */
-export function AdminNotifBellStub({ className }: { className?: string }) {
-  return (
-    <button
-      type="button"
-      disabled
-      className={cn(
-        "relative inline-flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-2xl bg-white text-muted-foreground opacity-60 shadow-sm ring-1 ring-black/8",
-        className,
-      )}
-      aria-label="Central de notificações (em breve)"
-      title="Notificações em breve"
-    >
-      <Bell className="size-5" />
-    </button>
-  );
-}
 
 function PaidBadge({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -423,7 +404,7 @@ export function AdminChrome({
             {adminPageSubtitle(pathname)}
           </p>
           <div className="flex items-center gap-2">
-            <AdminNotifBellStub />
+            <AdminNotificationsHost />
             <HamburgerMenu
               open={menuOpen}
               setOpen={setMenuOpen}

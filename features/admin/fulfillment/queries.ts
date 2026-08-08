@@ -15,6 +15,7 @@ const QUEUE_SELECT = `
   paid_at,
   created_at,
   tracking_code,
+  pickup_deadline,
   customers (
     full_name,
     phone

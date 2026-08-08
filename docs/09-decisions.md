@@ -2400,3 +2400,21 @@ divergir. Não promover `app/prototype/*`.
 
 ---
 
+## D127 — SP-5: Central de Notificações (drawer priorizado)
+
+**Data**: 2026-08-08
+**Contexto**: #142; CONTEXT Central de Notificações; D121 Variant C; shell SP-1
+com NotifBell stub.
+**Decisão**: (1) Bell real no header do `AdminChrome` abre drawer compacto
+(stack estilo macOS: mobile centrado, desktop top-right) — **não** log genérico.
+(2) Fontes de domínio via fila fulfillment já carregada no layout: prioridade
+exclusiva por pedido — (1) `fulfillment_type=delivery` (entrega urgente),
+(2) `status=paid` (venda nova), (3) `na_sacolinha` com `pickup_deadline` ≤7 dias
+(ou vencido). (3) Dismiss / limpar tudo persistem IDs no `localStorage` do
+browser do staff; card abre Separação (`/admin/pedidos`). (4) DTO da fila
+expõe `pickupDeadline` (select aditivo) sem alterar checks Separação.
+**Consequência**: Sem migration; smoke admin header + drawer; Wave 2 handoff =
+smoke rotas admin / preview Vercel.
+
+---
+

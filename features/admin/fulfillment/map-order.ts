@@ -19,6 +19,7 @@ type OrderWithRelations = Pick<
   | "paid_at"
   | "created_at"
   | "tracking_code"
+  | "pickup_deadline"
 > & {
   customers: Pick<CustomerRow, "full_name" | "phone"> | null;
   order_items: Pick<
@@ -63,6 +64,7 @@ export function mapFulfillmentQueueOrder(
     paidAt: row.paid_at,
     createdAt: row.created_at,
     trackingCode: row.tracking_code,
+    pickupDeadline: row.pickup_deadline,
     customerName: row.customers?.full_name ?? null,
     customerPhone: row.customers?.phone ?? null,
     items,

@@ -25,6 +25,8 @@ export type FulfillmentQueueOrder = {
   paidAt: string | null;
   createdAt: string;
   trackingCode: string | null;
+  /** Sacolinha: ready_since + 30d (D116) — usado pelo radar SP-5. */
+  pickupDeadline: string | null;
   customerName: string | null;
   customerPhone: string | null;
   items: FulfillmentQueueItem[];

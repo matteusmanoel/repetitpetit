@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AdminDashboardCharts } from "@/components/admin/AdminDashboardCharts";
 import { AdminDashboardKpis } from "@/components/admin/AdminDashboardKpis";
-import { getAdminDashboardKpis } from "@/features/admin/dashboard/queries";
+import { AdminDashboardOpsSummary } from "@/components/admin/AdminDashboardOpsSummary";
+import { getAdminDashboardData } from "@/features/admin/dashboard/queries";
 
 export const metadata: Metadata = {
-  title: "Painel administrativo — Repeti Petit",
+  title: "Painel — Repeti Petit",
 };
 
 const SHORTCUTS = [
   {
     href: "/admin/pedidos",
-    title: "Pedidos",
-    description: "Fila de fulfillment em tempo real — pedidos pagos para conferir.",
+    title: "Separação",
+    description: "Fila de fulfillment — pedidos pagos para conferir.",
   },
   {
     href: "/admin/produtos",
@@ -32,26 +34,29 @@ const SHORTCUTS = [
 ] as const;
 
 export default async function AdminDashboardPage() {
-  const kpis = await getAdminDashboardKpis();
+  const { kpis, charts } = await getAdminDashboardData();
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-heading text-2xl font-extrabold text-foreground">
-          Painel administrativo
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-4">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          Painel
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Visão do acervo, holds ativos e da fila de fulfillment. Use os
-          atalhos para gerenciar catálogo, categorias e banners.
+        <p className="mt-1 text-sm text-muted-foreground">
+          Operação do dia · vendas por canal · holds e Sacolinha
         </p>
-      </div>
+      </header>
+
+      <AdminDashboardOpsSummary kpis={kpis} />
+
+      <AdminDashboardCharts charts={charts} />
 
       <AdminDashboardKpis kpis={kpis} />
 
       <section className="flex flex-col gap-3" aria-labelledby="atalhos-admin">
         <h2
           id="atalhos-admin"
-          className="font-heading text-base font-extrabold text-foreground"
+          className="text-base font-semibold text-foreground"
         >
           Atalhos
         </h2>
@@ -60,9 +65,9 @@ export default async function AdminDashboardPage() {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className="block rounded-lg border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40 hover:bg-muted/40"
+                className="block rounded-2xl border border-black/5 bg-white px-4 py-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/40"
               >
-                <p className="font-heading text-base font-extrabold text-foreground">
+                <p className="text-base font-semibold text-foreground">
                   {item.title}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">

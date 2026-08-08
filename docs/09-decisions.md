@@ -2348,3 +2348,19 @@ notif / dashboard fora do escopo.
 
 ---
 
+## D124 — SP-6: Painel ops + ECharts (séries mock-safe)
+
+**Data**: 2026-08-08
+**Contexto**: #143; D40/D87 KPIs T21; D121 dashboard ECharts; echarts já no
+`package.json`.
+**Decisão**: (1) `/admin` Painel: faixa KPI ops (vendas hoje R$, pagos, holds,
+Sacolinha) + charts ECharts (`echarts-for-react`, SSR off) com toggle 7/30d +
+top clientes; KPIs T21 e atalhos permanecem abaixo. (2) Séries/canais a partir
+de `orders` com `paid_at` (service role): Sacolinha=`pickup`, Entrega=
+`delivery|correios`, Balcão=`channel=store` ou `store_counter`. (3) Acessos =
+série mock determinística com label “(estimativa · sem analytics)” — sem
+instrumentação. (4) Sem alterar AdminChrome/nav; não promover prototype.
+**Consequência**: Handoff Wave 2 = smoke `/admin` preview; sem migration.
+
+---
+

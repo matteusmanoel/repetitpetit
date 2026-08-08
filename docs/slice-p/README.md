@@ -4,7 +4,7 @@ Guia vivo do grill → protótipo → tickets. **Não promover** `/prototype/*` 
 Decisões: **D120** (grill), **D121** (veredito C); ADR **0002** (`packed_at`).
 Termos: `CONTEXT.md`. UI craft ref: Leleco/Leen adaptado a tokens Repeti / Variant T.
 
-**Status**: HITL **aprovado** 2026-08-08 → **Variant C** · VERDICT · issues SP-*  
+**Status**: HITL **aprovado** · SP-1…SP-6 **merged** · prod `main` (#150) READY  
 **Handoff prévio**: Slice O fechado em código (#122–#129); VIP/Auth fora do foco.
 
 ## Pergunta do protótipo (UI)

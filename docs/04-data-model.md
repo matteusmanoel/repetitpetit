@@ -349,6 +349,7 @@ CREATE TABLE order_items (
   cover_image_snapshot  text,
   quantity              int NOT NULL DEFAULT 1,
   line_total            numeric(10,2) NOT NULL,
+  packed_at             timestamptz, -- Separação check (ADR 0002); does not advance Order
   created_at            timestamptz NOT NULL DEFAULT now()
 );
 ```

@@ -2382,3 +2382,21 @@ Rotas legadas `/novo` e `/[id]` permanecem para deep links.
 
 
 ---
+
+## D126 — SP-2: Separação split + `order_items.packed_at`
+
+**Data**: 2026-08-08
+**Contexto**: #139; ADR 0002; D121 Variant C; shell SP-1 em `/admin/pedidos`.
+**Decisão**: (1) Coluna aditiva `order_items.packed_at` (timestamptz nullable)
+persiste check por peça; toggle via service role **não** altera `orders.status`.
+(2) `/admin/pedidos` vira hub **split**: cards cliente fixos (`h-40`×`w-60`),
+chips (A separar / Em separação / Urgente / Todos), busca cliente/peça, status
+PT, grade de peças paginada (6). (3) Próxima ação só com checklist completo:
+desktop toolbar ao lado das chips; mobile ícones no canto do card (urgente →
+WhatsApp motoboy/loja; senão Envio/Retirada + WhatsApp cliente).
+**Consequência**: Migration `20260808074000_order_items_packed_at`; orchestrator
+aplica no projeto `wcgpamsvnhpgonxzbzlg` + `generate_typescript_types` se
+divergir. Não promover `app/prototype/*`.
+
+---
+

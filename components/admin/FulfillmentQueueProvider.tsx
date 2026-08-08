@@ -30,8 +30,10 @@ import {
   removeQueueOrder,
   shouldRemoveFromInProgressQueue,
   shouldRemoveFromPaidQueue,
+  sortQueueOrders,
   upsertQueueOrder,
 } from "@/features/admin/fulfillment/queue-logic";
+import { applyLocalPackedAt } from "@/features/admin/fulfillment/separacao-logic";
 import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
 import type { OrderStatus } from "@/features/orders/types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
@@ -50,6 +52,8 @@ type FulfillmentQueueContextValue = {
   /** Pedidos `paid` (fila de conferência) — alias histórico `orders`. */
   orders: FulfillmentQueueOrder[];
   inProgressOrders: FulfillmentQueueOrder[];
+  /** União ordenada paid + em progresso (hub Separação). */
+  allQueueOrders: FulfillmentQueueOrder[];
   paidCount: number;
   isRealtimeConnected: boolean;
   /**
@@ -61,6 +65,12 @@ type FulfillmentQueueContextValue = {
     orderId: string,
     status: OrderStatus,
     extras?: { trackingCode?: string | null },
+  ) => void;
+  /** Sync local do check Separação — não muda status do Order. */
+  applyLocalPackedAtChange: (
+    orderId: string,
+    orderItemId: string,
+    packedAt: string | null,
   ) => void;
 };
 
@@ -153,6 +163,15 @@ export function FulfillmentQueueProvider({
           status,
           trackingCode: extras?.trackingCode ?? undefined,
         }),
+      );
+    },
+    [],
+  );
+
+  const applyLocalPackedAtChange = useCallback(
+    (orderId: string, orderItemId: string, packedAt: string | null) => {
+      setQueues((prev) =>
+        applyLocalPackedAt(prev.paid, prev.inProgress, orderId, orderItemId, packedAt),
       );
     },
     [],
@@ -350,10 +369,15 @@ export function FulfillmentQueueProvider({
     () => ({
       orders: queues.paid,
       inProgressOrders: queues.inProgress,
+      allQueueOrders: sortQueueOrders([
+        ...queues.paid,
+        ...queues.inProgress,
+      ]),
       paidCount,
       isRealtimeConnected,
       productStatusCache,
       applyLocalTransition,
+      applyLocalPackedAtChange,
     }),
     [
       queues,
@@ -361,6 +385,7 @@ export function FulfillmentQueueProvider({
       isRealtimeConnected,
       productStatusCache,
       applyLocalTransition,
+      applyLocalPackedAtChange,
     ],
   );
 

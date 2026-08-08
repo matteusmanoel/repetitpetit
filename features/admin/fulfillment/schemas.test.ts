@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   fulfillmentOrderIdSchema,
   shipOrderSchema,
+  toggleOrderItemPackedSchema,
 } from "@/features/admin/fulfillment/schemas";
 
 describe("fulfillmentOrderIdSchema", () => {
@@ -35,5 +36,21 @@ describe("shipOrderSchema", () => {
     if (ok.success) {
       expect(ok.data.trackingCode).toBe("AA123456789BR");
     }
+  });
+});
+
+describe("toggleOrderItemPackedSchema", () => {
+  it("accepts uuid", () => {
+    const result = toggleOrderItemPackedSchema.safeParse({
+      orderItemId: "22222222-2222-4222-8222-222222222222",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects non-uuid", () => {
+    const result = toggleOrderItemPackedSchema.safeParse({
+      orderItemId: "nope",
+    });
+    expect(result.success).toBe(false);
   });
 });

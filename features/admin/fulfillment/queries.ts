@@ -24,7 +24,9 @@ const QUEUE_SELECT = `
     product_name_snapshot,
     cover_image_snapshot,
     quantity,
-    line_total
+    line_total,
+    unit_price_snapshot,
+    packed_at
   )
 `;
 

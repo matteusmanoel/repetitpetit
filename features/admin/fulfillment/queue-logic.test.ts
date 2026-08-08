@@ -26,6 +26,7 @@ function fakeOrder(
     paidAt: "2026-08-01T12:00:00.000Z",
     createdAt: "2026-08-01T11:50:00.000Z",
     trackingCode: null,
+    pickupDeadline: null,
     customerName: "Ana",
     customerPhone: "554599999999",
     items: [],

@@ -2331,3 +2331,20 @@ permanecem por URL, fora da bottom bar.
 
 ---
 
+## D123 — SP-3: Cadastro em massa (série foto+áudio) no intake-ia
+
+**Data**: 2026-08-08
+**Contexto**: #140; D120/D121; evolui `/admin/produtos/intake-ia` sem promover
+`app/prototype/*`.
+**Decisão**: (1) UX série: Captura (1 foto/peça + áudio opcional) → Preview só
+após encerrar a série → Finalizar gated por `intakePreviewItemSchema` →
+`confirmIntakeBatchAction`. (2) Mic: hold+lock (touch/pen: ↑ trava, ←/X
+cancela); desktop mouse = tap toggle. (3) IA best-effort em background por
+slot via `generateIntakePreviewAction`; fallback manual se IA indisponível.
+(4) Copy: Cadastro em massa / Em massa (nav SP-1). Helpers em
+`features/admin/ai-intake/mass-capture.ts`.
+**Consequência**: Pipeline SO-04 reutilizado; AdminChrome / Separação / CRUD /
+notif / dashboard fora do escopo.
+
+---
+

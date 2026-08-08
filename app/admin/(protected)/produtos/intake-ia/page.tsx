@@ -8,7 +8,7 @@ import { requireAdminSession } from "@/features/admin/session";
 import { env } from "@/lib/env";
 
 export const metadata: Metadata = {
-  title: "Cadastrar com IA — Admin Repeti Petit",
+  title: "Cadastro em massa — Admin Repeti Petit",
 };
 
 export default async function AdminAiIntakePage() {
@@ -17,7 +17,7 @@ export default async function AdminAiIntakePage() {
   const aiConfigured = isAiIntakeConfigured(env);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <div className="flex flex-col gap-1">
         <Link
           href="/admin/produtos"
@@ -26,11 +26,11 @@ export default async function AdminAiIntakePage() {
           ← Voltar para produtos
         </Link>
         <h1 className="font-heading text-2xl font-extrabold text-foreground">
-          Cadastrar com IA
+          Cadastro em massa
         </h1>
         <p className="text-sm text-muted-foreground">
-          Fotos + áudio opcional → preview editável → confirmação cria a peça e
-          o código RP, depois imprime etiquetas uma a uma.
+          Série de fotos + áudio opcional → preview editável → confirmação cria
+          as peças e o código RP, depois imprime etiquetas uma a uma.
         </p>
       </div>
 

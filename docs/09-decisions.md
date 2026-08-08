@@ -2364,3 +2364,22 @@ instrumentação. (4) Sem alterar AdminChrome/nav; não promover prototype.
 
 ---
 
+## D125 — SP-4: Produtos dialog CRUD + holds na listagem (#141)
+
+**Data**: 2026-08-08
+**Contexto**: #141; D121 modal produto; shell já em Variant C.
+**Decisão**: (1) Listagem `/admin/produtos` em cards com hold timer
+(`PassportHoldCountdown` semantics) + `OverrideActionButton` — holds **não**
+na Separação. (2) Novo/Editar em `AdminProductDialog` (shadcn Input/Select/
+Textarea; Categoria+Status grid ½; multi-foto via `AdminProductImageManager`;
+Áudio+Processar via `processProductAudioAction` — IA se key, senão mock
+fallback). (3) Categoria inline: `createCategoryInlineAction` (sem redirect
+para `/admin/categorias`). (4) create/update product redirect → lista.
+Rotas legadas `/novo` e `/[id]` permanecem para deep links.
+**Consequência**: Sem migration; smoke `/admin/produtos` mobile 375.
+
+---
+
+
+---
+

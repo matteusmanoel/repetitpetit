@@ -20,6 +20,25 @@ export type ListProductsParams = {
   status?: ProductStatus | "all";
 };
 
+/** Hold ativo ligado à peça (timer + cliente na listagem SP-4). */
+export type ProductHoldInfo = {
+  expiresAt: string;
+  customerName: string | null;
+};
+
+export type AdminProductListItem = ProductRow & {
+  activeHold: ProductHoldInfo | null;
+};
+
+type HoldJoinRow = {
+  product_id: string;
+  hold_sessions: {
+    expires_at: string;
+    status: string;
+    customers: { full_name: string } | null;
+  } | null;
+};
+
 /**
  * Lista produtos para o admin (service role — vê todos os status).
  * Busca por nome, slug ou marca; filtra por status quando informado.
@@ -55,6 +74,58 @@ export async function listAdminProducts({
   }
 
   return data ?? [];
+}
+
+async function loadActiveHoldsByProductIds(
+  productIds: string[],
+): Promise<Map<string, ProductHoldInfo>> {
+  const map = new Map<string, ProductHoldInfo>();
+  if (productIds.length === 0) return map;
+
+  const supabase = createServiceSupabaseClient();
+  const { data, error } = await supabase
+    .from("hold_items")
+    .select(
+      "product_id, hold_sessions!inner(expires_at, status, customers(full_name))",
+    )
+    .eq("hold_sessions.status", "active")
+    .in("product_id", productIds);
+
+  if (error) {
+    console.error("listAdminProductsWithHolds hold_items:", error);
+    return map;
+  }
+
+  for (const raw of data ?? []) {
+    const row = raw as unknown as HoldJoinRow;
+    const session = row.hold_sessions;
+    if (!session || session.status !== "active") continue;
+    map.set(row.product_id, {
+      expiresAt: session.expires_at,
+      customerName: session.customers?.full_name?.trim() || null,
+    });
+  }
+
+  return map;
+}
+
+/**
+ * Lista admin com Hold Session ativa (expires_at + nome do cliente) por peça.
+ * Holds só aparecem na tela Produtos (SP-4) — não misturar na Separação.
+ */
+export async function listAdminProductsWithHolds(
+  params: ListProductsParams = {},
+): Promise<AdminProductListItem[]> {
+  const products = await listAdminProducts(params);
+  const holdIds = products
+    .filter((product) => product.status === "hold")
+    .map((product) => product.id);
+  const holds = await loadActiveHoldsByProductIds(holdIds);
+
+  return products.map((product) => ({
+    ...product,
+    activeHold: holds.get(product.id) ?? null,
+  }));
 }
 
 export async function getAdminProduct(

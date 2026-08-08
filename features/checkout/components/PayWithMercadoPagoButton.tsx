@@ -10,6 +10,10 @@ type PayWithMercadoPagoButtonProps = {
   publicCode: string;
 };
 
+/**
+ * Retry de pagamento a partir de `/pedido/[codigo]`.
+ * Mantém o botão estável enquanto a preferência MP é criada (sem blank flash).
+ */
 export function PayWithMercadoPagoButton({
   publicCode,
 }: PayWithMercadoPagoButtonProps) {
@@ -25,11 +29,12 @@ export function PayWithMercadoPagoButton({
       setError(result.error);
       return;
     }
+    // pending permanece true até a navegação — evita UI vazia no handoff.
     window.location.assign(result.initPoint);
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" aria-busy={pending}>
       <Button
         type="button"
         size="lg"
@@ -40,12 +45,17 @@ export function PayWithMercadoPagoButton({
         {pending ? (
           <>
             <Loader2 className="size-4 animate-spin" />
-            Abrindo Mercado Pago…
+            Preparando pagamento…
           </>
         ) : (
           "Pagar com Mercado Pago"
         )}
       </Button>
+      {pending ? (
+        <p className="text-center text-xs text-muted-foreground" role="status">
+          Abrindo o Mercado Pago — não feche esta página.
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm font-medium text-destructive">
           {error}

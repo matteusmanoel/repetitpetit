@@ -49,14 +49,18 @@ CREATE TYPE order_status AS ENUM (
   'pending_payment',   -- aguardando pagamento
   'paid',              -- MP confirmou — entra na fila do admin
   'confirmed',         -- lojista conferiu e está separando
-  'ready_for_pickup',  -- pronto para retirada
+  'ready_for_pickup',  -- pronto para retirada (entrega local até em_rota / #128)
+  'na_sacolinha',      -- Sacolinha: separado e aguardando retirada (D105 / #125)
   'shipped',           -- enviado pelos Correios
   'completed',         -- entregue / retirado / concluído
   'cancelled',         -- cancelado pelo admin
   'expired'            -- não pago no prazo
 );
 
--- Tipo de pedido (extensível para Sacolinha)
+-- Tipo de pedido.
+-- Legado: label 'sacolinha' no enum NÃO modela a Sacolinha de negócio (D60/D101).
+-- Purge #123 / D113: CHECK `orders_order_type_no_legacy_sacolinha` bloqueia writes;
+-- código novo usa sempre 'standard' (`ORDER_TYPE_STANDARD`). Label permanece no tipo PG.
 CREATE TYPE order_type AS ENUM ('standard', 'sacolinha');
 
 -- Status do pagamento
@@ -89,6 +93,14 @@ CREATE TABLE settings (
   correios_enabled boolean NOT NULL DEFAULT false,
   logo_url      text,
   theme_json    jsonb,
+  -- Frete entrega imediata (D104 / #127)
+  store_postal_code char(8),           -- CEP origem haversine
+  store_latitude  numeric(10,7),      -- cache geocode do CEP da loja
+  store_longitude numeric(10,7),
+  delivery_rate_per_km numeric(10,2) NOT NULL DEFAULT 2.50,
+  delivery_multiplier  numeric(10,2) NOT NULL DEFAULT 1.00,
+  delivery_min_amount  numeric(10,2) NOT NULL DEFAULT 8.00,
+  delivery_max_radius_km numeric(10,2) NOT NULL DEFAULT 15.00,
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now()
 );
@@ -232,15 +244,21 @@ SELECT cron.schedule(
 
 ```sql
 CREATE TABLE customers (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  full_name  text NOT NULL,
-  phone      text NOT NULL,   -- formato: 5545999999999
-  email      text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name    text NOT NULL,
+  phone        text NOT NULL,   -- formato: 5545999999999
+  email        text,
+  auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL, -- buyer magic link (SO-03 / D119)
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
 );
+-- UNIQUE (email) WHERE email IS NOT NULL
+-- UNIQUE (auth_user_id) WHERE auth_user_id IS NOT NULL
 ```
 
+Buyer identity (`auth_user_id`) is **distinct** from `admins.auth_user_id`.
+`requireAdminSession()` never gates buyer routes; Sacolinha uses
+`requireBuyerSession()` → `customers.auth_user_id`.
 ### addresses
 
 ```sql
@@ -285,6 +303,7 @@ CREATE TABLE orders (
   public_code             text NOT NULL UNIQUE, -- ex.: "RP-2024-0042"
   customer_id             uuid REFERENCES customers(id),
   order_type              order_type NOT NULL DEFAULT 'standard',
+  -- CHECK orders_order_type_no_legacy_sacolinha: order_type <> 'sacolinha' (#123)
   status                  order_status NOT NULL DEFAULT 'pending_payment',
   payment_status          payment_status NOT NULL DEFAULT 'pending',
   fulfillment_type        fulfillment_type NOT NULL,
@@ -305,6 +324,8 @@ CREATE TABLE orders (
   updated_at              timestamptz NOT NULL DEFAULT now(),
   paid_at                 timestamptz,
   confirmed_at            timestamptz,
+  ready_since             timestamptz,  -- quando entrou em na_sacolinha (D105)
+  pickup_deadline         timestamptz,  -- ready_since + 30d; job futuro (SO-05)
   completed_at            timestamptz,
   cancelled_at            timestamptz,
   expires_at              timestamptz DEFAULT (now() + interval '30 minutes')
@@ -328,6 +349,7 @@ CREATE TABLE order_items (
   cover_image_snapshot  text,
   quantity              int NOT NULL DEFAULT 1,
   line_total            numeric(10,2) NOT NULL,
+  packed_at             timestamptz, -- Separação check (ADR 0002); does not advance Order
   created_at            timestamptz NOT NULL DEFAULT now()
 );
 ```

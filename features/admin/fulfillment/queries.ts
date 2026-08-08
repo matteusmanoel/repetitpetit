@@ -1,6 +1,7 @@
 import "server-only";
 
 import { mapFulfillmentQueueOrder } from "@/features/admin/fulfillment/map-order";
+import { sortQueueOrders } from "@/features/admin/fulfillment/queue-logic";
 import { IN_PROGRESS_STATUSES } from "@/features/admin/fulfillment/transitions";
 import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
@@ -14,6 +15,7 @@ const QUEUE_SELECT = `
   paid_at,
   created_at,
   tracking_code,
+  pickup_deadline,
   customers (
     full_name,
     phone
@@ -23,7 +25,9 @@ const QUEUE_SELECT = `
     product_name_snapshot,
     cover_image_snapshot,
     quantity,
-    line_total
+    line_total,
+    unit_price_snapshot,
+    packed_at
   )
 `;
 
@@ -49,11 +53,12 @@ export async function getPaidFulfillmentQueue(): Promise<
     );
   }
 
-  return (data ?? []).map(mapFulfillmentQueueOrder);
+  // D105: entrega imediata acima de Sacolinha (SSR alinhado ao Realtime).
+  return sortQueueOrders((data ?? []).map(mapFulfillmentQueueOrder));
 }
 
 /**
- * Pedidos em separação / envio (confirmed, ready_for_pickup, shipped).
+ * Pedidos em separação / envio (confirmed, ready_for_pickup, na_sacolinha, shipped).
  */
 export async function getInProgressFulfillmentQueue(): Promise<
   FulfillmentQueueOrder[]
@@ -73,7 +78,7 @@ export async function getInProgressFulfillmentQueue(): Promise<
     );
   }
 
-  return (data ?? []).map(mapFulfillmentQueueOrder);
+  return sortQueueOrders((data ?? []).map(mapFulfillmentQueueOrder));
 }
 
 /**

@@ -11,16 +11,19 @@ import {
   cancelOrderAction,
   completeOrderAction,
   confirmOrderAction,
+  markNaSacolinhaAction,
   markReadyForPickupAction,
   markShippedAction,
 } from "@/features/admin/fulfillment/actions";
 import type { FulfillmentTransitionResult } from "@/features/admin/fulfillment/apply-transition";
+import { isUrgentDeliveryFulfillment } from "@/features/admin/fulfillment/queue-logic";
 import type { FulfillmentQueueOrder } from "@/features/admin/fulfillment/types";
 import { formatPrice } from "@/features/catalog/format-price";
 import {
   getFulfillmentLabel,
   getOrderStatusLabel,
 } from "@/features/orders/status";
+import { cn } from "@/lib/utils";
 
 function formatPaidAt(iso: string | null): string {
   if (!iso) return "Pago agora";
@@ -36,7 +39,7 @@ function formatPaidAt(iso: string | null): string {
 }
 
 /**
- * Card da fila — ações de transição T20 conforme status atual.
+ * Card da fila — ações de transição T20 / #125 conforme status atual.
  */
 export function FulfillmentOrderCard({
   order,
@@ -52,11 +55,16 @@ export function FulfillmentOrderCard({
   const itemSummary =
     order.itemCount === 1 ? "1 peça" : `${order.itemCount} peças`;
 
+  const isUrgentDelivery = isUrgentDeliveryFulfillment(order.fulfillmentType);
   const canCancel = order.status === "paid" || order.status === "confirmed";
+  const showNaSacolinha =
+    order.status === "confirmed" && order.fulfillmentType === "pickup";
   const showReadyForPickup =
-    order.status === "confirmed" &&
-    (order.fulfillmentType === "pickup" ||
-      order.fulfillmentType === "delivery");
+    order.status === "confirmed" && order.fulfillmentType === "delivery";
+  const canComplete =
+    order.status === "ready_for_pickup" ||
+    order.status === "na_sacolinha" ||
+    order.status === "shipped";
 
   const run = (
     action: () => Promise<FulfillmentTransitionResult>,
@@ -82,14 +90,30 @@ export function FulfillmentOrderCard({
 
   return (
     <article
-      className="flex flex-col gap-3 rounded-lg border border-border bg-card px-4 py-4"
-      aria-label={`Pedido ${order.publicCode}`}
+      className={cn(
+        "flex flex-col gap-3 rounded-lg border bg-card px-4 py-4",
+        isUrgentDelivery
+          ? "border-destructive ring-1 ring-destructive/40"
+          : "border-border",
+      )}
+      aria-label={
+        isUrgentDelivery
+          ? `Pedido ${order.publicCode}, entrega urgente`
+          : `Pedido ${order.publicCode}`
+      }
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="font-heading text-lg font-extrabold text-foreground">
-            {order.publicCode}
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-heading text-lg font-extrabold text-foreground">
+              {order.publicCode}
+            </h2>
+            {isUrgentDelivery ? (
+              <span className="shrink-0 rounded bg-destructive px-2 py-0.5 text-[10px] font-bold tracking-wide text-destructive-foreground">
+                ENTREGA URGENTE
+              </span>
+            ) : null}
+          </div>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {formatPaidAt(order.paidAt)} ·{" "}
             {getFulfillmentLabel(order.fulfillmentType)}
@@ -148,6 +172,23 @@ export function FulfillmentOrderCard({
             }
           >
             Conferir e separar
+          </Button>
+        ) : null}
+
+        {showNaSacolinha ? (
+          <Button
+            type="button"
+            size="lg"
+            className="min-h-11 w-full"
+            disabled={isPending}
+            onClick={() =>
+              run(
+                () => markNaSacolinhaAction(order.id),
+                "Pedido na sacolinha.",
+              )
+            }
+          >
+            Marcar na sacolinha
           </Button>
         ) : null}
 
@@ -225,7 +266,7 @@ export function FulfillmentOrderCard({
           </div>
         ) : null}
 
-        {order.status === "ready_for_pickup" || order.status === "shipped" ? (
+        {canComplete ? (
           <Button
             type="button"
             size="lg"

@@ -73,7 +73,7 @@ delivery. New paid Hold Sessions add to that bag. Storekeepers track age/TTL to
 nudge Customers on WhatsApp. Settle default ~30 days per payment package is
 adjustable ops guidance, not a rigid engine yet.
 _Avoid_: monthly subscription, consignação portal, pedido mensal, unpaid holds,
-`order_type = 'sacolinha'` as this concept
+`order_type = 'sacolinha'` as this concept (enum label retired for writes — #123 / D113)
 
 **Shopping Cart**:
 Optional non-reserving staging only — **never** reserves inventory. Not the MVP
@@ -82,12 +82,16 @@ _Avoid_: calling Hold Session a cart; using cart to lock Peças
 
 **Customer**:
 A person who buys; persisted as a Customer row linked from Orders (`customer_id`).
-Slice N: capture/confirm email at checkout (plus existing name/phone as available);
-no buyer login or customer Sacolinha panel yet — public order link + WhatsApp.
-Staff see Sacolinha/packing internally. Buyer portal is a later slice on the same
-Customer/Order/Peça model.
-_Avoid_: Client, account (for the person), lead; building buyer Auth in Slice N;
-anonymous orders with no Customer when email/phone exists
+Checkout always captures email (+ name/phone). Public order link `/pedido/[codigo]`
+always works. Slice O P1: optional buyer magic-link Auth (not admin); merge anonymous
+session → Customer; minimal Sacolinha panel. Staff packing queue remains source of
+truth for store ops.
+_Avoid_: Client, lead-as-customer; forcing Auth before payment; redirecting MP return
+to a hard login wall (D103/D109)
+
+**Discarded terms**:
+consignação portal, Sacolinha-as-monthly-subscription, pedido mensal as Sacolinha
+(D11 historical → D60/D101).
 
 **Settle**:
 Claiming Sacolinha contents via pickup or delivery; ops nudges if space is held too long.
@@ -118,6 +122,39 @@ Receive → photos + voice → AI draft → human review/approve → QR/label �
 AI drafts only; humans approve. Optimize for one touch per garment.
 _Avoid_: autonomous AI publish; form-first bulk entry as the long-term ideal
 
+**Cadastro em massa**:
+Mobile-first capture loop for Intake Pipeline (formerly “Cadastro Rápido”): one
+photo → optional voice note → next Peça, repeated as a series. Voice on mobile is
+hold-to-record with slide-up to lock (WhatsApp-like); on desktop, tap to
+start/stop. AI may draft in the background per item; the editable preview batch
+appears only after the series ends. Then human corrects and prints labels
+one-by-one. Same pipeline as admin AI intake; different capture UX. Single-item
+CRUD may also record audio and “Processar” to fill form fields.
+_Avoid_: waiting on AI between garments; multi-photo during the rapid loop;
+generating the full preview before the series finishes
+
+**Fila de Pedidos**:
+Order-centric fulfillment view (paid → separate → handoff). Primary visual
+anchors are purchase date/time and Customer name — not the public order code.
+_Avoid_: leading with order number as the title; conflating with Hold Session
+
+**Painel de Separação**:
+Peça-centric ops grid (catalog-like) with badges for hold, sold-awaiting-pack,
+separated-by-customer, etc., plus staff filters. Complements Fila de Pedidos;
+mobile ops default lands here. Fulfillment **status** stays on the Order; each
+sold Peça on an open fulfillment Order may have a staff **Separação check**
+(`packed_at`) so pickers see done vs pending inside that Order — checks do not
+auto-advance Order status.
+_Avoid_: replacing the order queue entirely; treating this as the public catalog;
+auto-confirming the Order when all items are checked; session-only checks as the
+source of truth
+
+**Central de Notificações**:
+Staff ops radar (drawer): prioritized alerts for urgent delivery, new paid sale,
+and Sacolinha nearing pickup deadline. Not a general system log.
+_Avoid_: dumping holds, print failures, or config noise into the v1 drawer
+
 ### Discarded
 
-Sacolinha-as-monthly-package / consignação (D11 → D60).
+Sacolinha-as-monthly-package / consignação (D11 → D60 → D101 → D113). Do not reintroduce.
+Writes of `order_type = 'sacolinha'` are blocked in DB (#123); use `ORDER_TYPE_STANDARD`.

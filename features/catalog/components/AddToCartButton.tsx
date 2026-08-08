@@ -186,7 +186,7 @@ export function AddToCartButton({
             ) : reservedByOther ? (
               "Indisponível no momento"
             ) : (
-              "Comprar Agora"
+              "Adicionar à Sacolinha"
             )}
           </motion.span>
         </AnimatePresence>

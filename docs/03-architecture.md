@@ -76,8 +76,11 @@
 | `/produto/[slug]` | PDP |
 | `/carrinho` | Resumo do carrinho + timer de reserva |
 | `/checkout` | Formulário de compra |
-| `/checkout/sucesso` | Confirmação pós-MP antes do webhook |
-| `/pedido/[codigo]` | Página pública de acompanhamento |
+| `/checkout/sucesso` | Legado / bookmark — MP back_url agora aterrissa em `/pedido/[codigo]` (D109) |
+| `/pedido/[codigo]` | Página pública de acompanhamento (+ soft magic-link nudge SO-03) |
+| `/entrar` | Magic link do comprador (≠ `/admin/login`) |
+| `/sacolinha` | Painel mínimo: peças pagas aguardando retirada (exige buyer session) |
+| `/auth/callback` | Exchange OTP → sessão comprador + merge anonymous |
 | `/desapegue` | Formulário de desapego multi-step |
 
 ## Fluxo de checkout + webhook
@@ -173,5 +176,8 @@ supabase
 
 - Admin: `supabase.auth.signInWithPassword` + cookie session via `@supabase/ssr`.
   `requireAdminSession()` em todas as server actions e rotas admin.
-- Buyer: anônimo. Pedido vinculado a `customers.phone` / `customers.email`.
+- Buyer (SO-03 / D119): guest-first até o pagamento; magic link (`signInWithOtp`)
+  pós-compra → `customers.auth_user_id`. `requireBuyerSession()` só na área
+  agregada (`/sacolinha`). Pedido público permanece por `public_code` sem login.
+  Nunca reutilizar `requireAdminSession` para comprador.
 - Service role: usado apenas em server actions e rotas de API que precisam bypass RLS.

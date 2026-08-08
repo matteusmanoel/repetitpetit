@@ -1,180 +1,194 @@
 "use client";
 
-import { Menu, MessageCircle } from "lucide-react";
+import { Heart, MapPin, Menu, Search, ShoppingBag } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { CartTrigger } from "@/features/cart/components/CartTrigger";
+import { AccountPopover } from "@/components/public/account-popover";
+import { MobileNavDrawer } from "@/components/public/mobile-nav-drawer";
 import { useCartStore } from "@/features/cart/store";
-import { cn } from "@/lib/utils";
-import { getWhatsAppUrl } from "@/lib/whatsapp";
+import { navToneClass, STOREFRONT_NAV } from "@/features/storefront/nav";
 
-const NAV_LINKS = [
-  { href: "/catalogo", label: "Catálogo" },
-  { href: "/desapegue", label: "Desapegue" },
-] as const;
-
-/** Distância de scroll (px) para o header ganhar blur/sombra. */
-const SCROLL_THRESHOLD = 8;
-
+/**
+ * TipTop→Repeti header (D112): logo, busca pill, Conta popover,
+ * categorias texto+Lucide centradas, hamburger mobile.
+ */
 export function SiteHeader() {
-  const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const openCart = useCartStore((s) => s.openCart);
-  const whatsapp = process.env.NEXT_PUBLIC_STORE_WHATSAPP;
+  const itemCount = useCartStore((s) => s.items.length);
+  const hasHydrated = useCartStore((s) => s.hasHydrated);
+  const count = hasHydrated ? itemCount : 0;
 
-  useEffect(() => {
-    function handleScroll() {
-      setScrolled(window.scrollY > SCROLL_THRESHOLD);
-    }
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  function handleSearch(event: FormEvent) {
+    event.preventDefault();
+    // Full-text search is out of D0 — pill chrome navigates to catalog.
+    void query;
+    router.push("/catalogo");
+  }
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-30 border-b transition-[background-color,box-shadow,border-color] duration-200",
-        scrolled
-          ? "border-border bg-card/90 shadow-sm backdrop-blur-sm supports-backdrop-filter:bg-card/75"
-          : "border-transparent bg-background",
-      )}
-    >
-      <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-2 px-4 sm:px-8">
-        <Link
-          href="/"
-          aria-label="Repeti Petit — página inicial"
-          className="flex min-h-11 min-w-11 items-center py-1.5 pr-3"
-        >
-          <Image
-            src="/brand/logo.png"
-            alt="Repeti Petit"
-            width={335}
-            height={597}
-            priority
-            className="h-14 w-auto sm:h-16"
-          />
-        </Link>
+    <>
+      <header className="sticky top-0 z-30 border-b border-border bg-card">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:gap-5 md:py-4">
+          <button
+            type="button"
+            className="cursor-pointer text-primary transition hover:-translate-y-0.5 md:hidden"
+            aria-label="Abrir menu"
+            onClick={() => setMenuOpen(true)}
+          >
+            <Menu className="size-7" strokeWidth={1.75} />
+          </button>
+
+          <Link
+            href="/"
+            aria-label="Repeti Petit — página inicial"
+            className="shrink-0 transition hover:-translate-y-0.5"
+          >
+            <Image
+              src="/brand/logo.png"
+              alt="Repeti Petit"
+              width={335}
+              height={597}
+              priority
+              className="h-10 w-auto object-contain md:h-12"
+            />
+          </Link>
+
+          <form
+            onSubmit={handleSearch}
+            className="relative hidden min-w-0 flex-1 items-center sm:flex"
+          >
+            <label className="sr-only" htmlFor="storefront-search">
+              Buscar
+            </label>
+            <input
+              id="storefront-search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="O que você procura?"
+              className="h-12 w-full rounded-full border-2 border-primary/50 bg-card px-5 pr-12 text-base text-foreground placeholder:text-foreground/40 md:h-[3.25rem] md:text-lg"
+            />
+            <button
+              type="submit"
+              className="absolute right-3 flex size-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
+              aria-label="Buscar"
+            >
+              <Search className="size-5" />
+            </button>
+          </form>
+
+          <div className="ml-auto hidden items-center gap-1 md:flex lg:gap-2">
+            <a
+              href="https://maps.google.com/?q=Av.+Rep%C3%BAblica+Argentina,+2554,+Foz+do+Igua%C3%A7u"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-primary transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <MapPin className="size-6" strokeWidth={1.75} />
+              Nossa loja
+            </a>
+            <span className="h-8 w-px bg-border" aria-hidden />
+            <AccountPopover />
+            <span
+              className="flex flex-col items-center gap-1 rounded-xl px-2 py-1 text-primary opacity-40"
+              title="Em breve"
+              aria-hidden
+            >
+              <Heart className="size-6 md:size-7" strokeWidth={1.75} />
+            </span>
+            <button
+              type="button"
+              onClick={openCart}
+              className="relative flex cursor-pointer flex-col items-center gap-1 rounded-xl px-2 py-1 text-primary transition hover:-translate-y-0.5 hover:shadow-md"
+              aria-label={
+                count > 0
+                  ? `Abrir sacolinha, ${count} ${count === 1 ? "peça" : "peças"}`
+                  : "Abrir sacolinha"
+              }
+            >
+              <ShoppingBag className="size-6 md:size-7" strokeWidth={1.75} />
+              {count > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-destructive text-[11px] font-bold text-destructive-foreground">
+                  {count > 9 ? "9+" : count}
+                </span>
+              ) : null}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={openCart}
+            className="relative ml-auto flex size-11 cursor-pointer items-center justify-center rounded-full bg-primary/10 text-primary transition hover:-translate-y-0.5 hover:shadow-md md:hidden"
+            aria-label={
+              count > 0
+                ? `Abrir sacolinha, ${count} ${count === 1 ? "peça" : "peças"}`
+                : "Abrir sacolinha"
+            }
+          >
+            <ShoppingBag className="size-5" />
+            {count > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-destructive text-[11px] font-bold text-destructive-foreground">
+                {count > 9 ? "9+" : count}
+              </span>
+            ) : null}
+          </button>
+        </div>
 
         <nav
-          className="hidden items-center gap-2 sm:flex"
-          aria-label="Navegação principal"
+          aria-label="Categorias"
+          className="mx-auto hidden max-w-6xl justify-center gap-6 overflow-x-auto px-4 pb-4 pt-1 md:flex lg:gap-10"
         >
-          {NAV_LINKS.map((link) => (
-            <NavLink
-              key={link.href}
-              href={link.href}
-              isActive={pathname?.startsWith(link.href) ?? false}
-            >
-              {link.label}
-            </NavLink>
-          ))}
+          {STOREFRONT_NAV.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`group flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl px-2 py-2 transition hover:-translate-y-1 hover:shadow-lg ${navToneClass(item.tone)}`}
+              >
+                <Icon
+                  className="size-7 transition group-hover:scale-110 lg:size-8"
+                  strokeWidth={1.6}
+                />
+                <span className="text-center text-sm font-semibold lg:text-base">
+                  {item.name}
+                </span>
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="flex items-center gap-0.5">
-          <CartTrigger />
+        {/* Mobile search under logo row */}
+        <form
+          onSubmit={handleSearch}
+          className="relative px-4 pb-3 sm:hidden"
+        >
+          <label className="sr-only" htmlFor="storefront-search-mobile">
+            Buscar
+          </label>
+          <input
+            id="storefront-search-mobile"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="O que você procura?"
+            className="h-11 w-full rounded-full border-2 border-primary/50 bg-card px-5 pr-12 text-base text-foreground placeholder:text-foreground/40"
+          />
+          <button
+            type="submit"
+            className="absolute right-6 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center text-primary"
+            aria-label="Buscar"
+          >
+            <Search className="size-5" />
+          </button>
+        </form>
+      </header>
 
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-11 sm:hidden"
-                aria-label="Abrir menu"
-              >
-                <Menu className="size-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="flex flex-col">
-              <SheetHeader>
-                <SheetTitle>Repeti Petit</SheetTitle>
-              </SheetHeader>
-              <nav
-                className="flex flex-col gap-1 px-4"
-                aria-label="Navegação principal"
-              >
-                {NAV_LINKS.map((link) => (
-                  <SheetClose asChild key={link.href}>
-                    <Link
-                      href={link.href}
-                      className={cn(
-                        "flex min-h-11 cursor-pointer items-center rounded-md px-3 text-base font-medium text-foreground transition-colors hover:bg-muted",
-                        pathname?.startsWith(link.href) &&
-                          "bg-muted text-primary",
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  </SheetClose>
-                ))}
-                <button
-                  type="button"
-                  className="flex min-h-11 cursor-pointer items-center rounded-md px-3 text-left text-base font-medium text-foreground transition-colors hover:bg-muted"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    openCart();
-                  }}
-                >
-                  Suas reservas
-                </button>
-                {whatsapp ? (
-                  <a
-                    href={getWhatsAppUrl(whatsapp, "Oi, preciso de ajuda!")}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-3 text-base font-medium text-foreground transition-colors hover:bg-muted"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <MessageCircle className="size-4" aria-hidden />
-                    Falar no WhatsApp
-                  </a>
-                ) : null}
-              </nav>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function NavLink({
-  href,
-  isActive,
-  children,
-}: {
-  href: string;
-  isActive: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "relative flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground",
-        isActive && "text-primary",
-      )}
-    >
-      {children}
-      {isActive ? (
-        <span
-          aria-hidden
-          className="absolute right-3 bottom-1.5 left-3 h-0.5 rounded-full bg-primary"
-        />
-      ) : null}
-    </Link>
+      <MobileNavDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
+    </>
   );
 }

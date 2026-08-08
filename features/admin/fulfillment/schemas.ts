@@ -14,3 +14,12 @@ export const shipOrderSchema = z.object({
 });
 
 export type ShipOrderInput = z.infer<typeof shipOrderSchema>;
+
+/** Toggle Separação check — apenas `order_items.packed_at` (ADR 0002). */
+export const toggleOrderItemPackedSchema = z.object({
+  orderItemId: z.string().uuid("Item inválido."),
+});
+
+export type ToggleOrderItemPackedInput = z.infer<
+  typeof toggleOrderItemPackedSchema
+>;

@@ -11,6 +11,7 @@ type CheckoutSubmitButtonProps = {
 
 /**
  * CTA do checkout — redireciona ao Checkout Pro (T16 / D08).
+ * Enquanto a preferência MP é criada, mantém o botão estável (sem empty flash).
  */
 export function CheckoutSubmitButton({
   disabled,
@@ -26,7 +27,7 @@ export function CheckoutSubmitButton({
       {pending ? (
         <>
           <Loader2 className="size-4 animate-spin" />
-          Redirecionando…
+          Preparando pagamento…
         </>
       ) : (
         "Pagar com Mercado Pago"

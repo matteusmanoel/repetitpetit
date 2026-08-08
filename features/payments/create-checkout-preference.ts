@@ -118,7 +118,8 @@ export async function createCheckoutPreferenceForOrder(
       })),
       shippingAmount: Number(order.shipping_amount),
       payer,
-      backPath: `/checkout/sucesso?codigo=${encodeURIComponent(order.public_code)}`,
+      // D109 / SO-03: pós-MP sempre `/pedido/[codigo]` primeiro (nudge soft lá).
+      backPath: `/pedido/${encodeURIComponent(order.public_code)}`,
       metadata: {
         order_id: order.id,
         public_code: order.public_code,

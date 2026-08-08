@@ -1,19 +1,31 @@
 import type { Metadata } from "next";
-import { Inter, Nunito } from "next/font/google";
+import { Caveat, Fredoka, Inter } from "next/font/google";
 import "./globals.css";
 
+/**
+ * Inter — admin tool body/titles (docs/12-ui-system.md).
+ * Fredoka — Omnes stand-in for storefront UI (D111).
+ * Caveat — Becca stand-in for display titles (D111).
+ * Licensed Omnes/Becca files replace stand-ins when available.
+ */
 const inter = Inter({
   subsets: ["latin"],
-  // 600 é usado pelos títulos do /admin (T8) — o resto da loja usa 400/500.
   weight: ["400", "500", "600"],
   variable: "--font-inter",
   display: "swap",
 });
 
-const nunito = Nunito({
+const fredoka = Fredoka({
   subsets: ["latin"],
-  weight: ["700", "800"],
-  variable: "--font-nunito",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-fredoka",
+  display: "swap",
+});
+
+const caveat = Caveat({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-caveat",
   display: "swap",
 });
 
@@ -30,7 +42,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`${inter.variable} ${nunito.variable} antialiased`}>
+      <body
+        className={`${inter.variable} ${fredoka.variable} ${caveat.variable} antialiased`}
+      >
         {children}
       </body>
     </html>

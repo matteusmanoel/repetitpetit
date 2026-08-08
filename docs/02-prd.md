@@ -64,10 +64,9 @@
 
 | Feature | Quando |
 |---|---|
-| Sacolinha (pedido mensal) | Pós-MVP; schema preparado (`order_type`) |
 | Agente WhatsApp com IA | Pós-MVP |
 | Motor de cupons | Pós-MVP; lead popup é soft (sem código real) |
-| Área do cliente com histórico | Pós-MVP |
+| Área do cliente completa (histórico pleno) | Pós-MVP; portal Sacolinha mínimo = Slice O P1 (D103) |
 | Multi-admin / permissões granulares | Pós-MVP |
 | Notificações por e-mail automáticas | Pós-MVP (WhatsApp FAB cobre suporte) |
 | Avaliações de produtos | Pós-MVP |

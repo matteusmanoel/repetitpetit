@@ -1,14 +1,17 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { createOrderAction } from "@/features/checkout/actions";
+import { calculateFreteAction } from "@/features/checkout/calculate-frete";
 import {
   CheckoutAddressSection,
   type AddressErrors,
   type AddressValues,
+  type FreteQuoteUi,
 } from "@/features/checkout/components/CheckoutAddressSection";
 import {
   CheckoutContactSection,
@@ -16,9 +19,11 @@ import {
   type ContactValues,
 } from "@/features/checkout/components/CheckoutContactSection";
 import { CheckoutFulfillmentSection } from "@/features/checkout/components/CheckoutFulfillmentSection";
+import { CheckoutMpHandoff } from "@/features/checkout/components/CheckoutMpHandoff";
 import { CheckoutOrderSummary } from "@/features/checkout/components/CheckoutOrderSummary";
 import { CheckoutSection } from "@/features/checkout/components/CheckoutSection";
 import { CheckoutSubmitButton } from "@/features/checkout/components/CheckoutSubmitButton";
+import { isCheckoutPayEnabled } from "@/features/checkout/pay-gate";
 import {
   checkoutAddressSchema,
   createOrderSchema,
@@ -56,20 +61,25 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     searchParams.get("holdSessionId")?.trim() ??
     null;
 
+  const deliveryAvailable = pageData.deliveryFreteConfigured;
+
   const [contact, setContact] = useState<ContactValues>({
     fullName: "",
     phone: "",
     email: "",
   });
   const [contactErrors, setContactErrors] = useState<ContactErrors>({});
-  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType | "">(
-    pageData.pickupEnabled ? "pickup" : pageData.deliveryEnabled ? "delivery" : "",
-  );
+  /** D102: Sacolinha (`pickup`) sempre pré-selecionada. */
+  const [fulfillmentType, setFulfillmentType] =
+    useState<FulfillmentType>("pickup");
   const [fulfillmentError, setFulfillmentError] = useState<string | undefined>();
   const [address, setAddress] = useState<AddressValues>(EMPTY_ADDRESS);
   const [addressErrors, setAddressErrors] = useState<AddressErrors>({});
+  const [frete, setFrete] = useState<FreteQuoteUi>({ status: "idle" });
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  /** Evita empty-state flash após clearHold + redirect MP. */
+  const [mpHandoff, setMpHandoff] = useState(false);
 
   useEffect(() => {
     if (contact.fullName && !address.recipientName) {
@@ -77,15 +87,19 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
     }
   }, [contact.fullName, address.recipientName]);
 
-  const shippingAmount = useMemo(() => {
-    if (fulfillmentType === "delivery") {
-      return pageData.deliveryRule?.amount ?? 0;
-    }
-    return 0;
-  }, [fulfillmentType, pageData.deliveryRule?.amount]);
+  const freteReady =
+    frete.status === "ok" &&
+    frete.postalCode === address.postalCode.replace(/\D/g, "");
+
+  const payEnabled = isCheckoutPayEnabled(fulfillmentType, {
+    deliveryFreteReady: freteReady,
+  });
+
+  const shippingAmount =
+    fulfillmentType === "delivery" && frete.status === "ok" ? frete.amount : 0;
 
   const fulfillmentLabel =
-    fulfillmentType === "delivery" ? "Entrega" : "Retirada";
+    fulfillmentType === "delivery" ? "Entrega" : "Sacolinha";
 
   function updateContact<K extends keyof ContactValues>(
     key: K,
@@ -101,6 +115,29 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
   ) {
     setAddress((prev) => ({ ...prev, [key]: value }));
     setAddressErrors((prev) => ({ ...prev, [key]: undefined }));
+    if (key === "postalCode") {
+      setFrete({ status: "idle" });
+    }
+  }
+
+  async function handleCalculateFrete() {
+    const postalCode = address.postalCode.replace(/\D/g, "");
+    setFrete({ status: "loading" });
+    setFulfillmentError(undefined);
+
+    const result = await calculateFreteAction({ postalCode });
+
+    if (!result.ok) {
+      setFrete({ status: "error", message: result.error });
+      return;
+    }
+
+    setFrete({
+      status: "ok",
+      amount: result.amount,
+      distanceKm: result.distanceKm,
+      postalCode: result.postalCode,
+    });
   }
 
   function validateClient(): boolean {
@@ -123,12 +160,18 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
 
     let nextFulfillmentError: string | undefined;
     if (!fulfillmentType) {
-      nextFulfillmentError = "Escolha retirada ou entrega.";
+      nextFulfillmentError = "Escolha Sacolinha ou entrega.";
+    } else if (fulfillmentType === "delivery" && !deliveryAvailable) {
+      nextFulfillmentError =
+        "Entrega imediata indisponível. Escolha Sacolinha para pagar.";
+    } else if (fulfillmentType === "delivery" && !freteReady) {
+      nextFulfillmentError =
+        "Calcule o frete pelo CEP antes de pagar a entrega.";
     }
     setFulfillmentError(nextFulfillmentError);
 
     let nextAddressErrors: AddressErrors = {};
-    if (fulfillmentType === "delivery") {
+    if (fulfillmentType === "delivery" && deliveryAvailable) {
       const parsed = checkoutAddressSchema.safeParse(address);
       if (!parsed.success) {
         for (const issue of parsed.error.issues) {
@@ -162,6 +205,16 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
 
     if (!validateClient()) return;
 
+    // Defesa: nunca cria preferência MP sem frete OK no path delivery.
+    if (!payEnabled) {
+      setFulfillmentError(
+        fulfillmentType === "delivery"
+          ? "Calcule o frete pelo CEP antes de pagar a entrega."
+          : "Escolha Sacolinha ou entrega para pagar.",
+      );
+      return;
+    }
+
     const payload = {
       fullName: contact.fullName,
       phone: contact.phone,
@@ -189,20 +242,26 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
       return;
     }
 
-    // Limpa o espelho local após pedido criado (antes do redirect MP).
-    clearHold();
-
     if (result.initPoint) {
+      // Marca handoff ANTES de limpar o hold — evita flash de carrinho vazio.
+      setMpHandoff(true);
+      clearHold();
       window.location.assign(result.initPoint);
       return;
     }
 
+    // Pedido criado sem init_point — limpa hold e vai ao status do pedido.
+    clearHold();
     setPending(false);
     setSubmitError(
       result.paymentError ??
         "Pedido criado, mas o pagamento não pôde ser iniciado. Abra o pedido para tentar de novo.",
     );
     router.push(`/pedido/${result.publicCode}`);
+  }
+
+  if (mpHandoff) {
+    return <CheckoutMpHandoff />;
   }
 
   if (!hasHydrated) {
@@ -238,11 +297,27 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
       }${contact.email.trim() ? ` · ${contact.email.trim()}` : ""}`
     : undefined;
 
+  const showAddressSection =
+    fulfillmentType === "delivery" && deliveryAvailable;
+
   return (
     <form
       onSubmit={(event) => void handleSubmit(event)}
-      className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start"
+      className="relative grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start"
+      aria-busy={pending}
     >
+      {pending ? (
+        <div
+          className="absolute inset-0 z-10 flex items-start justify-center rounded-3xl bg-background/70 pt-24 backdrop-blur-[1px]"
+          aria-hidden
+        >
+          <div className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm">
+            <Loader2 className="size-4 animate-spin text-primary" />
+            Preparando pagamento…
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-3">
         <CheckoutSection
           step={1}
@@ -259,59 +334,62 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
 
         <CheckoutSection
           step={2}
-          title="Retirada ou entrega"
+          title="Sacolinha ou entrega"
           summary={
-            fulfillmentType
-              ? fulfillmentType === "pickup"
-                ? "Retirada na loja"
-                : "Entrega"
-              : undefined
+            fulfillmentType === "pickup"
+              ? "Sacolinha"
+              : fulfillmentType === "delivery"
+                ? "Entrega imediata"
+                : undefined
           }
           defaultOpen
         >
           <CheckoutFulfillmentSection
             value={fulfillmentType}
-            pickupEnabled={pageData.pickupEnabled}
-            deliveryEnabled={pageData.deliveryEnabled}
+            deliveryAvailable={deliveryAvailable}
             pickupAddress={pageData.pickupAddress}
-            deliveryAmount={pageData.deliveryRule?.amount ?? null}
-            deliveryDescription={pageData.deliveryRule?.description ?? null}
             error={fulfillmentError}
             onChange={(value) => {
               setFulfillmentType(value);
               setFulfillmentError(undefined);
+              if (value !== "delivery") {
+                setFrete({ status: "idle" });
+              }
             }}
           />
         </CheckoutSection>
 
-        {fulfillmentType === "delivery" ? (
+        {showAddressSection ? (
           <CheckoutSection
             step={3}
             title="Endereço de entrega"
             summary={
-              address.street
-                ? `${address.street}, ${address.number || "s/n"}`
-                : undefined
+              frete.status === "ok"
+                ? `Frete calculado`
+                : address.street
+                  ? `${address.street}, ${address.number || "s/n"}`
+                  : undefined
             }
             defaultOpen
           >
             <CheckoutAddressSection
               values={address}
               errors={addressErrors}
-              deliveryRule={pageData.deliveryRule}
+              frete={frete}
               onChange={updateAddress}
               onAutofill={(partial) =>
                 setAddress((prev) => ({ ...prev, ...partial }))
               }
+              onCalculateFrete={() => void handleCalculateFrete()}
             />
           </CheckoutSection>
         ) : null}
       </div>
 
       <aside className="lg:sticky lg:top-20">
-        <div className="rounded-2xl border border-border bg-background p-4">
-          <h2 className="font-heading mb-4 text-lg font-bold text-foreground">
-            Resumo do pedido
+        <div className="rounded-3xl border border-border bg-card p-4 shadow-sm md:p-5">
+          <h2 className="mb-4 text-xl font-bold text-foreground">
+            Resumo
           </h2>
           <CheckoutOrderSummary
             items={items}
@@ -326,10 +404,16 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
           ) : null}
 
           <div className="mt-4 flex flex-col gap-2">
-            <CheckoutSubmitButton pending={pending} disabled={items.length === 0} />
+            <CheckoutSubmitButton
+              pending={pending}
+              disabled={items.length === 0 || !payEnabled}
+            />
             <p className="text-center text-xs text-muted-foreground">
-              Você será redirecionado ao Mercado Pago para pagar com PIX ou
-              cartão.
+              {fulfillmentType === "delivery" && !freteReady
+                ? "Calcule o frete pelo CEP para habilitar o pagamento."
+                : payEnabled
+                  ? "Você será redirecionado ao Mercado Pago para pagar com PIX ou cartão."
+                  : "Selecione Sacolinha para habilitar o pagamento."}
             </p>
           </div>
         </div>

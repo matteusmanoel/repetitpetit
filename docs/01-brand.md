@@ -47,7 +47,7 @@ Regras:
   --border: 60 8% 89%;
   --input: 60 8% 89%;
   --ring: 210 77% 37%;
-  --radius: 0.75rem;
+  --radius: 1rem; /* D110: eleva kids-like rounded (era 0.75rem) */
 }
 ```
 
@@ -60,6 +60,23 @@ Regras:
 
 Nunito é arredondada e acolhedora — combina com o traço lúdico do logo sem ser infantil
 demais. Inter mantém legibilidade em tamanhos pequenos.
+
+### Slice O / TipTop→Repeti (D108 / D110 / **D111** / **D114**)
+
+Referência de **estrutura**: TipTop (pill search, nav com ícones, filtro por idade,
+catálogo com sidebar, PDP card, mini-cart, CTAs pill). Referência de **identidade**:
+só palette + logo Repeti — nunca copiar cores TipTop.
+
+| Direção | Spec |
+|---|---|
+| Estrutura vencedora | **Variant T rev.3** (`?variant=T`) |
+| Nav categorias | Texto + Lucide (não fotos); gap centrado |
+| Cores UI | **Verde** neutro/CTA (`--primary`); **azul** meninos; **rosa** meninas/promo |
+| Mobile | BottomBar 4 slots + hambúrguer; cart fullscreen |
+| Display | **Becca** (stand-in Caveat / `--font-display`) ≥30–40px |
+| UI | **Omnes** (stand-in Fredoka / `--font-sans`) ≥16px |
+| Legal/footer | Sobre/FAQ soft + Privacidade/Termos adaptados; footer soft em todas as rotas |
+| Anti | Skin TipTop; promover `/prototype/*` |
 
 ## Voz e tom
 

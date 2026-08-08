@@ -20,6 +20,8 @@ export function getOrderStatusLabel(status: OrderStatus): string {
       return "Em separação";
     case "ready_for_pickup":
       return "Pronto para retirada";
+    case "na_sacolinha":
+      return "Na sacolinha";
     case "shipped":
       return "Enviado";
     case "completed":
@@ -53,14 +55,18 @@ export function getFulfillmentLabel(type: FulfillmentType): string {
 }
 
 /**
- * Passos da barra de progresso — inclui confirmed e shipped/ready
- * (ADAPT do OrderProgressBar do Flor; status novos da Repeti).
+ * Passos da barra de progresso — inclui confirmed e shipped/ready/sacolinha
+ * (ADAPT do OrderProgressBar do Flor; status novos da Repeti / D105).
  */
 export function getProgressSteps(
   fulfillmentType: FulfillmentType,
 ): ProgressStep[] {
   const fulfillmentLabel =
-    fulfillmentType === "pickup" ? "Pronto" : "Enviado";
+    fulfillmentType === "pickup"
+      ? "Sacolinha"
+      : fulfillmentType === "delivery"
+        ? "Entrega"
+        : "Enviado";
 
   return [
     { id: "pending_payment", label: "Pedido" },
@@ -84,6 +90,7 @@ export function getProgressStepIndex(status: OrderStatus): number {
     case "confirmed":
       return 2;
     case "ready_for_pickup":
+    case "na_sacolinha":
     case "shipped":
       return 3;
     case "completed":

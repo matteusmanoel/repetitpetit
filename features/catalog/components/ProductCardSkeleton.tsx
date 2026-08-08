@@ -1,23 +1,14 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Espelha a anatomia do `ProductCard` (T1) — borda, foto, pill e preço. */
+/** Espelha a anatomia do `ProductCard` TipTop (D0). */
 export function ProductCardSkeleton() {
   return (
-    <div
-      className="flex flex-col overflow-hidden rounded-2xl border-2 border-border bg-card"
-      aria-hidden
-    >
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-hidden>
       <Skeleton shimmer className="aspect-3/4 w-full rounded-none" />
-      <div className="flex flex-col gap-2 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <Skeleton shimmer className="h-3 w-1/3" />
-          <Skeleton shimmer className="h-3 w-10" />
-        </div>
+      <div className="space-y-2 px-2.5 pb-3 pt-2">
+        <Skeleton shimmer className="h-3 w-1/3" />
         <Skeleton shimmer className="h-4 w-4/5" />
-        <div className="flex items-end justify-between gap-2 pt-0.5">
-          <Skeleton shimmer className="h-6 w-20 rounded-full" />
-          <Skeleton shimmer className="h-5 w-14" />
-        </div>
+        <Skeleton shimmer className="h-6 w-20" />
       </div>
     </div>
   );

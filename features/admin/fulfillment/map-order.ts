@@ -19,6 +19,7 @@ type OrderWithRelations = Pick<
   | "paid_at"
   | "created_at"
   | "tracking_code"
+  | "pickup_deadline"
 > & {
   customers: Pick<CustomerRow, "full_name" | "phone"> | null;
   order_items: Pick<
@@ -28,6 +29,8 @@ type OrderWithRelations = Pick<
     | "cover_image_snapshot"
     | "quantity"
     | "line_total"
+    | "unit_price_snapshot"
+    | "packed_at"
   >[];
 };
 
@@ -40,6 +43,8 @@ function mapItems(
     coverImageUrl: item.cover_image_snapshot,
     quantity: item.quantity,
     lineTotal: Number(item.line_total),
+    unitPrice: Number(item.unit_price_snapshot),
+    packedAt: item.packed_at,
   }));
 }
 
@@ -59,6 +64,7 @@ export function mapFulfillmentQueueOrder(
     paidAt: row.paid_at,
     createdAt: row.created_at,
     trackingCode: row.tracking_code,
+    pickupDeadline: row.pickup_deadline,
     customerName: row.customers?.full_name ?? null,
     customerPhone: row.customers?.phone ?? null,
     items,

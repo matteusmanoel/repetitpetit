@@ -18,7 +18,7 @@ export type CreatePreferenceInput = {
     email?: string | null;
     phone?: string | null;
   };
-  /** Path absoluto no site, ex.: /checkout/sucesso?codigo=RP-2026-0042 */
+  /** Path absoluto no site, ex.: /pedido/RP-2026-0042 (D109) */
   backPath: string;
   metadata?: Record<string, string>;
 };

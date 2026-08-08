@@ -206,6 +206,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          auth_user_id: string | null
           created_at: string
           email: string | null
           full_name: string
@@ -214,6 +215,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string
           email?: string | null
           full_name: string
@@ -222,6 +224,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string
@@ -458,6 +461,69 @@ export type Database = {
         }
         Relationships: []
       }
+      label_print_jobs: {
+        Row: {
+          attempt_count: number
+          batch_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          max_attempts: number
+          printed_at: string | null
+          product_id: string
+          sort_order: number
+          staff_code: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          batch_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          printed_at?: string | null
+          product_id: string
+          sort_order?: number
+          staff_code: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          batch_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          printed_at?: string | null
+          product_id?: string
+          sort_order?: number
+          staff_code?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_print_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_print_jobs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_events: {
         Row: {
           actor_id: string | null
@@ -509,6 +575,7 @@ export type Database = {
           id: string
           line_total: number
           order_id: string
+          packed_at: string | null
           product_id: string | null
           product_name_snapshot: string
           product_slug_snapshot: string | null
@@ -521,6 +588,7 @@ export type Database = {
           id?: string
           line_total: number
           order_id: string
+          packed_at?: string | null
           product_id?: string | null
           product_name_snapshot: string
           product_slug_snapshot?: string | null
@@ -533,6 +601,7 @@ export type Database = {
           id?: string
           line_total?: number
           order_id?: string
+          packed_at?: string | null
           product_id?: string | null
           product_name_snapshot?: string
           product_slug_snapshot?: string | null
@@ -577,8 +646,10 @@ export type Database = {
           order_type: Database["public"]["Enums"]["order_type"]
           paid_at: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
+          pickup_deadline: string | null
           pricing_snapshot_json: Json | null
           public_code: string
+          ready_since: string | null
           shipping_amount: number
           shipping_rule_id: string | null
           status: Database["public"]["Enums"]["order_status"]
@@ -608,8 +679,10 @@ export type Database = {
           order_type?: Database["public"]["Enums"]["order_type"]
           paid_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          pickup_deadline?: string | null
           pricing_snapshot_json?: Json | null
           public_code: string
+          ready_since?: string | null
           shipping_amount?: number
           shipping_rule_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -639,8 +712,10 @@ export type Database = {
           order_type?: Database["public"]["Enums"]["order_type"]
           paid_at?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          pickup_deadline?: string | null
           pricing_snapshot_json?: Json | null
           public_code?: string
+          ready_since?: string | null
           shipping_amount?: number
           shipping_rule_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -959,11 +1034,18 @@ export type Database = {
           correios_enabled: boolean
           created_at: string
           delivery_enabled: boolean
+          delivery_max_radius_km: number
+          delivery_min_amount: number
+          delivery_multiplier: number
+          delivery_rate_per_km: number
           id: string
           logo_url: string | null
           pickup_address: string | null
           pickup_enabled: boolean
+          store_latitude: number | null
+          store_longitude: number | null
           store_name: string
+          store_postal_code: string | null
           support_email: string | null
           support_phone: string | null
           theme_json: Json | null
@@ -973,11 +1055,18 @@ export type Database = {
           correios_enabled?: boolean
           created_at?: string
           delivery_enabled?: boolean
+          delivery_max_radius_km?: number
+          delivery_min_amount?: number
+          delivery_multiplier?: number
+          delivery_rate_per_km?: number
           id?: string
           logo_url?: string | null
           pickup_address?: string | null
           pickup_enabled?: boolean
+          store_latitude?: number | null
+          store_longitude?: number | null
           store_name?: string
+          store_postal_code?: string | null
           support_email?: string | null
           support_phone?: string | null
           theme_json?: Json | null
@@ -987,11 +1076,18 @@ export type Database = {
           correios_enabled?: boolean
           created_at?: string
           delivery_enabled?: boolean
+          delivery_max_radius_km?: number
+          delivery_min_amount?: number
+          delivery_multiplier?: number
+          delivery_rate_per_km?: number
           id?: string
           logo_url?: string | null
           pickup_address?: string | null
           pickup_enabled?: boolean
+          store_latitude?: number | null
+          store_longitude?: number | null
           store_name?: string
+          store_postal_code?: string | null
           support_email?: string | null
           support_phone?: string | null
           theme_json?: Json | null
@@ -1132,6 +1228,7 @@ export type Database = {
         | "paid"
         | "confirmed"
         | "ready_for_pickup"
+        | "na_sacolinha"
         | "shipped"
         | "completed"
         | "cancelled"
@@ -1294,6 +1391,7 @@ export const Constants = {
         "paid",
         "confirmed",
         "ready_for_pickup",
+        "na_sacolinha",
         "shipped",
         "completed",
         "cancelled",

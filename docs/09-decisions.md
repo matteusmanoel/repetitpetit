@@ -1995,3 +1995,426 @@ Variantes `Repetit Petit`, `Repetit Petite`, `Repeti Petite` → canônico.
 (3) MP `statement_descriptor` segue o env; exclusão de boleto (D98) permanece.
 **Consequência**: D93 direção correta para o nome; D98/D99 supersedidos neste ponto.
 
+---
+
+## D101 — Slice O: Sacolinha canônica; consignação apagada do glossário
+
+**Data**: 2026-08-07
+**Contexto**: Grill pós-Slice N. D60 já define Sacolinha como bag pós-pago; docs
+legado (brief/PRD/roadmap) ainda citavam consignação / pedido mensal.
+**Decisão**: (1) Sacolinha = única bolsa aberta por Customer de peças **pagas**
+aguardando retirada (default) ou settle via entrega. (2) Remover de docs de produto
+qualquer referência a consignação / assinatura mensal / “Sacolinha mensal”.
+(3) `order_type = 'sacolinha'` permanece enum legado no schema até migration de
+purge (ticket dedicado) — **não** modela o conceito de negócio.
+**Consequência**: Agentes usam só D60/D101 + `CONTEXT.md`. Ver `docs/slice-o/`.
+*(Purge concluído em D113 / #123 — CHECK bloqueia writes; label PG permanece.)*
+
+---
+
+## D102 — Checkout: Sacolinha default vs entrega imediata (Correios fora)
+
+**Data**: 2026-08-07
+**Contexto**: Mães compram várias vezes e decidem retirada depois; urgência precisa
+de frete antes do MP.
+**Decisão**: (1) No checkout, escolha binária com **Sacolinha pré-selecionada**
+(“Guarde na Sacolinha — retire quando quiser”). (2) Entrega imediata é ramo
+opcional: CEP + “Calcular frete” obrigatórios; pagar só habilita com frete OK.
+(3) Path Sacolinha: contato mínimo (nome, telefone, e-mail) — sem endereço.
+(4) Correios **fora** deste slice.
+**Consequência**: Atualiza UX de fulfillment (revisa ênfase de D12 no path default).
+
+---
+
+## D103 — Auth comprador: magic link pós-compra, não bloqueante (supersede D69 portal)
+
+**Data**: 2026-08-07
+**Contexto**: D69 adiou área logada; Slice O precisa Sacolinha do comprador sem
+fricção pré-pagamento.
+**Decisão**: (1) Guest-first até o pagamento. (2) Pós-MP sempre `/pedido/[codigo]`
+primeiro — **nunca** redirect duro para login. (3) Nudge discreto (sheet/tooltip)
+para magic link (Supabase Auth, role distinta de admin); e-mail pré-preenchido.
+(4) Conta não bloqueia ver pedido; bloqueia só área agregada (Sacolinha, histórico,
+preferência). (5) Merge automático `customer` + `anonymous_id`/sessão pelo e-mail.
+**Consequência**: D69 permanece válido para Slice N histórico; portal mínimo entra
+em Slice O P1.
+
+---
+
+## D104 — Frete entrega imediata: ViaCEP + haversine + knobs admin
+
+**Data**: 2026-08-07
+**Decisão**: `distância_km` = haversine(CEP loja ViaCEP, CEP cliente ViaCEP);
+`frete = max(mínimo, distância_km × taxa_km × multiplicador)`. Admin configura
+taxa/km, multiplicador, mínimo, raio máximo (fora = só Sacolinha). Sem tabela
+manual de bairros; Distance Matrix externo fora.
+**Consequência**: Settings/shipping config no admin; botão Calcular frete no checkout.
+
+---
+
+## D105 — Fila admin única; entrega urgente com prioridade visual
+
+**Data**: 2026-08-07
+**Decisão**: Uma fila Realtime de pedidos pagos; ordenação `entrega_imediata`
+primeiro; badge “ENTREGA URGENTE”. Status Sacolinha:
+`pago → separando → na_sacolinha → concluído`. Entrega:
+`pago → separando → em_rota → concluído`. Job/notificação 30d só modelo neste slice.
+**Consequência**: Estende fila D47/D48; sem Slack/e-mail/push novo.
+
+---
+
+## D106 — Sessão anônima: cookie + merge; sem geo/push
+
+**Data**: 2026-08-07
+**Decisão**: Persist `anonymous_id` + preferência de recebimento; merge no magic
+link. Geolocalização browser e Notification API **fora**. LGPD: texto mínimo +
+privacidade, sem CMP complexo.
+**Consequência**: Reusa cookie de hold (`rp_cart_session` / D79) como âncora.
+
+---
+
+## D107 — Intake IA: áudio+fotos → preview → confirm + print térmico sequencial
+
+**Data**: 2026-08-07
+**Decisão**: Admin “Cadastrar com IA”: fotos + áudio → preview editável (schema Zod)
+→ confirm cria produto + `staff_code` → enfileira etiqueta térmica **uma a uma**
+com ACK (retry 1x). Print falha não reverte o produto (`label_print=failed`).
+Bridge local ESC/POS (modelo TBD). XLSX permanece fallback. Multimodal via AI
+Gateway/provider do stack.
+**Consequência**: Alinha Intake Pipeline do `CONTEXT.md`; D94 (térmica) vira
+obrigatória no lote IA.
+
+---
+
+## D108 — Slice O ordem: D0 redesign TipTop→Repeti antes de features
+
+**Data**: 2026-08-07
+**Decisão**: (1) Hard copy de **layout/estrutura** TipTop (rounded, fluido, clean,
+kids-like tipografia) com **palette/logo Repeti** — não skin TipTop.
+(2) Protótipo UI `/prototype/tiptop-redesign` → pick → docs de sistema → redesign
+full storefront **antes** de implementar Sacolinha/frete/IA em cima do visual antigo.
+(3) Waves: **D0** redesign; **P0** Sacolinha default + fix checkout empty + IA/print;
+**P1** frete + prioridade + magic link + área Sacolinha; **P2** 30d, polish, cupom.
+**Consequência**: Cloud agents não abrem feature P0 até D0 tokens/docs alinhados
+(ou issues D0 explícitas primeiro).
+
+---
+
+## D109 — Pós-pagamento: pedido primeiro + nudge Sacolinha/conta
+
+**Data**: 2026-08-07
+**Decisão**: Retorno MP → `/pedido/[codigo]` com status. Sem sessão comprador:
+sheet/tooltip “Crie seu acesso para ver a Sacolinha”. Com sessão: CTA “Ver minha
+Sacolinha”. WhatsApp suporte permanece.
+**Consequência**: Fecha atrito briefing vs D103; implementa com D103 em P1.
+
+---
+
+## D110 — Redesign TipTop→Repeti: Variant A (+ tokens soft de B)
+
+**Data**: 2026-08-07
+**Contexto**: Protótipo `/prototype/tiptop-redesign` (A Dense / B Soft / C Editorial).
+Grill pediu hard copy TipTop + cores Repeti.
+**Decisão**: Vencedor **A (Dense commerce)** como estrutura canônica do redesign D0;
+incorporar de B radius/display mais generosos em cards e títulos; C só como
+experimento futuro de landing. Veredicto em
+`app/prototype/tiptop-redesign/VERDICT.md`. Tokens e `docs/12-ui-system.md`
+atualizados para orientar cloud agents.
+**Consequência**: Features P0+ nascem no visual A; protótipo é throwaway.
+
+---
+
+## D111 — Protótipo TipTop rev.2: Variant T + Omnes/Becca (supersede D110 visual)
+
+**Data**: 2026-08-07
+**Contexto**: HITL vs TipTop real: A não era TipTop-shaped; B arredondado certo mas
+espaçamento desktop exagerado. Tipografia precisa Omnes (UI) + Becca (display)
+em tamanhos bem visíveis.
+**Decisão**: (1) Vencedor de protótipo = **Variant T** (`?variant=T`): hard-copy
+de estrutura TipTop (header pill search, nav ícones, filtro idade, catálogo
+sidebar, PDP card, mini-cart sheet, checkout pills) com **palette Repeti**.
+(2) Tipografia alvo **Omnes + Becca**; protótipo usa stand-ins Fredoka/Caveat
+até arquivos licenciados. (3) Mobile herda radius kids-like de B; desktop usa
+`max-w-6xl` e gaps menores (corrige ar de B). (4) D110 permanece histórico;
+D0 implementa T, não A. (5) **Não** iniciar implementação D0 até HITL OK no T.
+**Consequência**: Atualizar brand/UI docs + issue #122; P0 UI espera aceite do T.
+
+---
+
+## D112 — Protótipo T rev.3: nav Lucide, BottomBar, cores verde/azul/rosa, legal soft
+
+**Data**: 2026-08-07
+**Contexto**: HITL vs TipTop header real + páginas soft iFraldas.
+**Decisão**: (1) Categorias do header = texto + ícone Lucide centralizado, gap
+generoso do centro às bordas — sem thumbnails circulares. (2) Hover/elevation e
+popover de Conta. (3) Hierarquia de cor: verde neutro/CTA, azul meninos, rosa
+meninas/promo (logo intacto). (4) BottomBar mobile Home/Catálogo/Sacolinha/Conta;
+hambúrguer para o resto; cart mobile fullscreen. (5) “Você pode gostar também”
+(Becca) em PDP e Checkout. (6) Telas Sobre/FAQ, Privacidade e Termos no protótipo
+com footer soft compartilhado; textos legais **adaptados** a Repeti (não copiar
+lista de chá TipTop). (7) D0 permanece gated a HITL do T.
+**Consequência**: VERDICT rev.3; #122 só após aceite.
+
+---
+
+## D113 — Purge: `order_type = 'sacolinha'` retired (writes blocked)
+
+**Data**: 2026-08-07
+**Contexto**: D101 pediu migration dedicada (#123) para aposentar o misuse do enum
+como “Sacolinha mensal / consignação”. Sacolinha de negócio continua = bolsa de
+peças pagas (D60), fora deste enum.
+**Decisão**: (1) Migration aditiva `20260807184500_retire_legacy_order_type_sacolinha`:
+normaliza rows `order_type = 'sacolinha'` → `'standard'`; COMMENT no type/coluna;
+CHECK `orders_order_type_no_legacy_sacolinha` impede novos writes do label legado.
+(2) Label `sacolinha` permanece no enum Postgres (drop de enum value é invasivo).
+(3) App: `ORDER_TYPE_STANDARD` em inserts (checkout + POS). (4) Docs de produto
+não ensinam consignação como Sacolinha; D11 permanece só histórico.
+**Consequência**: Orchestrator aplica a migration no projeto shared após merge.
+Tipos gerados podem ainda listar o label legado — código não o escreve.
+
+---
+
+## D114 — D0 production storefront = Variant T rev.3 (stand-in fonts)
+
+**Data**: 2026-08-07
+**Decisão**: (1) Storefront produção reescrito para TipTop chrome + palette Repeti
+conforme VERDICT T rev.3 / #122 — **sem** promover `app/prototype/*`.
+(2) Tokens: `--primary` = verde CTA; `--gender-menino` azul; `--gender-menina`
+rosa; `--radius` 1rem; `--font-sans`/`--font-heading` = Fredoka (Omnes stand-in);
+`--font-display` = Caveat (Becca stand-in) até arquivos licenciados.
+(3) Chrome: header pill search + nav Lucide + Conta popover; BottomBar mobile;
+cart fullscreen; soft footer; rotas `/sobre`, `/privacidade`, `/termos`.
+(4) Hold Session / Mercado Pago / Realtime intactos.
+**Consequência**: Features P0 nascem no visual T; admin permanece Inter via
+`.admin-shell`.
+
+---
+
+## D115 — Checkout P0: Sacolinha pay-only + MP handoff estável (#124)
+
+**Data**: 2026-08-07
+**Contexto**: SO-02 P0 / D102; frete haversine é #127 (P1). Empty flash ao limpar
+hold antes do redirect MP.
+**Decisão**: (1) UI pré-seleciona Sacolinha (`fulfillment_type=pickup`) com copy
+“Guarde na Sacolinha — retire quando quiser”; path = contato só (sem endereço).
+(2) Toggle “Entrega imediata” visível como stub; `isCheckoutPayEnabled` só libera
+pagar em Sacolinha até `deliveryFreteReady` (#127). (3) Antes de `clearHold` +
+`location.assign(init_point)`, marca handoff e renderiza `CheckoutMpHandoff`
+(skeleton estável) — sem empty-state “Nenhuma peça reservada”.
+**Consequência**: Schema/action de delivery permanece para P1; P0 não coleta CEP.
+
+---
+
+## D116 — `na_sacolinha` no enum; `ready_for_pickup` permanece até `em_rota`
+
+**Data**: 2026-08-07
+**Contexto**: D105 / SO-05 P0 (#125) exige path Sacolinha
+`pago → separando → na_sacolinha → concluído`. O enum já tinha
+`ready_for_pickup` (retirada genérica / D48).
+**Decisão**: (1) Additive `ALTER TYPE … ADD VALUE 'na_sacolinha'`.
+(2) Pickup (Sacolinha): `confirmed → na_sacolinha → completed` com
+`ready_since` + `pickup_deadline` (+30d) na transição — sem job/notificador.
+(3) `ready_for_pickup` permanece para delivery até o status `em_rota` (#128).
+(4) Override SQL / `isOrderPastPendingPayment` incluem `na_sacolinha`.
+**Consequência**: Orchestrator aplica
+`20260807191000_order_status_na_sacolinha` após merge + regen types.
+
+---
+
+## D117 — SO-04: `label_print_jobs` + bridge ESC/POS offline-first (#126)
+
+**Data**: 2026-08-07
+**Contexto**: D107 / SO-04 — intake IA com fila térmica sequencial ACK;
+Vercel não fala USB; chave de IA pode estar ausente no Cloud Agent.
+**Decisão**: (1) Tabela `label_print_jobs` (`pending|printing|printed|failed`,
+`batch_id`, `attempt_count`/`max_attempts=2`) — falha de print **não** reverte
+produto; espelha `metadata_json.label_print`. (2) Bridge abstrata ESC/POS;
+`THERMAL_PRINT_BRIDGE_URL` opcional → sem URL = offline → job `failed` + UI
+reprint + fallback HTML `/etiqueta`. (3) AI via `OPENAI_API_KEY` ou
+`AI_GATEWAY_API_KEY` opcionais em `lib/env` — sem chave: preview editável
+manual. (4) Rota `/admin/produtos/intake-ia`; XLSX permanece.
+**Consequência**: Migration `20260807192000_label_print_jobs`; orchestrator
+aplica no projeto compartilhado + secrets AI/bridge quando homologar.
+
+---
+
+## D118 — Frete P1: geocode CEP (Nominatim/Photon) + knobs em `settings` (#127)
+
+**Data**: 2026-08-07
+**Contexto**: D104 / SO-02 P1 — ViaCEP não devolve lat/lng; BrasilAPI v2
+retornou `coordinates` vazio nos CEPs de Foz testados.
+**Decisão**: (1) ViaCEP continua no autofill de endereço no checkout.
+(2) Distância = haversine(coords loja, coords CEP cliente); geocode server-side
+via Nominatim (postalcode) com fallback Photon. (3) Knobs admin em `settings`:
+`store_postal_code`, `store_latitude`/`store_longitude` (cache no save),
+`delivery_rate_per_km`, `delivery_multiplier`, `delivery_min_amount`,
+`delivery_max_radius_km`. UI `/admin/configuracoes`. (4) Pay gate:
+`isCheckoutPayEnabled(delivery)` só com frete OK; `createOrderAction` recalcula
+frete no server e persiste em `orders.shipping_amount` +
+`pricing_snapshot_json.frete`. Correios / tabela de bairros fora.
+**Consequência**: Migration `20260807200000_delivery_frete_settings`;
+orchestrator aplica no projeto compartilhado + regen types se divergir.
+
+---
+
+## D119 — Buyer magic link + `customers.auth_user_id` + painel `/sacolinha` (#129)
+
+**Data**: 2026-08-07
+**Contexto**: SO-03 / D103 / D106 / D109 — guest-first; pós-MP soft nudge;
+área agregada Sacolinha. (D118 = frete #127; este ticket era D118 no branch
+paralelo — renumerado no rebase.)
+**Decisão**: (1) Coluna `customers.auth_user_id` (unique parcial) liga Auth
+user do comprador; gate `requireBuyerSession()` ≠ `requireAdminSession()`.
+(2) Magic link via `signInWithOtp` → `/auth/callback` → merge por e-mail +
+anexa `hold_sessions` do cookie `rp_cart_session`. E-mails de admin ativo
+não recebem OTP buyer (anti bypass de senha). (3) MP `back_urls` →
+`/pedido/[codigo]` (não `/checkout/sucesso`); nudge sheet dismissível.
+(4) Painel `/sacolinha` lista itens em `paid|confirmed|ready_for_pickup|na_sacolinha`.
+**Consequência**: Migration `20260807210000_customers_auth_user_id`;
+orchestrator aplica + configura Redirect URLs do Supabase Auth
+(`…/auth/callback`) local + Vercel.
+
+---
+
+## D120 — Slice P: Admin Ops UX — protótipo antes do `/admin` real
+
+**Data**: 2026-08-08
+**Contexto**: Slice O fechado em código; admin ainda topnav/denso sem identidade
+do storefront; ops precisa Separação peça-cêntrica, Cadastro Rápido mobile e
+radar de notificações. Grill em `docs/slice-p/README.md`.
+**Decisão**: (1) Entregar protótipo HITL `app/prototype/admin-ops-ux` (variantes
+A/B/C: shell + hub Separação) antes de tickets no `/admin`. (2) Dois modos:
+Fila de Pedidos + Painel de Separação; mobile default = Separação; âncora visual
+= data/hora + nome do Customer. (3) Separação check por item persistido sem
+auto-avançar pedido (ADR 0002). (4) Cadastro Rápido evolui intake-ia (1 foto,
+áudio hold+lock, IA background, preview pós-série). (5) Notif v1: entrega
+urgente > venda nova > Sacolinha prazo. (6) Dashboard ops + séries; acessos só
+mock; analytics real fora do epic. (7) Identidade híbrida; bottom bar
+Separação · Cadastro · Produtos · Painel · Mais.
+**Consequência**: Não promover `/prototype/*`; pós-veredito → issues SP-* /
+D121+; migration `packed_at` só na onda de implementação.
+
+---
+
+## D121 — Slice P: Variant C aprovada (Admin Ops UX)
+
+**Data**: 2026-08-08
+**Contexto**: HITL em `app/prototype/admin-ops-ux`; A/B/C exploraram shell +
+hub Separação; feedback fechou C como alvo.
+**Decisão**: (1) **Variant C** é o contrato visual/ops: rail azul hover +
+Separação split (cards cliente + grade) + Cadastro em massa + Produtos dialog +
+Notif drawer + Dashboard echarts. (2) Bottom bar mobile =
+Separação · Em massa · Produtos · Painel; hamburger fullscreen espelha sidebar.
+(3) Próxima ação pós-checklist: desktop ao lado das chips; mobile ícones no card
+do cliente. (4) Modal produto: shadcn Input/Select; Categoria+Status ½;
+multi-foto; Áudio + Processar; status labels PT. (5) Spec:
+`app/prototype/admin-ops-ux/VERDICT.md` + `docs/slice-p/README.md`.
+**Consequência**: Issues SP-1…SP-6 no `/admin` real; não copiar o protótipo à
+produção — reimplementar contra contratos/AC. `packed_at` na SP-2 (ADR 0002).
+
+---
+
+## D122 — SP-1: Admin shell Variant C no `/admin` real
+
+**Data**: 2026-08-08
+**Contexto**: #138; D121; não promover `app/prototype/*`.
+**Decisão**: (1) `AdminShell` + `AdminChrome` substituem topnav: rail azul
+hover (md+), bottom bar 4 itens + hamburger fullscreen azul (mobile), canvas
+`#eceff3`, NotifBell stub até SP-5. (2) Mapa de rotas primary:
+Separação → `/admin/pedidos`; Em massa → `/admin/produtos/intake-ia`;
+Produtos → `/admin/produtos` (exclui intake-ia no match ativo); Painel →
+`/admin`. Secondary: Banners / POS / Override; conta: avatar + Configurações
+(`/admin/configuracoes`) + Sair (`signOutAction`). (3) Config compartilhada em
+`components/admin/admin-nav-config.ts`.
+**Consequência**: SP-2…SP-6 consomem nav existente; Categorias e rotas legadas
+permanecem por URL, fora da bottom bar.
+
+---
+
+## D123 — SP-3: Cadastro em massa (série foto+áudio) no intake-ia
+
+**Data**: 2026-08-08
+**Contexto**: #140; D120/D121; evolui `/admin/produtos/intake-ia` sem promover
+`app/prototype/*`.
+**Decisão**: (1) UX série: Captura (1 foto/peça + áudio opcional) → Preview só
+após encerrar a série → Finalizar gated por `intakePreviewItemSchema` →
+`confirmIntakeBatchAction`. (2) Mic: hold+lock (touch/pen: ↑ trava, ←/X
+cancela); desktop mouse = tap toggle. (3) IA best-effort em background por
+slot via `generateIntakePreviewAction`; fallback manual se IA indisponível.
+(4) Copy: Cadastro em massa / Em massa (nav SP-1). Helpers em
+`features/admin/ai-intake/mass-capture.ts`.
+**Consequência**: Pipeline SO-04 reutilizado; AdminChrome / Separação / CRUD /
+notif / dashboard fora do escopo.
+
+---
+
+## D124 — SP-6: Painel ops + ECharts (séries mock-safe)
+
+**Data**: 2026-08-08
+**Contexto**: #143; D40/D87 KPIs T21; D121 dashboard ECharts; echarts já no
+`package.json`.
+**Decisão**: (1) `/admin` Painel: faixa KPI ops (vendas hoje R$, pagos, holds,
+Sacolinha) + charts ECharts (`echarts-for-react`, SSR off) com toggle 7/30d +
+top clientes; KPIs T21 e atalhos permanecem abaixo. (2) Séries/canais a partir
+de `orders` com `paid_at` (service role): Sacolinha=`pickup`, Entrega=
+`delivery|correios`, Balcão=`channel=store` ou `store_counter`. (3) Acessos =
+série mock determinística com label “(estimativa · sem analytics)” — sem
+instrumentação. (4) Sem alterar AdminChrome/nav; não promover prototype.
+**Consequência**: Handoff Wave 2 = smoke `/admin` preview; sem migration.
+
+---
+
+## D125 — SP-4: Produtos dialog CRUD + holds na listagem (#141)
+
+**Data**: 2026-08-08
+**Contexto**: #141; D121 modal produto; shell já em Variant C.
+**Decisão**: (1) Listagem `/admin/produtos` em cards com hold timer
+(`PassportHoldCountdown` semantics) + `OverrideActionButton` — holds **não**
+na Separação. (2) Novo/Editar em `AdminProductDialog` (shadcn Input/Select/
+Textarea; Categoria+Status grid ½; multi-foto via `AdminProductImageManager`;
+Áudio+Processar via `processProductAudioAction` — IA se key, senão mock
+fallback). (3) Categoria inline: `createCategoryInlineAction` (sem redirect
+para `/admin/categorias`). (4) create/update product redirect → lista.
+Rotas legadas `/novo` e `/[id]` permanecem para deep links.
+**Consequência**: Sem migration; smoke `/admin/produtos` mobile 375.
+
+---
+
+
+---
+
+## D126 — SP-2: Separação split + `order_items.packed_at`
+
+**Data**: 2026-08-08
+**Contexto**: #139; ADR 0002; D121 Variant C; shell SP-1 em `/admin/pedidos`.
+**Decisão**: (1) Coluna aditiva `order_items.packed_at` (timestamptz nullable)
+persiste check por peça; toggle via service role **não** altera `orders.status`.
+(2) `/admin/pedidos` vira hub **split**: cards cliente fixos (`h-40`×`w-60`),
+chips (A separar / Em separação / Urgente / Todos), busca cliente/peça, status
+PT, grade de peças paginada (6). (3) Próxima ação só com checklist completo:
+desktop toolbar ao lado das chips; mobile ícones no canto do card (urgente →
+WhatsApp motoboy/loja; senão Envio/Retirada + WhatsApp cliente).
+**Consequência**: Migration `20260808074000_order_items_packed_at`; orchestrator
+aplica no projeto `wcgpamsvnhpgonxzbzlg` + `generate_typescript_types` se
+divergir. Não promover `app/prototype/*`.
+
+---
+
+## D127 — SP-5: Central de Notificações (drawer priorizado)
+
+**Data**: 2026-08-08
+**Contexto**: #142; CONTEXT Central de Notificações; D121 Variant C; shell SP-1
+com NotifBell stub.
+**Decisão**: (1) Bell real no header do `AdminChrome` abre drawer compacto
+(stack estilo macOS: mobile centrado, desktop top-right) — **não** log genérico.
+(2) Fontes de domínio via fila fulfillment já carregada no layout: prioridade
+exclusiva por pedido — (1) `fulfillment_type=delivery` (entrega urgente),
+(2) `status=paid` (venda nova), (3) `na_sacolinha` com `pickup_deadline` ≤7 dias
+(ou vencido). (3) Dismiss / limpar tudo persistem IDs no `localStorage` do
+browser do staff; card abre Separação (`/admin/pedidos`). (4) DTO da fila
+expõe `pickupDeadline` (select aditivo) sem alterar checks Separação.
+**Consequência**: Sem migration; smoke admin header + drawer; Wave 2 handoff =
+smoke rotas admin / preview Vercel.
+
+---
+

@@ -29,19 +29,18 @@ export default async function CatalogoPage({
   const listKey = catalogFiltersToQueryString(filters) || "all";
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 md:py-8">
       <CatalogStatusRealtime />
-      <header className="mb-6 flex flex-col gap-2 sm:mb-8">
-        <h1 className="font-heading text-2xl font-extrabold text-foreground sm:text-3xl">
+      <header className="mb-4 flex flex-col gap-1 sm:mb-6">
+        <h1 className="text-2xl font-bold text-foreground md:text-3xl">
           Catálogo
         </h1>
-        <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
-          Peças únicas, escolhidas com carinho. Filtre por tamanho e finalize
-          em segundos — mais recentes primeiro.
+        <p className="max-w-xl text-sm text-primary md:text-base">
+          Peças únicas — filtre e reserve antes que acabe.
         </p>
       </header>
 
-      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[260px_1fr] lg:items-start lg:gap-8">
+      <div className="grid gap-6 md:grid-cols-[220px_1fr] md:gap-8">
         <CatalogFiltersPanel />
 
         <div className="flex flex-col gap-4">

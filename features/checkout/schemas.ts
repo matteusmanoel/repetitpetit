@@ -83,7 +83,7 @@ export const createOrderSchema = z
     phone: phoneSchema,
     email: emailSchema,
     fulfillmentType: z.enum(["pickup", "delivery"], {
-      error: "Escolha retirada ou entrega.",
+      error: "Escolha Sacolinha ou entrega.",
     }),
     address: checkoutAddressSchema.optional(),
     /** `hold_sessions.id` — validado contra cookie + hold ativa (SN-04). */

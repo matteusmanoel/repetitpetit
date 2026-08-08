@@ -8,6 +8,7 @@ import {
 } from "@/features/pos/payment-method";
 import { createStoreOrderSchema } from "@/features/pos/schemas";
 import type { CreateStoreOrderResult } from "@/features/pos/types";
+import { ORDER_TYPE_STANDARD } from "@/features/orders/constants";
 import type { Json } from "@/lib/supabase/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-service";
 
@@ -126,7 +127,7 @@ export async function createStoreOrderAction(
       .insert({
         public_code: publicCode,
         customer_id: data.customerId ?? null,
-        order_type: "standard",
+        order_type: ORDER_TYPE_STANDARD,
         status: "pending_payment",
         payment_status: "pending",
         channel: "store",

@@ -412,7 +412,7 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
               {fulfillmentType === "delivery" && !freteReady
                 ? "Calcule o frete pelo CEP para habilitar o pagamento."
                 : payEnabled
-                  ? "Você será redirecionado ao Mercado Pago para pagar com PIX ou cartão. Após ir ao pagamento, você tem cerca de 10 minutos extras para concluir."
+                  ? "Você será redirecionado ao Mercado Pago para pagar com PIX ou cartão."
                   : "Selecione Sacolinha para habilitar o pagamento."}
             </p>
           </div>

@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type CheckoutSubmitButtonProps = {
   disabled?: boolean;
@@ -10,8 +11,7 @@ type CheckoutSubmitButtonProps = {
 };
 
 /**
- * CTA do checkout — redireciona ao Checkout Pro (T16 / D08).
- * Enquanto a preferência MP é criada, mantém o botão estável (sem empty flash).
+ * CTA do checkout — D133: Finalizar Pagamento + subtítulo +10 minutos extras.
  */
 export function CheckoutSubmitButton({
   disabled,
@@ -22,15 +22,22 @@ export function CheckoutSubmitButton({
       type="submit"
       size="lg"
       disabled={disabled || pending}
-      className="h-12 w-full rounded-full text-base font-medium"
+      className={cn(
+        "h-auto min-h-14 w-full flex-col gap-0.5 rounded-full py-3 text-base font-medium",
+      )}
     >
       {pending ? (
-        <>
+        <span className="inline-flex items-center gap-2">
           <Loader2 className="size-4 animate-spin" />
           Preparando pagamento…
-        </>
+        </span>
       ) : (
-        "Pagar com Mercado Pago"
+        <>
+          <span>Finalizar Pagamento</span>
+          <span className="text-center text-sm font-bold leading-tight">
+            +10 minutos extras
+          </span>
+        </>
       )}
     </Button>
   );

@@ -7,7 +7,9 @@ export type ProductCondition = Database["public"]["Enums"]["product_condition"];
 /** Faixas etárias agrupadas a partir de `size_group` (docs/05-ux-direction). */
 export type AgeBand = "baby" | "crianca" | "kids";
 
-/** Faixas de preço do catálogo. */
+/**
+ * @deprecated D132 — chips de faixa; mantido só para mapear bookmarks `?preco=`.
+ */
 export type PriceRange = "ate_30" | "30_60" | "60_100" | "acima";
 
 export type CatalogFilters = {
@@ -21,8 +23,11 @@ export type CatalogFilters = {
   marca: string[];
   /** Conservação / condição. */
   conservacao: ProductCondition[];
-  /** Faixa de preço. */
-  preco: PriceRange | null;
+  /**
+   * Teto de preço inclusivo (`price <= precoMax`). `null` = sem filtro.
+   * D132 Option A — slider máximo, min implícito 0.
+   */
+  precoMax: number | null;
   /**
    * Quando true, só peças `available` (esconde Reservada).
    * Padrão false = available + hold (#97).
@@ -36,9 +41,12 @@ export const EMPTY_CATALOG_FILTERS: CatalogFilters = {
   faixa: null,
   marca: [],
   conservacao: [],
-  preco: null,
+  precoMax: null,
   soDisponiveis: false,
 };
+
+/** Teto do slider na UI; valor == ceiling → sem filtro (`precoMax` null). */
+export const PRICE_SLIDER_CEILING = 300;
 
 export const SIZE_GROUPS = [
   "rn_3m",
@@ -115,6 +123,7 @@ export const PRODUCT_CONDITION_DESCRIPTIONS: Record<ProductCondition, string> = 
   com_detalhes: "Marcas visíveis, descritas na peça",
 };
 
+/** @deprecated D132 — só legado `?preco=` */
 export const PRICE_RANGES = [
   "ate_30",
   "30_60",
@@ -122,6 +131,7 @@ export const PRICE_RANGES = [
   "acima",
 ] as const satisfies readonly PriceRange[];
 
+/** @deprecated D132 */
 export const PRICE_RANGE_LABELS: Record<PriceRange, string> = {
   ate_30: "Até R$30",
   "30_60": "R$30–60",
@@ -129,19 +139,12 @@ export const PRICE_RANGE_LABELS: Record<PriceRange, string> = {
   acima: "Acima de R$100",
 };
 
-export type PriceBounds = {
-  /** Exclusive lower bound (`price > min`). */
-  gt: number | null;
-  /** Inclusive upper bound (`price <= max`). */
-  lte: number | null;
-};
-
-/** Faixas sem overlap: até 30 | (30–60] | (60–100] | acima de 100. */
-export const PRICE_RANGE_BOUNDS: Record<PriceRange, PriceBounds> = {
-  ate_30: { gt: null, lte: 30 },
-  "30_60": { gt: 30, lte: 60 },
-  "60_100": { gt: 60, lte: 100 },
-  acima: { gt: 100, lte: null },
+/** Map bookmarks `?preco=` → teto inclusivo (faixas com overlap resolvido pelo max). */
+const LEGACY_PRICE_TO_MAX: Record<PriceRange, number | null> = {
+  ate_30: 30,
+  "30_60": 60,
+  "60_100": 100,
+  acima: null,
 };
 
 const SIZE_GROUP_SET = new Set<string>(SIZE_GROUPS);
@@ -168,6 +171,13 @@ function uniquePreserveOrder(values: string[]): string[] {
     result.push(value);
   }
   return result;
+}
+
+function parsePrecoMax(raw: string | undefined): number | null {
+  if (raw == null || raw === "") return null;
+  const n = Number(raw.replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.min(Math.round(n * 100) / 100, PRICE_SLIDER_CEILING);
 }
 
 /**
@@ -207,11 +217,15 @@ export function parseCatalogFilters(
     (value): value is ProductCondition => CONDITION_SET.has(value),
   );
 
-  const precoRaw = splitCsv(get("preco"))[0] ?? null;
-  const preco =
-    precoRaw && PRICE_RANGE_SET.has(precoRaw)
-      ? (precoRaw as PriceRange)
-      : null;
+  let precoMax = parsePrecoMax(splitCsv(get("preco_max"))[0]);
+
+  // Legado D57 chips `?preco=` → teto (D132 expand-contract).
+  if (precoMax == null) {
+    const precoRaw = splitCsv(get("preco"))[0] ?? null;
+    if (precoRaw && PRICE_RANGE_SET.has(precoRaw)) {
+      precoMax = LEGACY_PRICE_TO_MAX[precoRaw as PriceRange];
+    }
+  }
 
   const disponiveisRaw = (splitCsv(get("disponiveis"))[0] ?? "").toLowerCase();
   const soDisponiveis =
@@ -219,7 +233,7 @@ export function parseCatalogFilters(
     disponiveisRaw === "true" ||
     disponiveisRaw === "sim";
 
-  return { tamanho, genero, faixa, marca, conservacao, preco, soDisponiveis };
+  return { tamanho, genero, faixa, marca, conservacao, precoMax, soDisponiveis };
 }
 
 /** Serializa filtros para URLSearchParams (omite vazios). */
@@ -243,8 +257,8 @@ export function serializeCatalogFilters(
   if (filters.conservacao.length > 0) {
     params.set("conservacao", filters.conservacao.join(","));
   }
-  if (filters.preco) {
-    params.set("preco", filters.preco);
+  if (filters.precoMax != null && filters.precoMax < PRICE_SLIDER_CEILING) {
+    params.set("preco_max", String(filters.precoMax));
   }
   if (filters.soDisponiveis) {
     params.set("disponiveis", "1");
@@ -264,7 +278,7 @@ export function hasActiveCatalogFilters(filters: CatalogFilters): boolean {
     filters.faixa != null ||
     filters.marca.length > 0 ||
     filters.conservacao.length > 0 ||
-    filters.preco != null ||
+    (filters.precoMax != null && filters.precoMax < PRICE_SLIDER_CEILING) ||
     filters.soDisponiveis
   );
 }
@@ -361,12 +375,12 @@ export function getActiveFilterChips(
     });
   }
 
-  if (filters.preco) {
-    const range = filters.preco;
+  if (filters.precoMax != null && filters.precoMax < PRICE_SLIDER_CEILING) {
+    const max = filters.precoMax;
     chips.push({
-      id: `preco:${range}`,
-      label: PRICE_RANGE_LABELS[range],
-      remove: (current) => ({ ...current, preco: null }),
+      id: `preco_max:${max}`,
+      label: `Até R$${max}`,
+      remove: (current) => ({ ...current, precoMax: null }),
     });
   }
 

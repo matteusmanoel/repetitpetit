@@ -1,4 +1,4 @@
-export { getAvailableBrands, getAvailableProducts, getProductBySlug, getRelatedProducts } from "./data";
+export { getAvailableBrands, getAvailableProducts, getProductBySlug, getRelatedProducts, searchCatalogSuggestions } from "./data";
 export { formatPrice } from "./format-price";
 export { conditionLabel, genderLabel } from "./labels";
 export { getProductReservationView } from "./reservation";

@@ -192,9 +192,9 @@ export function CartSheet() {
                   ) : null}
                   {items.length > 0 ? (
                     <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                      Ao ir ao pagamento, você ganha cerca de{" "}
+                      Ao finalizar o pagamento você tem{" "}
                       <span className="font-semibold text-foreground">
-                        10 minutos extras
+                        +10 minutos
                       </span>{" "}
                       para concluir no Mercado Pago.
                     </p>

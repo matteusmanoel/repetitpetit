@@ -22,7 +22,7 @@ describe("parseCatalogFilters", () => {
       faixa: "baby",
       marca: "GAP,Zara",
       conservacao: "seminovo,foo",
-      preco: "30_60",
+      preco_max: "60",
     });
 
     expect(filters).toEqual({
@@ -31,9 +31,14 @@ describe("parseCatalogFilters", () => {
       faixa: "baby",
       marca: ["GAP", "Zara"],
       conservacao: ["seminovo"],
-      preco: "30_60",
+      precoMax: 60,
       soDisponiveis: false,
     });
+  });
+
+  it("mapeia legado ?preco= chips para precoMax", () => {
+    expect(parseCatalogFilters({ preco: "ate_30" }).precoMax).toBe(30);
+    expect(parseCatalogFilters({ preco: "acima" }).precoMax).toBeNull();
   });
 
   it("aceita disponiveis=1 como Só disponíveis", () => {
@@ -61,7 +66,7 @@ describe("serializeCatalogFilters", () => {
       faixa: null,
       marca: ["Carter's"],
       conservacao: ["novo" as const],
-      preco: "acima" as const,
+      precoMax: 80,
       soDisponiveis: true,
     };
 
@@ -70,6 +75,7 @@ describe("serializeCatalogFilters", () => {
     expect(qs).toContain("genero=menino");
     expect(qs).not.toContain("faixa=");
     expect(qs).toContain("marca=Carter");
+    expect(qs).toContain("preco_max=80");
     expect(qs).toContain("disponiveis=1");
     expect(parseCatalogFilters(serializeCatalogFilters(filters))).toEqual(
       filters,
@@ -110,7 +116,7 @@ describe("getActiveFilterChips / hasActiveCatalogFilters", () => {
       faixa: "baby" as const,
       marca: ["GAP"],
       conservacao: ["seminovo" as const],
-      preco: "ate_30" as const,
+      precoMax: 30,
       soDisponiveis: true,
     };
 
@@ -123,11 +129,11 @@ describe("getActiveFilterChips / hasActiveCatalogFilters", () => {
       "faixa:baby",
       "marca:GAP",
       "conservacao:seminovo",
-      "preco:ate_30",
+      "preco_max:30",
       "disponiveis:1",
     ]);
 
-    const withoutGender = chips[1].remove(filters);
+    const withoutGender = chips[1]!.remove(filters);
     expect(withoutGender.genero).toBeNull();
   });
 });

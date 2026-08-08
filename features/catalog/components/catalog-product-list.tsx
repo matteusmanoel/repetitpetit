@@ -8,12 +8,17 @@ import {
 
 type CatalogProductListProps = {
   filters: CatalogFilters;
+  searchQuery?: string;
 };
 
 /** Async Server Component — lista produtos disponíveis do Supabase. */
-export async function CatalogProductList({ filters }: CatalogProductListProps) {
-  const products = await getAvailableProducts(filters);
-  const filtered = hasActiveCatalogFilters(filters);
+export async function CatalogProductList({
+  filters,
+  searchQuery,
+}: CatalogProductListProps) {
+  const products = await getAvailableProducts(filters, { searchQuery });
+  const filtered =
+    hasActiveCatalogFilters(filters) || Boolean(searchQuery?.trim());
 
   if (products.length === 0) {
     return <CatalogEmptyState filtered={filtered} />;

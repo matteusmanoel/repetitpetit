@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { requireAdminSession } from "@/features/admin/session";
 import type { CategoryActionState } from "@/features/categories/action-state";
@@ -59,7 +58,7 @@ export async function createCategoryAction(
 
   revalidatePath("/");
   revalidatePath("/admin/categorias");
-  redirect("/admin/categorias");
+  return { success: true };
 }
 
 export async function updateCategoryAction(
@@ -98,7 +97,7 @@ export async function updateCategoryAction(
   revalidatePath("/");
   revalidatePath("/admin/categorias");
   revalidatePath(`/admin/categorias/${id}`);
-  redirect("/admin/categorias");
+  return { success: true };
 }
 
 export async function deleteCategoryAction(id: string): Promise<void> {
@@ -113,5 +112,4 @@ export async function deleteCategoryAction(id: string): Promise<void> {
 
   revalidatePath("/");
   revalidatePath("/admin/categorias");
-  redirect("/admin/categorias");
 }

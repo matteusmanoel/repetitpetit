@@ -1,5 +1,6 @@
 export type BannerActionState = {
   error?: string;
+  success?: boolean;
   fieldErrors?: Partial<
     Record<
       | "title"

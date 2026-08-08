@@ -5,7 +5,6 @@ import {
   Image,
   LayoutGrid,
   Package,
-  ShieldAlert,
   Store,
 } from "lucide-react";
 
@@ -66,12 +65,6 @@ export const ADMIN_SECONDARY_NAV: readonly AdminNavItem[] = [
     href: "/admin/pos",
     label: "POS",
     icon: Store,
-    match: "prefix",
-  },
-  {
-    href: "/admin/override",
-    label: "Override",
-    icon: ShieldAlert,
     match: "prefix",
   },
 ] as const;

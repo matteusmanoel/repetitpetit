@@ -82,12 +82,12 @@ export function generatePreviewCtaLabel(options: {
 }): string {
   const { aiConfigured, capturedCount } = options;
   if (capturedCount <= 0) {
-    return aiConfigured ? "Gerar preview IA" : "Abrir preview";
+    return aiConfigured ? "Gerar preview com IA" : "Abrir preview";
   }
   const countLabel =
     capturedCount === 1 ? "1 peça" : `${capturedCount} peças`;
   return aiConfigured
-    ? `Gerar preview IA (${countLabel})`
+    ? `Gerar preview com IA (${countLabel})`
     : `Abrir preview (${countLabel})`;
 }
 

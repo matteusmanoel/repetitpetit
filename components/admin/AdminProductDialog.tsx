@@ -343,8 +343,22 @@ function AdminProductDialogForm({
                 {processingAudio ? "…" : "Processar"}
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Áudio + Processar preenche os campos (IA ou fallback manual).
+            <p
+              className="rounded-lg bg-muted/60 px-2 py-1.5 text-[11px] font-medium text-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              {recording
+                ? "Gravando áudio…"
+                : processingAudio
+                  ? "Processando áudio…"
+                  : audioNote
+                    ? audioNote.startsWith("Erro") || audioNote.toLowerCase().includes("falha")
+                      ? `Erro: ${audioNote}`
+                      : `Processado — ${audioNote}`
+                    : hasAudio
+                      ? "Áudio gravado — toque em Processar"
+                      : "Sem áudio"}
             </p>
           </div>
 

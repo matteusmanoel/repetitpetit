@@ -1,5 +1,6 @@
 export type CategoryActionState = {
   error?: string;
+  success?: boolean;
   fieldErrors?: Partial<
     Record<
       "name" | "slug" | "description" | "image_url" | "is_active" | "sort_order",

@@ -4,7 +4,7 @@ Frontier: **Wave 1** (P0 + polish + intake bug) em paralelo — áreas de arquiv
 
 | Wave | Issues | Status | Gate |
 |---|---|---|---|
-| 1 | #151 frete · #152 magic link · #153 polish · #154 intake | dispatch | CI + typecheck/lint/build/test em `develop`; smoke frete+Sacolinha |
+| 1 | #151 frete · #152 magic link · #153 polish · #154 intake | **DONE** merged → `main` (#159) | CI + smoke |
 | 2 | (depois) protótipo filtros · Auth brand · admin UX visual | blocked | após Wave 1 verde em prod |
 
 ## Ownership (evitar conflito)

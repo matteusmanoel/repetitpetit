@@ -2473,3 +2473,19 @@ depois (D128 Q4–5).
 
 ---
 
+## D131 — Slice R: protótipo filtros catálogo + search
+
+**Data**: 2026-08-08
+**Contexto**: HITL pós-Q; D128 deferiu drawer/slider/autocomplete para protótipo
+após P0. Grill: `docs/slice-r/README.md`.
+**Decisão**: (1) Protótipo HITL em `/prototype/catalog-filters?variant=` — **não**
+no `/catalogo` real. (2) Sempre à mão: gênero · idade (após sexo) ·
+disponibilidade · preço dual `preco_min`/`preco_max` · tamanho; drawer: marca +
+conservação. (3) Search header: autocomplete ~8 peças + “Ver todos”. (4)
+Variantes: **A** faixa · **B** sticky slim · **C** chips+sheet; search chrome
+igual. (5) Pós-veredito → tickets no storefront; não promover prototype.
+**Consequência**: Faixas chip de preço (D57) serão substituídas por range
+contínuo quando o winner for promovido; query params PT permanecem.
+
+---
+

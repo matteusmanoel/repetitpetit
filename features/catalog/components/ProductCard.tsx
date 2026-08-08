@@ -18,8 +18,8 @@ function genderAccentClass(gender: CatalogProduct["gender"]): string {
 }
 
 /**
- * Card TipTop→Repeti (D112): preço verde, acento de gênero no tamanho,
- * hover elevação — sem borda grossa de gênero (chrome TipTop).
+ * Card TipTop→Repeti (D112 / SQ-3): altura fixa + nome truncado, preço verde,
+ * acento de gênero no tamanho — sem borda grossa de gênero.
  */
 export function ProductCard({ product, priority = false }: ProductCardProps) {
   const compareAt = product.compare_at_price;
@@ -29,11 +29,11 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
     <Link
       href={`/produto/${product.slug}`}
       className={cn(
-        "group flex w-full flex-col text-left outline-none transition hover:-translate-y-1",
+        "group flex h-full w-full flex-col text-left outline-none transition hover:-translate-y-1",
         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
     >
-      <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition group-hover:shadow-lg">
+      <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition group-hover:shadow-lg">
         <div className="relative">
           <MediaThumb
             src={product.cover_image_url}
@@ -51,11 +51,11 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           ) : null}
         </div>
 
-        <div className="space-y-1 px-2.5 pb-3 pt-2">
+        <div className="flex min-h-[5.75rem] flex-1 flex-col space-y-1 px-2.5 pb-3 pt-2">
           {(product.brand || product.size_label) && (
             <p
               className={cn(
-                "text-sm font-semibold tracking-wide",
+                "truncate text-sm font-semibold tracking-wide",
                 genderAccentClass(product.gender),
               )}
             >
@@ -63,11 +63,11 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             </p>
           )}
 
-          <h2 className="line-clamp-2 text-[13px] font-medium leading-snug text-foreground/90 md:text-sm">
+          <h2 className="truncate text-[13px] font-medium leading-snug text-foreground/90 md:text-sm">
             {product.name}
           </h2>
 
-          <div className="flex items-baseline gap-2 pt-0.5">
+          <div className="mt-auto flex items-baseline gap-2 pt-0.5">
             <span className="text-lg font-bold text-primary md:text-xl">
               {formatPrice(product.price)}
             </span>

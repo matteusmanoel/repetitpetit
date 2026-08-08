@@ -2457,3 +2457,19 @@ orchestrator (não cloud).
 
 ---
 
+## D130 — Storefront polish SQ-3: font vars no html + brand mark favicon
+
+**Data**: 2026-08-08
+**Contexto**: Smoke VIP via #153 — Times no storefront; favicon quebrado;
+logo header minúsculo; Heart no Instagram; cards com altura irregular.
+**Decisão**: (1) CSS vars de `next/font` no `<html>` (não só no `body`) +
+fallbacks `ui-sans-serif` — evita Times quando `--font-fredoka` não herdava.
+(2) Favicon/`icon.png` regenerados de `public/brand/file.svg`. (3) Header
+usa `BrandLogo` ~240px. (4) Home/catálogo: copy “sexo e idade”; chips de
+idade só após escolher sexo. (5) Hold copy: +~10 min ao ir ao pagamento
+(D92) no cart sheet e checkout.
+**Consequência**: Sem mudança de TTL; drawer/slider/autocomplete continua
+depois (D128 Q4–5).
+
+---
+

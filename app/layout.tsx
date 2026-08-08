@@ -40,13 +40,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Font CSS variables MUST live on <html>: globals applies `font-sans` there.
+  // Variables only on <body> made `--font-fredoka` unresolved → Times fallback (SQ-3).
   return (
-    <html lang="pt-BR">
-      <body
-        className={`${inter.variable} ${fredoka.variable} ${caveat.variable} antialiased`}
-      >
-        {children}
-      </body>
+    <html
+      lang="pt-BR"
+      className={`${inter.variable} ${fredoka.variable} ${caveat.variable}`}
+    >
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }

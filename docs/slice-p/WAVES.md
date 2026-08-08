@@ -28,17 +28,18 @@
 
 ### Wave 2 — Parallel surfaces (after #138 closed)
 
-| Issue | Title | Blocked by |
-|---|---|---|
-| #139 | SP-2 Separação + `packed_at` | #138 |
-| #140 | SP-3 Cadastro em massa | #138 |
-| #141 | SP-4 Produtos dialog | #138 |
-| #142 | SP-5 Notificações | #138 |
-| #143 | SP-6 Dashboard | #138 |
+| Issue | Title | Blocked by | Status |
+|---|---|---|---|
+| #139 | SP-2 Separação + `packed_at` | #138 | **MERGED** #148 |
+| #140 | SP-3 Cadastro em massa | #138 | **MERGED** #147 |
+| #141 | SP-4 Produtos dialog | #138 | **MERGED** #146 |
+| #142 | SP-5 Notificações | #138 | **MERGED** #149 |
+| #143 | SP-6 Dashboard | #138 | **MERGED** #145 |
 
 **Parallelism:** up to 5 agents on disjoint areas per matrix. Prefer merge order SP-2 (migration) before long-running UI if type regen needed.
 
-**Gate:** all PRs merged; typecheck/lint/build/test on `develop`; orchestrator MCP handoffs done.
+**Gate:** all PRs merged; typecheck/lint/build/test on `develop`; orchestrator MCP handoffs done. **IN PROGRESS 2026-08-08.**
+
 
 ## MCP Handoff Schedule
 
@@ -51,4 +52,4 @@
 
 ## Frontier
 
-Wave 1 closed (#138 / #144). **Dispatch #139–#143** (disjoint ownership).
+Wave 2 closed (#139–#143). Slice P implementation complete → gate + prod promote.

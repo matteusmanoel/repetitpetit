@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { Button } from "@/components/ui/button";
@@ -20,14 +21,27 @@ type BannerFormProps = {
     formData: FormData,
   ) => Promise<BannerActionState>;
   submitLabel: string;
+  onSuccess?: () => void;
 };
 
-export function BannerForm({ banner, action, submitLabel }: BannerFormProps) {
+export function BannerForm({
+  banner,
+  action,
+  submitLabel,
+  onSuccess,
+}: BannerFormProps) {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(
     action,
     initialBannerActionState,
   );
   const [isActive, setIsActive] = useState(banner?.is_active ?? true);
+
+  useEffect(() => {
+    if (!state.success) return;
+    onSuccess?.();
+    router.refresh();
+  }, [state.success, onSuccess, router]);
 
   return (
     <form action={formAction} className="flex max-w-xl flex-col gap-5">
@@ -117,7 +131,7 @@ export function BannerForm({ banner, action, submitLabel }: BannerFormProps) {
           aria-invalid={Boolean(state.fieldErrors?.sort_order)}
         />
         <p className="text-xs text-muted-foreground">
-          Menor número aparece primeiro na home (`ORDER BY sort_order`).
+          Menor número aparece primeiro na home.
         </p>
         {state.fieldErrors?.sort_order ? (
           <p className="text-sm text-destructive">{state.fieldErrors.sort_order}</p>

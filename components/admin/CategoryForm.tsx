@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { ImageUploadField } from "@/components/admin/ImageUploadField";
 import { Button } from "@/components/ui/button";
@@ -22,9 +23,16 @@ type CategoryFormProps = {
     formData: FormData,
   ) => Promise<CategoryActionState>;
   submitLabel: string;
+  onSuccess?: () => void;
 };
 
-export function CategoryForm({ category, action, submitLabel }: CategoryFormProps) {
+export function CategoryForm({
+  category,
+  action,
+  submitLabel,
+  onSuccess,
+}: CategoryFormProps) {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(
     action,
     initialCategoryActionState,
@@ -34,6 +42,12 @@ export function CategoryForm({ category, action, submitLabel }: CategoryFormProp
   const [slugTouched, setSlugTouched] = useState(Boolean(category));
   const [isActive, setIsActive] = useState(category?.is_active ?? true);
   const slug = slugTouched ? slugManual : slugify(name);
+
+  useEffect(() => {
+    if (!state.success) return;
+    onSuccess?.();
+    router.refresh();
+  }, [state.success, onSuccess, router]);
 
   return (
     <form action={formAction} className="flex max-w-xl flex-col gap-5">

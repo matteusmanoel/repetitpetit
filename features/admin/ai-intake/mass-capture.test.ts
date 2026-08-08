@@ -58,13 +58,13 @@ describe("mass-capture helpers", () => {
   it("labels Gerar preview CTA with piece count and AI mode", () => {
     expect(
       generatePreviewCtaLabel({ aiConfigured: true, capturedCount: 0 }),
-    ).toBe("Gerar preview IA");
+    ).toBe("Gerar preview com IA");
     expect(
       generatePreviewCtaLabel({ aiConfigured: true, capturedCount: 1 }),
-    ).toBe("Gerar preview IA (1 peça)");
+    ).toBe("Gerar preview com IA (1 peça)");
     expect(
       generatePreviewCtaLabel({ aiConfigured: true, capturedCount: 3 }),
-    ).toBe("Gerar preview IA (3 peças)");
+    ).toBe("Gerar preview com IA (3 peças)");
     expect(
       generatePreviewCtaLabel({ aiConfigured: false, capturedCount: 2 }),
     ).toBe("Abrir preview (2 peças)");

@@ -19,6 +19,22 @@ export function isSacolinhaPanelStatus(
   return (SACOLINHA_PANEL_STATUSES as readonly string[]).includes(status);
 }
 
+/**
+ * Histórico recente na área do cliente (SS-6) — pedidos já concluídos/enviados.
+ */
+export const BUYER_HISTORY_STATUSES = [
+  "completed",
+  "shipped",
+] as const satisfies readonly OrderStatus[];
+
+export type BuyerHistoryStatus = (typeof BUYER_HISTORY_STATUSES)[number];
+
+export function isBuyerHistoryStatus(
+  status: OrderStatus,
+): status is BuyerHistoryStatus {
+  return (BUYER_HISTORY_STATUSES as readonly string[]).includes(status);
+}
+
 /** Default post-login landing for magic-link callback. */
 export const BUYER_DEFAULT_NEXT_PATH = "/sacolinha";
 

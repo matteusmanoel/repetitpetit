@@ -39,9 +39,25 @@ export async function generateMetadata({
   };
 }
 
+function paymentLabel(paymentStatus: string): string {
+  switch (paymentStatus) {
+    case "paid":
+      return "Pago";
+    case "pending":
+      return "Pendente";
+    case "failed":
+      return "Falhou";
+    case "refunded":
+      return "Estornado";
+    case "cancelled":
+      return "Cancelado";
+    default:
+      return paymentStatus;
+  }
+}
+
 /**
- * Página pública do pedido (T18) — acesso só por `public_code`, sem login.
- * SO-03 / D109: retorno MP aterrissa aqui; nudge soft de magic link (não wall).
+ * Página pública do pedido (T18 / SS-7) — acesso por `public_code`.
  */
 export default async function PedidoPublicoPage({
   params,
@@ -69,26 +85,9 @@ export default async function PedidoPublicoPage({
   const showAuthNudge = !awaitingPayment && !isFailed;
 
   return (
-    <div className="mx-auto w-full max-w-lg flex-1 px-4 py-10 text-center sm:px-8 sm:py-12">
-      {!isFailed && !awaitingPayment ? (
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-2xl text-primary-foreground">
-          ✓
-        </div>
-      ) : null}
-      <p className="font-display mt-4 text-3xl text-primary md:text-4xl">
-        {awaitingPayment
-          ? "finalize o pagamento"
-          : isFailed
-            ? statusLabel.toLowerCase()
-            : order.status === "na_sacolinha"
-              ? "na sacolinha!"
-              : order.status === "completed"
-                ? "pedido concluído!"
-                : order.status === "confirmed"
-                  ? "em separação"
-                  : "pagamento confirmado!"}
-      </p>
-      <h1 className="mt-2 text-2xl font-bold text-foreground">
+    <div className="mx-auto w-full max-w-lg flex-1 px-4 py-8 text-left sm:px-8 sm:py-10">
+      <p className="text-sm font-medium text-primary">Acompanhar pedido</p>
+      <h1 className="mt-1 text-2xl font-bold text-foreground">
         {order.publicCode}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
@@ -102,16 +101,22 @@ export default async function PedidoPublicoPage({
       />
 
       {!isFailed ? (
-        <div className="mt-6 rounded-3xl border border-border px-2 py-4 text-left sm:px-3">
+        <section
+          aria-labelledby="pedido-progresso"
+          className="mt-6 rounded-3xl border border-border px-2 py-4 sm:px-3"
+        >
+          <h2 id="pedido-progresso" className="sr-only">
+            Progresso
+          </h2>
           <OrderProgressBar
             status={order.status}
             fulfillmentType={order.fulfillmentType}
           />
-        </div>
+        </section>
       ) : (
         <div
           role="status"
-          className="mt-6 rounded-3xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-left text-sm text-foreground"
+          className="mt-6 rounded-3xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-foreground"
         >
           <p className="font-medium">{statusLabel}</p>
           <p className="mt-1 text-muted-foreground">
@@ -122,18 +127,52 @@ export default async function PedidoPublicoPage({
         </div>
       )}
 
-      {awaitingPayment ? (
-        <div className="mt-4 rounded-3xl bg-muted/60 px-4 py-4 text-left text-sm text-foreground">
-          <p className="font-medium">Finalize o pagamento</p>
-          <p className="mt-1 text-muted-foreground">
-            Pague com PIX ou cartão no Checkout Pro do Mercado Pago. Após o
-            pagamento, a confirmação pode levar alguns segundos.
-          </p>
-          <div className="mt-4">
-            <PayWithMercadoPagoButton publicCode={order.publicCode} />
+      <section
+        aria-labelledby="pedido-pagamento"
+        className="mt-4 rounded-3xl border border-border p-4"
+      >
+        <h2 id="pedido-pagamento" className="text-base font-bold text-foreground">
+          Pagamento
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {paymentLabel(order.paymentStatus)}
+        </p>
+        {awaitingPayment ? (
+          <div className="mt-3">
+            <p className="text-sm text-muted-foreground">
+              Pague com PIX ou cartão no Checkout Pro do Mercado Pago.
+            </p>
+            <div className="mt-3">
+              <PayWithMercadoPagoButton publicCode={order.publicCode} />
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </section>
+
+      <section
+        aria-labelledby="pedido-entrega"
+        className="mt-4 rounded-3xl border border-border p-4"
+      >
+        <h2 id="pedido-entrega" className="text-base font-bold text-foreground">
+          {order.fulfillmentType === "pickup" ? "Sacolinha" : "Entrega"}
+        </h2>
+        <p className="mt-1 text-sm text-foreground">{fulfillmentLabel}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{slaText}</p>
+        {order.trackingCode ? (
+          <p className="mt-2 text-sm">
+            <span className="text-muted-foreground">Rastreio: </span>
+            <span className="font-medium break-all">{order.trackingCode}</span>
+          </p>
+        ) : null}
+        <p className="mt-2 text-sm">
+          <span className="text-muted-foreground">Frete: </span>
+          <span className="font-medium">
+            {order.shippingAmount === 0
+              ? "Grátis"
+              : formatPrice(order.shippingAmount)}
+          </span>
+        </p>
+      </section>
 
       <PedidoAuthNudge
         publicCode={order.publicCode}
@@ -142,31 +181,17 @@ export default async function PedidoPublicoPage({
         showNudge={showAuthNudge}
       />
 
-      <section className="mt-6 flex flex-col gap-3 rounded-3xl border border-border p-5 text-left">
-        <h2 className="text-base font-bold text-foreground">
-          Prazo estimado
-        </h2>
-        <p className="text-sm text-foreground">{slaText}</p>
-        <div className="flex justify-between gap-3 border-t border-border pt-3 text-sm">
-          <span className="text-muted-foreground">Recebimento</span>
-          <span className="font-medium text-foreground">{fulfillmentLabel}</span>
-        </div>
-        {order.trackingCode ? (
-          <div className="flex justify-between gap-3 text-sm">
-            <span className="text-muted-foreground">Rastreio</span>
-            <span className="font-medium break-all text-foreground">
-              {order.trackingCode}
-            </span>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="mt-6 flex flex-col gap-3 rounded-3xl border border-border p-5 text-left">
-        <h2 className="text-base font-bold text-foreground">
+      <section
+        aria-labelledby="pedido-itens"
+        className="mt-4 rounded-3xl border border-border p-4"
+      >
+        <h2 id="pedido-itens" className="text-base font-bold text-foreground">
           Itens
         </h2>
-        <OrderItemsList items={order.items} />
-        <dl className="flex flex-col gap-2 border-t border-border pt-3 text-sm">
+        <div className="mt-3">
+          <OrderItemsList items={order.items} />
+        </div>
+        <dl className="mt-3 flex flex-col gap-2 border-t border-border pt-3 text-sm">
           <div className="flex justify-between gap-3">
             <dt className="text-muted-foreground">Subtotal</dt>
             <dd className="font-medium">{formatPrice(order.subtotalAmount)}</dd>
@@ -202,10 +227,10 @@ export default async function PedidoPublicoPage({
           Continuar comprando
         </Link>
         <Link
-          href="/"
+          href="/sacolinha"
           className="inline-flex h-11 items-center justify-center rounded-full px-6 text-sm font-medium text-foreground hover:bg-muted"
         >
-          Voltar à home
+          Minha Sacolinha
         </Link>
       </div>
     </div>

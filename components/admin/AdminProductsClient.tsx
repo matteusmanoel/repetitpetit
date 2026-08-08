@@ -7,10 +7,10 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { AdminProductDialog } from "@/components/admin/AdminProductDialog";
+import { AdminSearchField } from "@/components/admin/AdminSearchField";
 import { OverrideActionButton } from "@/components/admin/OverrideActionButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   PRODUCT_STATUS_LABELS,
   formatPriceBRL,
@@ -158,14 +158,15 @@ export function AdminProductsClient({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Input
+        <AdminSearchField
           value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
+          onChange={(value) => {
+            setQuery(value);
             setPage(0);
           }}
           placeholder="Buscar peça…"
-          className="h-11 flex-1"
+          aria-label="Buscar peça"
+          className="flex-1"
         />
         <div className="flex gap-2 overflow-x-auto">
           {(

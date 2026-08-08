@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { requireAdminSession } from "@/features/admin/session";
 import type { BannerActionState } from "@/features/banners/action-state";
@@ -48,7 +47,7 @@ export async function createBannerAction(
 
   revalidatePath("/");
   revalidatePath("/admin/banners");
-  redirect("/admin/banners");
+  return { success: true };
 }
 
 export async function updateBannerAction(
@@ -80,7 +79,7 @@ export async function updateBannerAction(
   revalidatePath("/");
   revalidatePath("/admin/banners");
   revalidatePath(`/admin/banners/${id}`);
-  redirect("/admin/banners");
+  return { success: true };
 }
 
 export async function deleteBannerAction(id: string): Promise<void> {
@@ -95,5 +94,4 @@ export async function deleteBannerAction(id: string): Promise<void> {
 
   revalidatePath("/");
   revalidatePath("/admin/banners");
-  redirect("/admin/banners");
 }

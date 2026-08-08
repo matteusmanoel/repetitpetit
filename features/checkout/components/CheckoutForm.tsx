@@ -115,7 +115,13 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
   ) {
     setAddress((prev) => ({ ...prev, [key]: value }));
     setAddressErrors((prev) => ({ ...prev, [key]: undefined }));
-    if (key === "postalCode") {
+    if (
+      key === "postalCode" ||
+      key === "city" ||
+      key === "state" ||
+      key === "street" ||
+      key === "neighborhood"
+    ) {
       setFrete({ status: "idle" });
     }
   }

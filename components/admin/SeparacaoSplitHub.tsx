@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { SeparacaoNextActions } from "@/components/admin/SeparacaoNextActions";
 import { SeparacaoPieceCard } from "@/components/admin/SeparacaoPieceCard";
+import { AdminSearchField } from "@/components/admin/AdminSearchField";
 import { useFulfillmentQueue } from "@/components/admin/FulfillmentQueueProvider";
 import { BrandEmptyState } from "@/components/shared/BrandEmptyState";
 import { isUrgentDeliveryFulfillment } from "@/features/admin/fulfillment/queue-logic";
@@ -74,11 +75,10 @@ export function SeparacaoSplitHub() {
         </p>
       </header>
 
-      <input
+      <AdminSearchField
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={setQuery}
         placeholder="Buscar cliente ou produto…"
-        className="h-14 w-full rounded-2xl border border-black/10 bg-white px-4 text-base shadow-sm"
         aria-label="Buscar cliente ou produto"
       />
 

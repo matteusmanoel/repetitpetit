@@ -40,20 +40,43 @@ export const SIZE_GROUPS = [
   "13_mais",
 ] as const satisfies readonly SizeGroup[];
 
-/** Rótulo operacional de tamanho na peça (P/M/G). */
-export const PRODUCT_SIZE_LABELS = ["P", "M", "G"] as const;
+/** Rótulo operacional de tamanho na peça (D135: RN | P | M | G). */
+export const PRODUCT_SIZE_LABELS = ["RN", "P", "M", "G"] as const;
 export type ProductSizeLabel = (typeof PRODUCT_SIZE_LABELS)[number];
 
 export function isProductSizeLabel(value: string): value is ProductSizeLabel {
   return (PRODUCT_SIZE_LABELS as readonly string[]).includes(value);
 }
 
-/** Normaliza rótulo legado/IA para P/M/G; fallback M. */
+/**
+ * Normaliza rótulo legado/IA para RN|P|M|G.
+ * Aceita aliases comuns (ex. "rn", "recém-nascido"); demais valores → fallback M.
+ */
 export function coerceProductSizeLabel(
   value: string | null | undefined,
 ): ProductSizeLabel {
   const trimmed = value?.trim();
-  if (trimmed && isProductSizeLabel(trimmed)) return trimmed;
+  if (!trimmed) return "M";
+  if (isProductSizeLabel(trimmed)) return trimmed;
+
+  const normalized = trimmed
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+
+  if (
+    normalized === "rn" ||
+    normalized === "recemnascido" ||
+    normalized === "newborn"
+  ) {
+    return "RN";
+  }
+
+  if (normalized === "p" || normalized === "pequeno") return "P";
+  if (normalized === "m" || normalized === "medio") return "M";
+  if (normalized === "g" || normalized === "grande") return "G";
+
   return "M";
 }
 

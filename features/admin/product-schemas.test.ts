@@ -48,6 +48,13 @@ describe("productFormSchema", () => {
     expect(parsed.data.is_featured).toBe(true);
   });
 
+  it("aceita size_label RN", () => {
+    const parsed = productFormSchema.safeParse({ ...base, size_label: "RN" });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.size_label).toBe("RN");
+  });
+
   it("rejeita preço zero", () => {
     const parsed = productFormSchema.safeParse({ ...base, price: "0" });
     expect(parsed.success).toBe(false);

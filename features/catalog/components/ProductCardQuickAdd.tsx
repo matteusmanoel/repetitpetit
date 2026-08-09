@@ -19,7 +19,7 @@ type ProductCardQuickAddProps = {
 
 /**
  * CTA hover no card do catálogo (SS-3) — reserva via Hold Session.
- * Desktop only (parent hides on touch / small screens).
+ * Substitui a faixa de preço no desktop (padrão TipTop); parent controla visibilidade.
  */
 export function ProductCardQuickAdd({
   productId,
@@ -110,9 +110,8 @@ export function ProductCardQuickAdd({
       disabled={disabled || isPending}
       onClick={handleClick}
       className={cn(
-        "absolute inset-x-0 bottom-0 z-10 flex h-10 translate-y-1 items-center justify-center gap-1.5 rounded-full bg-primary px-3 text-sm font-semibold text-primary-foreground opacity-0 shadow-md transition",
-        "pointer-events-none group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100",
-        "focus-visible:pointer-events-auto focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring",
+        "flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition",
+        "hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         (disabled || isPending) && "cursor-not-allowed opacity-60",
       )}
     >
@@ -127,8 +126,8 @@ export function ProductCardQuickAdd({
         "Ver sacolinha"
       ) : (
         <>
-          <ShoppingBag className="size-4" aria-hidden />
-          Adicionar ao Carrinho
+          <ShoppingBag className="size-4 shrink-0" aria-hidden />
+          <span className="truncate">Adicionar a sacola</span>
         </>
       )}
     </button>

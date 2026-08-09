@@ -33,6 +33,7 @@ type StorefrontSearchProps = {
 
 /**
  * Busca do header com autocomplete (SS-2 / D131 shape).
+ * Foco/clique abre o dropdown com sugestões (recentes ou filtradas).
  */
 export function StorefrontSearch({
   variant = "desktop",
@@ -47,20 +48,18 @@ export function StorefrontSearch({
   const [items, setItems] = useState<Suggestion[]>([]);
 
   useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
+    if (!open) return;
 
+    const q = query.trim();
     setLoading(true);
     const handle = window.setTimeout(() => {
       void (async () => {
         try {
-          const res = await fetch(
-            `/api/catalog/search?q=${encodeURIComponent(q)}`,
-          );
+          const url =
+            q.length >= 2
+              ? `/api/catalog/search?q=${encodeURIComponent(q)}`
+              : "/api/catalog/search";
+          const res = await fetch(url);
           const data = (await res.json()) as { items?: Suggestion[] };
           setItems(data.items ?? []);
         } catch {
@@ -69,10 +68,14 @@ export function StorefrontSearch({
           setLoading(false);
         }
       })();
-    }, 220);
+    }, q.length >= 2 ? 220 : 0);
 
     return () => window.clearTimeout(handle);
-  }, [query]);
+  }, [query, open]);
+
+  function openSuggestions() {
+    setOpen(true);
+  }
 
   function goCatalog(q: string) {
     const trimmed = q.trim();
@@ -89,138 +92,156 @@ export function StorefrontSearch({
     goCatalog(query);
   }
 
-  const showPopover = open && query.trim().length >= 2;
+  const searching = query.trim().length >= 2;
+  const showPopover = open;
 
   return (
     <form
       onSubmit={handleSubmit}
-      className={cn("relative min-w-0", className)}
+      className={cn("min-w-0", className)}
       role="search"
     >
       <label className="sr-only" htmlFor={`storefront-search-${variant}`}>
         Buscar
       </label>
-      <input
-        ref={inputRef}
-        id={`storefront-search-${variant}`}
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => {
-          window.setTimeout(() => setOpen(false), 150);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            setOpen(false);
-            inputRef.current?.blur();
-          }
-        }}
-        placeholder="O que você procura?"
-        autoComplete="off"
-        aria-autocomplete="list"
-        aria-controls={listId}
+      <div
         className={cn(
-          "w-full rounded-full border-2 border-primary/50 bg-card px-5 pr-12 text-base text-foreground placeholder:text-foreground/40",
-          variant === "desktop"
-            ? "h-12 md:h-[3.25rem] md:text-lg"
-            : "h-11",
+          "relative flex items-center rounded-full border-2 border-primary/50 bg-card",
+          variant === "desktop" ? "h-12 md:h-[3.25rem]" : "h-11",
         )}
-      />
-      <button
-        type="submit"
-        className={cn(
-          "absolute right-3 flex items-center justify-center rounded-full text-primary transition hover:bg-primary/10",
-          variant === "desktop"
-            ? "top-1/2 size-9 -translate-y-1/2"
-            : "right-3 top-1/2 size-8 -translate-y-1/2",
-        )}
-        aria-label="Buscar"
       >
-        <Search className="size-5" />
-      </button>
-
-      {query ? (
-        <button
-          type="button"
-          className="absolute right-12 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center text-muted-foreground"
-          aria-label="Limpar busca"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            setQuery("");
-            setItems([]);
-            inputRef.current?.focus();
+        <input
+          ref={inputRef}
+          id={`storefront-search-${variant}`}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
           }}
-        >
-          <X className="size-4" />
-        </button>
-      ) : null}
-
-      {showPopover ? (
-        <div
-          id={listId}
-          className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 overflow-hidden rounded-2xl border border-border bg-card shadow-xl"
-          role="listbox"
-        >
-          {loading ? (
-            <p className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              Buscando…
-            </p>
-          ) : items.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-muted-foreground">
-              Nenhuma peça encontrada
-            </p>
-          ) : (
-            <ul className="max-h-72 overflow-auto py-1">
-              {items.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    href={`/produto/${item.slug}`}
-                    role="option"
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/70"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setOpen(false)}
-                  >
-                    <span className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-muted">
-                      {item.cover_image_url ? (
-                        <Image
-                          src={item.cover_image_url}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="40px"
-                        />
-                      ) : null}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-foreground">
-                        {item.name}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {[item.size_label, item.brand].filter(Boolean).join(" · ")}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-sm font-bold text-primary">
-                      {formatPrice(item.price)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          onFocus={openSuggestions}
+          onClick={openSuggestions}
+          onBlur={() => {
+            window.setTimeout(() => setOpen(false), 150);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setOpen(false);
+              inputRef.current?.blur();
+            }
+          }}
+          placeholder="O que você procura?"
+          autoComplete="off"
+          aria-autocomplete="list"
+          aria-expanded={showPopover}
+          aria-controls={listId}
+          className={cn(
+            "min-w-0 flex-1 border-0 bg-transparent py-0 pl-4 text-base text-foreground outline-none placeholder:text-foreground/40 focus-visible:ring-0",
+            variant === "desktop" ? "md:pl-5 md:text-lg" : null,
           )}
+        />
+        {query ? (
           <button
             type="button"
-            className="w-full border-t border-border px-4 py-3 text-left text-sm font-semibold text-primary hover:bg-muted/50"
+            className="flex size-8 shrink-0 items-center justify-center text-muted-foreground"
+            aria-label="Limpar busca"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => goCatalog(query)}
+            onClick={() => {
+              setQuery("");
+              inputRef.current?.focus();
+              setOpen(true);
+            }}
           >
-            Ver todos no catálogo
+            <X className="size-4" />
           </button>
-        </div>
-      ) : null}
+        ) : null}
+        <button
+          type="submit"
+          className={cn(
+            "mr-2.5 flex shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-primary/10",
+            variant === "desktop" ? "size-9" : "size-8",
+          )}
+          aria-label="Buscar"
+        >
+          <Search className="size-5" strokeWidth={2} />
+        </button>
+
+        {showPopover ? (
+          <div
+            id={listId}
+            className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 overflow-hidden rounded-2xl border border-border bg-card shadow-xl"
+            role="listbox"
+          >
+            {loading ? (
+              <p className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Buscando…
+              </p>
+            ) : items.length === 0 ? (
+              <p className="px-4 py-3 text-sm text-muted-foreground">
+                {searching
+                  ? "Nenhuma peça encontrada"
+                  : "Nenhuma peça disponível no momento"}
+              </p>
+            ) : (
+              <>
+                {!searching ? (
+                  <p className="border-b border-border px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Sugestões
+                  </p>
+                ) : null}
+                <ul className="max-h-72 overflow-auto py-1">
+                  {items.map((item) => (
+                    <li key={item.id}>
+                      <Link
+                        href={`/produto/${item.slug}`}
+                        role="option"
+                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/70"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => setOpen(false)}
+                      >
+                        <span className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-muted">
+                          {item.cover_image_url ? (
+                            <Image
+                              src={item.cover_image_url}
+                              alt=""
+                              fill
+                              className="object-cover"
+                              sizes="40px"
+                            />
+                          ) : null}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-foreground">
+                            {item.name}
+                          </span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {[item.size_label, item.brand]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-sm font-bold text-primary">
+                          {formatPrice(item.price)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <button
+              type="button"
+              className="w-full border-t border-border px-4 py-3 text-left text-sm font-semibold text-primary hover:bg-muted/50"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => goCatalog(query)}
+            >
+              {searching
+                ? `Ver todos no catálogo`
+                : "Ver catálogo completo"}
+            </button>
+          </div>
+        ) : null}
+      </div>
     </form>
   );
 }

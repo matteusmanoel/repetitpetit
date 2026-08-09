@@ -2526,3 +2526,19 @@ nova.
 
 ---
 
+## D134 — `size_label` operacional = P / M / G
+
+**Data**: 2026-08-08
+**Contexto**: Cadastro admin/IA usava `size_label` como texto livre (“2 anos”,
+“12-18m”), enquanto filtros do catálogo já usam o enum `size_group` (faixas).
+Operação no balcão pedia rótulo único e curto nas peças.
+**Decisão**: (1) Valores operacionais de `size_label` = **P | M | G** (select
+único em dialog, formulário e intake). (2) Schema Zod / commit de intake
+rejeitam outros valores; legado no DB pode existir — UI mostra vazio até
+escolher P/M/G. (3) `size_group` permanece campo separado (faixa etária /
+filtros). (4) Import XLSX: coluna `tamanho` deve ser P, M ou G.
+**Consequência**: Display público ainda mostra o texto persistido; filtros
+continuam em `size_group`.
+
+---
+

@@ -27,7 +27,7 @@ export function buildMockAudioFieldSuggestions(
   return {
     name: "Conjunto moletom infantil",
     price: 89,
-    size_label: "4 anos",
+    size_label: "M",
     brand: "Hering Kids",
     size_group: "4_5a",
     gender: "unissex",

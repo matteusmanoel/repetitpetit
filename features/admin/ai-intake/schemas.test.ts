@@ -59,7 +59,7 @@ describe("ai-intake schemas", () => {
           price: 49.9,
           compare_at_price: null,
           brand: "GAP",
-          size_label: "2 anos",
+          size_label: "M",
           size_group: "2_3a",
           gender: "unissex",
           condition: "seminovo",

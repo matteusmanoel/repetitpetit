@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Bell, X } from "lucide-react";
 import { toast } from "sonner";
@@ -60,10 +61,15 @@ export function AdminNotifBell({
 export function AdminNotificationsHost({ className }: { className?: string }) {
   const { allQueueOrders } = useFulfillmentQueue();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
   const [exiting, setExiting] = useState<Set<string>>(new Set());
   const [clearing, setClearing] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setDismissedIds(loadDismissedNotificationIds());
@@ -124,6 +130,20 @@ export function AdminNotificationsHost({ className }: { className?: string }) {
     }, 280);
   }
 
+  const panel =
+    open && mounted
+      ? createPortal(
+          <NotificationsDrawerPanel
+            notifications={notifications}
+            exiting={exiting}
+            onClose={() => setOpen(false)}
+            onDismiss={handleDismiss}
+            onClearAll={() => void handleClearAll()}
+          />,
+          document.body,
+        )
+      : null;
+
   return (
     <>
       <AdminNotifBell
@@ -132,15 +152,7 @@ export function AdminNotificationsHost({ className }: { className?: string }) {
         count={count}
         onToggle={() => setOpen((v) => !v)}
       />
-      {open ? (
-        <NotificationsDrawerPanel
-          notifications={notifications}
-          exiting={exiting}
-          onClose={() => setOpen(false)}
-          onDismiss={handleDismiss}
-          onClearAll={() => void handleClearAll()}
-        />
-      ) : null}
+      {panel}
     </>
   );
 }
@@ -164,7 +176,7 @@ function NotificationsDrawerPanel({
     <div className="fixed inset-0 z-[70]">
       <button
         type="button"
-        className="absolute inset-0 cursor-pointer bg-black/10 md:bg-transparent"
+        className="absolute inset-0 cursor-default bg-black/10 md:bg-transparent"
         aria-label="Fechar notificações"
         onClick={onClose}
       />

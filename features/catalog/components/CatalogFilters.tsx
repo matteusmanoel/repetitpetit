@@ -7,7 +7,7 @@ import {
   ThumbsUpIcon,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -33,6 +33,14 @@ import {
 import { CONDITION_PILL_CLASS, GENDER_TOGGLE_ACTIVE_CLASS } from "@/features/catalog/ui-tokens";
 import { useCatalogFilters } from "@/features/catalog/use-catalog-filters";
 import { cn } from "@/lib/utils";
+
+/** Marcações sob o slider (teto = sem filtro). */
+const PRICE_SLIDER_MARKS = [
+  { value: 0, label: "R$0" },
+  { value: 100, label: "R$100" },
+  { value: 200, label: "R$200" },
+  { value: PRICE_SLIDER_CEILING, label: "R$300+" },
+] as const;
 
 type CatalogFiltersProps = {
   brands: string[];
@@ -133,6 +141,102 @@ function ConditionChip({
   );
 }
 
+function priceFromFilters(precoMax: number | null): number {
+  if (precoMax == null || precoMax >= PRICE_SLIDER_CEILING) {
+    return PRICE_SLIDER_CEILING;
+  }
+  return Math.min(
+    PRICE_SLIDER_CEILING,
+    Math.max(0, Math.round(precoMax / 5) * 5),
+  );
+}
+
+/**
+ * Slider de teto com draft local (URL só no commit) + escala sob a trilha.
+ * Passos de R$5; teto = sem filtro.
+ */
+function PriceMaxSlider({
+  committedValue,
+  onCommit,
+}: {
+  committedValue: number;
+  onCommit: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(committedValue);
+
+  useEffect(() => {
+    setDraft(committedValue);
+  }, [committedValue]);
+
+  const valueText =
+    draft >= PRICE_SLIDER_CEILING
+      ? "Qualquer preço"
+      : `Até ${formatPrice(draft)}`;
+
+  function snapToStep(raw: number): number {
+    return Math.min(
+      PRICE_SLIDER_CEILING,
+      Math.max(0, Math.round(raw / 5) * 5),
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 px-1">
+      <Slider
+        min={0}
+        max={PRICE_SLIDER_CEILING}
+        step={5}
+        value={[draft]}
+        onValueChange={(values) => {
+          setDraft(snapToStep(values[0] ?? PRICE_SLIDER_CEILING));
+        }}
+        onValueCommit={(values) => {
+          onCommit(snapToStep(values[0] ?? PRICE_SLIDER_CEILING));
+        }}
+        aria-label="Preço máximo"
+        aria-valuetext={valueText}
+        className={cn(
+          "w-full py-1",
+          "[&_[data-slot=slider-track]]:data-horizontal:h-1.5",
+          "[&_[data-slot=slider-thumb]]:size-4",
+          "[&_[data-slot=slider-thumb]]:border-primary",
+          "[&_[data-slot=slider-thumb]]:shadow-sm",
+          "[&_[data-slot=slider-thumb]]:transition-[box-shadow,transform]",
+          "[&_[data-slot=slider-thumb]]:active:scale-110",
+        )}
+      />
+      <div className="relative h-4 w-full" aria-hidden>
+        {PRICE_SLIDER_MARKS.map((mark) => {
+          const pct = (mark.value / PRICE_SLIDER_CEILING) * 100;
+          const active = Math.abs(draft - mark.value) <= 8;
+          return (
+            <button
+              key={mark.value}
+              type="button"
+              tabIndex={-1}
+              className={cn(
+                "absolute top-0 -translate-x-1/2 text-[10px] leading-none transition-colors",
+                mark.value === 0 && "translate-x-0",
+                mark.value === PRICE_SLIDER_CEILING && "-translate-x-full",
+                active
+                  ? "font-semibold text-primary"
+                  : "font-medium text-muted-foreground hover:text-foreground",
+              )}
+              style={{ left: `${pct}%` }}
+              onClick={() => {
+                setDraft(mark.value);
+                onCommit(mark.value);
+              }}
+            >
+              {mark.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Painel de filtros Option A (D132): chips + checkbox + slider max-only,
  * marca multiselect, sem “Mais filtros”, labels mínimas.
@@ -140,10 +244,7 @@ function ConditionChip({
 export function CatalogFilters({ brands }: CatalogFiltersProps) {
   const { filters, replaceFilters, isPending } = useCatalogFilters();
 
-  const sliderValue =
-    filters.precoMax != null && filters.precoMax < PRICE_SLIDER_CEILING
-      ? filters.precoMax
-      : PRICE_SLIDER_CEILING;
+  const sliderValue = priceFromFilters(filters.precoMax);
 
   function setTamanho(size: SizeGroup) {
     replaceFilters({
@@ -183,7 +284,7 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-5 rounded-2xl border border-border bg-card/60 p-4 sm:p-5",
+        "flex flex-col gap-4 rounded-2xl border border-border bg-card/60 p-3",
         isPending && "opacity-90",
       )}
       aria-busy={isPending || undefined}
@@ -292,26 +393,11 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
         </div>
       </FilterSection>
 
-      <FilterSection title="Preço máximo">
-        <div className="flex flex-col gap-3 px-1">
-          <p className="text-sm font-medium text-foreground">
-            {sliderValue >= PRICE_SLIDER_CEILING
-              ? "Qualquer preço"
-              : `Até ${formatPrice(sliderValue)}`}
-          </p>
-          <Slider
-            min={0}
-            max={PRICE_SLIDER_CEILING}
-            step={5}
-            value={[sliderValue]}
-            onValueChange={(values) => {
-              const next = values[0] ?? PRICE_SLIDER_CEILING;
-              setPrecoMax(next);
-            }}
-            aria-label="Preço máximo"
-            className="w-full"
-          />
-        </div>
+      <FilterSection title="Preço máximo" srOnlyTitle>
+        <PriceMaxSlider
+          committedValue={sliderValue}
+          onCommit={setPrecoMax}
+        />
       </FilterSection>
     </div>
   );

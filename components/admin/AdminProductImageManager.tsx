@@ -1,6 +1,6 @@
 "use client";
 
-import { GripVertical, Trash2, Upload } from "lucide-react";
+import { Camera, GripVertical, Trash2, Upload } from "lucide-react";
 import Image from "next/image";
 import { useRef, useState } from "react";
 
@@ -12,14 +12,22 @@ type Props = {
   images: ProductImageInput[];
   onChange: (images: ProductImageInput[]) => void;
   disabled?: boolean;
+  /** Capa menor — útil em modal com grid lado a lado. */
+  compact?: boolean;
 };
 
 /**
  * Upload múltiplo via `POST /api/upload` (bucket productImages) + reordenação
- * local. A lista final é persistida em `product_images.sort_order` pela action.
+ * local. Câmera no mobile via `capture="environment"`.
  */
-export function AdminProductImageManager({ images, onChange, disabled }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
+export function AdminProductImageManager({
+  images,
+  onChange,
+  disabled,
+  compact = false,
+}: Props) {
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -63,7 +71,8 @@ export function AdminProductImageManager({ images, onChange, disabled }: Props) 
       );
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
+      if (galleryRef.current) galleryRef.current.value = "";
+      if (cameraRef.current) cameraRef.current.value = "";
     }
   }
 
@@ -79,36 +88,81 @@ export function AdminProductImageManager({ images, onChange, disabled }: Props) 
     onChange(images.filter((_, i) => i !== index));
   }
 
+  const cover = images[0] ?? null;
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-medium text-foreground">Fotos da peça</p>
-          <p className="text-xs text-muted-foreground">
-            A primeira foto vira a capa. Arraste para reordenar.
-          </p>
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/avif"
+        multiple
+        className="sr-only"
+        disabled={disabled || uploading}
+        onChange={(event) => void handleFiles(event.target.files)}
+      />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        disabled={disabled || uploading}
+        onChange={(event) => void handleFiles(event.target.files)}
+      />
+
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-muted">
+        <div
+          className={cn(
+            "relative aspect-3/4 w-full",
+            compact ? "max-h-56 sm:max-h-64" : "max-h-72 sm:max-h-80",
+          )}
+        >
+          {cover ? (
+            <Image
+              src={cover.image_url}
+              alt={cover.alt_text ?? "Capa da peça"}
+              fill
+              unoptimized
+              className="object-cover"
+              sizes="(max-width: 640px) 100vw, 420px"
+            />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm text-muted-foreground">
+              <Camera className="size-8 opacity-60" />
+              <p>Nenhuma foto ainda</p>
+              <p className="text-xs">A primeira vira a capa no catálogo</p>
+            </div>
+          )}
+          {cover ? (
+            <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+              Capa
+            </span>
+          ) : null}
         </div>
-        <div>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            multiple
-            className="sr-only"
-            disabled={disabled || uploading}
-            onChange={(event) => void handleFiles(event.target.files)}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled || uploading}
-            onClick={() => inputRef.current?.click()}
-          >
-            <Upload data-icon="inline-start" />
-            {uploading ? "Enviando..." : "Adicionar fotos"}
-          </Button>
-        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className={cn("gap-2", compact ? "h-10" : "h-11")}
+          disabled={disabled || uploading}
+          onClick={() => cameraRef.current?.click()}
+        >
+          <Camera className="size-4" />
+          {uploading ? "Enviando…" : "Câmera"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn("gap-2", compact ? "h-10" : "h-11")}
+          disabled={disabled || uploading}
+          onClick={() => galleryRef.current?.click()}
+        >
+          <Upload className="size-4" />
+          {uploading ? "Enviando…" : "Galeria"}
+        </Button>
       </div>
 
       {error ? (
@@ -117,12 +171,8 @@ export function AdminProductImageManager({ images, onChange, disabled }: Props) 
         </p>
       ) : null}
 
-      {images.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
-          Nenhuma foto ainda. Adicione pelo menos uma para a capa.
-        </div>
-      ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+      {images.length > 0 ? (
+        <ul className="flex gap-2 overflow-x-auto pb-1">
           {images.map((image, index) => (
             <li
               key={`${image.image_url}-${index}`}
@@ -136,39 +186,46 @@ export function AdminProductImageManager({ images, onChange, disabled }: Props) 
               }}
               onDragEnd={() => setDragIndex(null)}
               className={cn(
-                "group relative overflow-hidden rounded-xl border border-border bg-card",
+    "group relative w-24 shrink-0 overflow-hidden rounded-xl border border-border bg-card",
                 dragIndex === index && "opacity-60",
+                index === 0 && "ring-2 ring-[var(--brand-green)]",
               )}
             >
-              <div className="relative aspect-[3/4] w-full bg-muted">
+              <div className="relative aspect-3/4 w-full bg-muted">
                 <Image
                   src={image.image_url}
                   alt={image.alt_text ?? `Foto ${index + 1}`}
                   fill
                   unoptimized
                   className="object-cover"
-                  sizes="160px"
+                  sizes="64px"
                 />
               </div>
-              <div className="flex items-center justify-between gap-1 px-2 py-1.5">
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                  <GripVertical className="size-3.5" />
-                  {index === 0 ? "Capa" : `#${index + 1}`}
+              <div className="flex items-center justify-between gap-0.5 px-1 py-0.5">
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                  <GripVertical className="size-3" />
+                  {index === 0 ? "Capa" : index + 1}
                 </span>
                 <button
                   type="button"
                   disabled={disabled}
                   onClick={() => removeImage(index)}
-                  className="rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  className="rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   aria-label={`Remover foto ${index + 1}`}
                 >
-                  <Trash2 className="size-3.5" />
+                  <Trash2 className="size-3" />
                 </button>
               </div>
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
+
+      {images.length > 1 ? (
+        <p className="text-[11px] text-muted-foreground">
+          Arraste as miniaturas para reordenar. A primeira é a capa.
+        </p>
+      ) : null}
     </div>
   );
 }

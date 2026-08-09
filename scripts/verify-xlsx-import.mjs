@@ -41,7 +41,7 @@ function buildFixtureBuffer() {
       preco: 19.9,
       preco_comparacao: 29.9,
       marca: "T12Brand",
-      tamanho: "2 anos",
+      tamanho: "M",
       grupo_tamanho: "2_3a",
       genero: "unissex",
       condicao: "seminovo",

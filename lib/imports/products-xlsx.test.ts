@@ -30,7 +30,7 @@ describe("parseProductsXlsx", () => {
         preco: "49,90",
         preco_comparacao: "",
         marca: "GAP",
-        tamanho: "2 anos",
+        tamanho: "M",
         grupo_tamanho: "2_3a",
         genero: "unissex",
         condicao: "seminovo",
@@ -58,7 +58,7 @@ describe("parseProductsXlsx", () => {
       {
         name: "Body floral",
         brand: "Carter's",
-        size_label: "6-12m",
+        size_label: "M",
         size_group: "6_12m",
         gender: "menina",
         condition: "novo",

@@ -6,9 +6,19 @@ import {
   getActiveFilterChips,
   hasActiveCatalogFilters,
   parseCatalogFilters,
+  parseCatalogPage,
   resolveEffectiveSizeGroups,
   serializeCatalogFilters,
 } from "./filters";
+
+describe("parseCatalogPage", () => {
+  it("default 1 e ignora inválidos", () => {
+    expect(parseCatalogPage({})).toBe(1);
+    expect(parseCatalogPage({ page: "abc" })).toBe(1);
+    expect(parseCatalogPage({ page: "0" })).toBe(1);
+    expect(parseCatalogPage({ page: "3" })).toBe(3);
+  });
+});
 
 describe("parseCatalogFilters", () => {
   it("retorna filtros vazios sem params", () => {

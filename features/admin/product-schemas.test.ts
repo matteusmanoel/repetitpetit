@@ -20,7 +20,7 @@ describe("productFormSchema", () => {
     price: "49.90",
     compare_at_price: "",
     brand: "GAP",
-    size_label: "2 anos",
+    size_label: "M",
     size_group: "2_3a",
     gender: "unissex",
     condition: "seminovo",

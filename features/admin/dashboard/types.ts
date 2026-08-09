@@ -3,6 +3,8 @@
  */
 export type AdminDashboardKpis = {
   productsAvailable: number;
+  /** Soma `price` (R$) das peças `available` — valor de venda em estoque. */
+  productsAvailableValue: number;
   /**
    * Hold Sessions ativas (`hold_sessions.status = 'active'` e
    * `expires_at > now()`). Substitui a contagem em `cart_reservations` (D40/D66).

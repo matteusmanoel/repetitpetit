@@ -392,7 +392,7 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
         ) : null}
       </div>
 
-      <aside className="lg:sticky lg:top-20">
+      <aside className="lg:sticky lg:top-44 lg:z-10 lg:self-start">
         <div className="rounded-3xl border border-border bg-card p-4 shadow-sm md:p-5">
           <h2 className="mb-4 text-xl font-bold text-foreground">
             Resumo

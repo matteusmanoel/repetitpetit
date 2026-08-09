@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { ActiveFilterChips } from "@/features/catalog/components/ActiveFilterChips";
 import { CatalogFiltersPanel } from "@/features/catalog/components/catalog-filters-panel";
 import { CatalogProductList } from "@/features/catalog/components/catalog-product-list";
 import { CatalogStatusRealtime } from "@/features/catalog/components/CatalogStatusRealtime";
@@ -9,6 +8,7 @@ import { ProductCardSkeletonGrid } from "@/features/catalog/components/ProductCa
 import {
   catalogFiltersToQueryString,
   parseCatalogFilters,
+  parseCatalogPage,
 } from "@/features/catalog/filters";
 
 export const metadata: Metadata = {
@@ -34,7 +34,8 @@ export default async function CatalogoPage({
   const params = await searchParams;
   const filters = parseCatalogFilters(params);
   const searchQuery = (firstParam(params.q) ?? "").trim();
-  const listKey = `${catalogFiltersToQueryString(filters)}|q=${searchQuery}`;
+  const page = parseCatalogPage(params);
+  const listKey = `${catalogFiltersToQueryString(filters)}|q=${searchQuery}|p=${page}`;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 md:py-8">
@@ -54,16 +55,16 @@ export default async function CatalogoPage({
         ) : null}
       </header>
 
-      <div className="grid gap-6 md:grid-cols-[220px_1fr] md:gap-8">
+      <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:gap-8">
         <CatalogFiltersPanel />
 
-        <div className="flex flex-col gap-4">
-          <Suspense fallback={null}>
-            <ActiveFilterChips />
-          </Suspense>
-
+        <div className="flex min-w-0 flex-col gap-4">
           <Suspense key={listKey} fallback={<ProductCardSkeletonGrid />}>
-            <CatalogProductList filters={filters} searchQuery={searchQuery} />
+            <CatalogProductList
+              filters={filters}
+              searchQuery={searchQuery}
+              page={page}
+            />
           </Suspense>
         </div>
       </div>

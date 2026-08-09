@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   PRODUCT_CONDITIONS,
   PRODUCT_GENDERS,
+  PRODUCT_SIZE_LABELS,
   SIZE_GROUPS,
   slugifyProductName,
 } from "@/features/admin/product-constants";
@@ -64,7 +65,9 @@ export const intakePreviewItemSchema = z.object({
     z.coerce.number().positive().nullable(),
   ),
   brand: z.preprocess(emptyToNull, z.string().max(80).nullable()),
-  size_label: z.string().trim().min(1, "Informe o tamanho.").max(40),
+  size_label: z.enum(PRODUCT_SIZE_LABELS, {
+    error: "Selecione o tamanho (P, M ou G).",
+  }),
   size_group: z.enum(SIZE_GROUPS),
   gender: z.enum(PRODUCT_GENDERS),
   condition: z.enum(PRODUCT_CONDITIONS),

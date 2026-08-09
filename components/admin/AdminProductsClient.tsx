@@ -3,6 +3,7 @@
 import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -38,6 +39,7 @@ type Props = {
   categories: CategoryOption[];
   initialQuery: string;
   initialStatus: ProductStatus | "all";
+  savedFlash?: "created" | "updated" | null;
 };
 
 function useNow(tickMs = 1000) {
@@ -75,7 +77,9 @@ export function AdminProductsClient({
   categories: initialCategories,
   initialQuery,
   initialStatus,
+  savedFlash = null,
 }: Props) {
+  const router = useRouter();
   const now = useNow();
   const [query, setQuery] = useState(initialQuery);
   const [chip, setChip] = useState<Chip>(
@@ -93,6 +97,14 @@ export function AdminProductsClient({
     null,
   );
   const [loadingEdit, startEditTransition] = useTransition();
+
+  useEffect(() => {
+    if (!savedFlash) return;
+    toast.success(
+      savedFlash === "created" ? "Produto criado" : "Produto atualizado",
+    );
+    router.replace("/admin/produtos", { scroll: false });
+  }, [savedFlash, router]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -122,15 +134,17 @@ export function AdminProductsClient({
   }
 
   function openEdit(productId: string) {
+    setDialogMode("edit");
+    setDialogProduct(null);
+    setDialogOpen(true);
     startEditTransition(async () => {
       const result = await loadProductForDialogAction(productId);
       if (!result.ok) {
         toast.error(result.error);
+        setDialogOpen(false);
         return;
       }
-      setDialogMode("edit");
       setDialogProduct(result.product);
-      setDialogOpen(true);
     });
   }
 
@@ -199,7 +213,6 @@ export function AdminProductsClient({
 
       <p className="text-sm text-muted-foreground">
         {filtered.length} produto(s)
-        {loadingEdit ? " · carregando…" : null}
       </p>
 
       {pageItems.length === 0 ? (
@@ -207,15 +220,27 @@ export function AdminProductsClient({
           Nenhuma peça encontrada com esses filtros.
         </div>
       ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <ul className="animate-in fade-in grid grid-cols-2 gap-3 duration-200 sm:grid-cols-3 lg:grid-cols-4">
           {pageItems.map((product) => {
             const hold = product.activeHold;
+            const price = Number(product.price);
+            const compareAt =
+              product.compare_at_price != null
+                ? Number(product.compare_at_price)
+                : null;
+            const hasCompare =
+              compareAt != null &&
+              Number.isFinite(compareAt) &&
+              compareAt > price;
             return (
-              <li key={product.id} className="relative">
+              <li
+                key={product.id}
+                className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
                 <button
                   type="button"
                   onClick={() => openEdit(product.id)}
-                  className="group relative w-full overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="group relative flex w-full flex-1 flex-col text-left"
                 >
                   <div className="relative aspect-[3/4] bg-muted">
                     {product.cover_image_url ? (
@@ -235,7 +260,7 @@ export function AdminProductsClient({
                       <HoldTimerBadge expiresAt={hold.expiresAt} now={now} />
                     ) : null}
                   </div>
-                  <div className="space-y-1 p-3 pb-12">
+                  <div className="flex flex-1 flex-col space-y-1 p-3">
                     {(product.size_label || product.brand) && (
                       <p className="text-sm font-semibold text-[var(--brand-blue,#1e4a7a)]">
                         {[product.size_label, product.brand]
@@ -243,33 +268,42 @@ export function AdminProductsClient({
                           .join(" · ")}
                       </p>
                     )}
-                    <p className="line-clamp-2 text-sm font-medium">
+                    <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium">
                       {product.name}
                     </p>
-                    {product.status === "hold" ? (
-                      <p className="truncate text-xs font-medium text-amber-800">
-                        Hold · {hold?.customerName ?? "sem cliente"}
-                      </p>
-                    ) : null}
-                    <p className="text-lg font-bold text-[var(--brand-green,#2d6a4f)]">
-                      {formatPriceBRL(Number(product.price))}
+                    <p className="truncate text-xs font-medium text-amber-800 min-h-4">
+                      {product.status === "hold"
+                        ? `Hold · ${hold?.customerName ?? "sem cliente"}`
+                        : "\u00a0"}
                     </p>
+                    <div className="mt-auto flex items-baseline gap-2">
+                      <p className="text-lg font-bold text-[var(--brand-green,#2d6a4f)]">
+                        {formatPriceBRL(price)}
+                      </p>
+                      {hasCompare ? (
+                        <span className="text-xs text-destructive line-through">
+                          {formatPriceBRL(compareAt)}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </button>
 
-                {product.status === "hold" ? (
-                  <div
-                    className="absolute bottom-3 right-3 z-10"
-                    onClick={(event) => event.stopPropagation()}
-                    onKeyDown={(event) => event.stopPropagation()}
-                  >
+                <div
+                  className="mt-auto border-t border-border bg-card p-2"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  {product.status === "hold" ? (
                     <OverrideActionButton
                       productId={product.id}
                       productStatus={product.status}
-                      className="h-10 rounded-full border-0 bg-[var(--brand-pink,#e85d75)] px-3 text-[11px] font-bold text-white shadow-md hover:bg-[var(--brand-pink,#e85d75)]/90 hover:text-white"
+                      className="h-11 w-full rounded-xl border-0 bg-[var(--brand-pink,#e85d75)] text-xs font-bold text-white shadow-sm hover:bg-[var(--brand-pink,#e85d75)]/90 hover:text-white"
                     />
-                  </div>
-                ) : null}
+                  ) : (
+                    <div className="h-11" aria-hidden />
+                  )}
+                </div>
               </li>
             );
           })}
@@ -311,6 +345,7 @@ export function AdminProductsClient({
         categories={categories}
         onCategoriesChange={setCategories}
         onOpenChange={setDialogOpen}
+        loading={loadingEdit && dialogMode === "edit" && !dialogProduct}
       />
     </div>
   );

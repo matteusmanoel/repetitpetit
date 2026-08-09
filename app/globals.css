@@ -45,6 +45,8 @@
   --color-brand-green: var(--brand-green);
   --color-brand-blue: var(--brand-blue);
   --color-brand-pink: var(--brand-pink);
+  --color-brand-baby-blue: var(--brand-baby-blue);
+  --color-brand-brown: var(--brand-brown);
   --color-footer: var(--footer-bg);
   --color-condition-novo: var(--condition-novo-bg);
   --color-condition-novo-foreground: var(--condition-novo-fg);
@@ -147,6 +149,9 @@
   --brand-green: hsl(76 51% 46%);
   --brand-blue: hsl(210 77% 37%);
   --brand-pink: hsl(1 78% 64%);
+  /* Nav extras: bebês (azul bebê) + calçados (marrom) */
+  --brand-baby-blue: hsl(199 72% 58%);
+  --brand-brown: hsl(28 42% 42%);
   --footer-bg: #e8f2fc;
 
   /*
@@ -186,6 +191,21 @@
   h5,
   h6 {
     @apply font-heading;
+  }
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  label[for],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="file"]:not(:disabled) {
+    cursor: pointer;
+  }
+  :disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
   }
 }
 

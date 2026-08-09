@@ -10,13 +10,7 @@ import { cn } from "@/lib/utils";
  * Conta popover (D112 + SO-03): Entrar (magic link) + Minha Sacolinha panel.
  * Carrinho permanece no ícone Sacolinha do header/bottom bar.
  */
-export function AccountPopover({
-  className,
-  showLabel = true,
-}: {
-  className?: string;
-  showLabel?: boolean;
-}) {
+export function AccountPopover({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -43,15 +37,12 @@ export function AccountPopover({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex cursor-pointer flex-col items-center gap-1 rounded-xl px-2 py-1 text-primary transition hover:-translate-y-0.5 hover:shadow-md"
+        className="flex cursor-pointer items-center justify-center rounded-xl px-2 py-1 text-primary transition hover:-translate-y-0.5 hover:shadow-md"
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="Conta"
       >
         <User className="size-6 md:size-7" strokeWidth={1.75} />
-        {showLabel ? (
-          <span className="hidden text-[11px] font-semibold lg:block">Conta</span>
-        ) : null}
       </button>
       {open ? (
         <div

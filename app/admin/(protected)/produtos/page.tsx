@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 type SearchParams = Promise<{
   q?: string;
   status?: string;
+  saved?: string;
 }>;
 
 function resolveStatusFilter(raw?: string): ProductStatus | "all" {
@@ -34,6 +35,10 @@ export default async function AdminProductsPage({
   const params = await searchParams;
   const q = params.q?.trim() ?? "";
   const status = resolveStatusFilter(params.status);
+  const saved =
+    params.saved === "created" || params.saved === "updated"
+      ? params.saved
+      : null;
   const [products, categories] = await Promise.all([
     listAdminProductsWithHolds({ q, status }),
     listActiveCategories(),
@@ -45,6 +50,7 @@ export default async function AdminProductsPage({
       categories={categories}
       initialQuery={q}
       initialStatus={status}
+      savedFlash={saved}
     />
   );
 }

@@ -31,11 +31,14 @@ import {
   PRODUCT_CONDITIONS,
   PRODUCT_GENDER_LABELS,
   PRODUCT_GENDERS,
+  PRODUCT_SIZE_LABELS,
   PRODUCT_STATUS_LABELS,
   PRODUCT_STATUSES,
   SIZE_GROUP_LABELS,
   SIZE_GROUPS,
+  isProductSizeLabel,
   slugifyProductName,
+  type ProductSizeLabel,
 } from "@/features/admin/product-constants";
 import {
   createProductAction,
@@ -72,6 +75,11 @@ export function AdminProductForm({ mode, product, categories }: Props) {
   const [name, setName] = useState(product?.name ?? "");
   const [slugManual, setSlugManual] = useState(product?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(mode === "edit");
+  const [sizeLabel, setSizeLabel] = useState<ProductSizeLabel | "">(() =>
+    product?.size_label && isProductSizeLabel(product.size_label)
+      ? product.size_label
+      : "",
+  );
   const [sizeGroup, setSizeGroup] = useState(product?.size_group ?? "2_3a");
   const [gender, setGender] = useState(product?.gender ?? "unissex");
   const [condition, setCondition] = useState(product?.condition ?? "seminovo");
@@ -215,15 +223,32 @@ export function AdminProductForm({ mode, product, categories }: Props) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="size_label">Tamanho (rótulo)</Label>
-            <Input
-              id="size_label"
-              name="size_label"
-              defaultValue={product?.size_label ?? ""}
-              placeholder="2 anos, P, 12-18m..."
-              required
-              aria-invalid={Boolean(state.fieldErrors?.size_label)}
-            />
+            <Label htmlFor="size_label">Tamanho</Label>
+            <input type="hidden" name="size_label" value={sizeLabel} />
+            <Select
+              value={sizeLabel || undefined}
+              onValueChange={(value) => {
+                if (value && isProductSizeLabel(value)) {
+                  setSizeLabel(value);
+                }
+              }}
+            >
+              <SelectTrigger
+                id="size_label"
+                size="sm"
+                className="w-full"
+                aria-invalid={Boolean(state.fieldErrors?.size_label)}
+              >
+                <SelectValue placeholder="P, M ou G" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRODUCT_SIZE_LABELS.map((label) => (
+                  <SelectItem key={label} value={label}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FieldError messages={state.fieldErrors?.size_label} />
           </div>
 

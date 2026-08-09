@@ -40,6 +40,23 @@ export const SIZE_GROUPS = [
   "13_mais",
 ] as const satisfies readonly SizeGroup[];
 
+/** Rótulo operacional de tamanho na peça (P/M/G). */
+export const PRODUCT_SIZE_LABELS = ["P", "M", "G"] as const;
+export type ProductSizeLabel = (typeof PRODUCT_SIZE_LABELS)[number];
+
+export function isProductSizeLabel(value: string): value is ProductSizeLabel {
+  return (PRODUCT_SIZE_LABELS as readonly string[]).includes(value);
+}
+
+/** Normaliza rótulo legado/IA para P/M/G; fallback M. */
+export function coerceProductSizeLabel(
+  value: string | null | undefined,
+): ProductSizeLabel {
+  const trimmed = value?.trim();
+  if (trimmed && isProductSizeLabel(trimmed)) return trimmed;
+  return "M";
+}
+
 export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
   available: "Disponível",
   hold: "Em hold",

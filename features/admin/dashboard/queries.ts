@@ -35,6 +35,34 @@ async function countProductsByStatus(
 }
 
 /**
+ * Contagem + valor de venda (soma de `price`) das peças disponíveis.
+ */
+async function getAvailableInventory(): Promise<{
+  count: number;
+  value: number;
+}> {
+  const supabase = createServiceSupabaseClient();
+
+  const { data, error, count } = await supabase
+    .from("products")
+    .select("price", { count: "exact" })
+    .eq("status", "available");
+
+  if (error) {
+    throw new Error(
+      `Falha ao carregar estoque disponível: ${error.message}`,
+    );
+  }
+
+  let value = 0;
+  for (const row of data ?? []) {
+    value += Number(row.price) || 0;
+  }
+
+  return { count: count ?? data?.length ?? 0, value };
+}
+
+/**
  * Conta Hold Sessions ativas ainda válidas (`status = active` e
  * `expires_at > now()`). Fonte de verdade do KPI "Holds ativos" (D66) —
  * não usa `cart_reservations` nem `products.status = hold`.
@@ -202,7 +230,7 @@ function toSeriesOrders(rows: readonly PaidOrderRow[]): PaidOrderForSeries[] {
 export async function getAdminDashboardKpis(): Promise<AdminDashboardKpis> {
   const [base, paidRows, ordersNaSacolinha] = await Promise.all([
     Promise.all([
-      countProductsByStatus("available"),
+      getAvailableInventory(),
       countActiveHolds(),
       countHoldsExpiringSoon(),
       countProductsByStatus("sold"),
@@ -217,7 +245,7 @@ export async function getAdminDashboardKpis(): Promise<AdminDashboardKpis> {
   ]);
 
   const [
-    productsAvailable,
+    availableInventory,
     activeHolds,
     holdsExpiringSoon,
     productsSold,
@@ -229,7 +257,8 @@ export async function getAdminDashboardKpis(): Promise<AdminDashboardKpis> {
   ] = base;
 
   return {
-    productsAvailable,
+    productsAvailable: availableInventory.count,
+    productsAvailableValue: availableInventory.value,
     activeHolds,
     holdsExpiringSoon,
     productsSold,
@@ -286,7 +315,7 @@ export async function getAdminDashboardData(): Promise<{
 }> {
   const [counts, paidRows] = await Promise.all([
     Promise.all([
-      countProductsByStatus("available"),
+      getAvailableInventory(),
       countActiveHolds(),
       countHoldsExpiringSoon(),
       countProductsByStatus("sold"),
@@ -301,7 +330,7 @@ export async function getAdminDashboardData(): Promise<{
   ]);
 
   const [
-    productsAvailable,
+    availableInventory,
     activeHolds,
     holdsExpiringSoon,
     productsSold,
@@ -333,7 +362,8 @@ export async function getAdminDashboardData(): Promise<{
 
   return {
     kpis: {
-      productsAvailable,
+      productsAvailable: availableInventory.count,
+      productsAvailableValue: availableInventory.value,
       activeHolds,
       holdsExpiringSoon,
       productsSold,

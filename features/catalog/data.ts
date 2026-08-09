@@ -133,26 +133,29 @@ export type CatalogSearchSuggestion = {
 
 /**
  * Autocomplete do header (SS-2) — até 8 peças available|hold.
+ * Query curta/vazia → peças recentes (dropdown ao focar a busca).
  */
 export async function searchCatalogSuggestions(
   rawQuery: string,
   limit = 8,
 ): Promise<CatalogSearchSuggestion[]> {
   const q = rawQuery.trim().replace(/[%_]/g, "").slice(0, 80);
-  if (q.length < 2) return [];
-
   const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase
+
+  let query = supabase
     .from("products")
-    .select(
-      "id, name, slug, brand, size_label, price, cover_image_url",
-    )
+    .select("id, name, slug, brand, size_label, price, cover_image_url")
     .in("status", [...CATALOG_STATUSES])
-    .or(
-      `name.ilike.%${q}%,brand.ilike.%${q}%,size_label.ilike.%${q}%`,
-    )
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (q.length >= 2) {
+    query = query.or(
+      `name.ilike.%${q}%,brand.ilike.%${q}%,size_label.ilike.%${q}%`,
+    );
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("searchCatalogSuggestions:", error);

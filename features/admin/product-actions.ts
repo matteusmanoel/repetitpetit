@@ -132,7 +132,7 @@ export async function createProductAction(
   }
 
   revalidateProductPaths(created.slug);
-  redirect("/admin/produtos");
+  redirect("/admin/produtos?saved=created");
 }
 
 /**
@@ -254,7 +254,7 @@ export async function updateProductAction(
   }
 
   revalidateProductPaths(updated.slug);
-  redirect("/admin/produtos");
+  redirect("/admin/produtos?saved=updated");
 }
 
 /**

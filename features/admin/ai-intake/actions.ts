@@ -14,11 +14,18 @@ import {
   confirmIntakeBatchSchema,
   generatePreviewInputSchema,
   type IntakeDraftItem,
-  type IntakePreviewItem,
+  type IntakeFinalizeItem,
 } from "@/features/admin/ai-intake/schemas";
+import { coerceProductSizeLabel, slugifyProductName } from "@/features/admin/product-constants";
+import { createCategoryInlineAction } from "@/features/admin/product-dialog-actions";
 import { requireAdminSession } from "@/features/admin/session";
-import { slugifyProductName } from "@/features/admin/product-constants";
 import { emitProductStatusEvent } from "@/features/passport/emit-status-event";
+import {
+  matchCategoryByName,
+  normalizeBrandName,
+  evaluatePublishGate,
+} from "@/features/admin/ai-intake/category-match";
+import { draftHasValidationConflicts } from "@/features/admin/ai-intake/business-validator";
 import { applyPrintAttempt } from "@/features/print/queue";
 import { resolveThermalPrintBridge } from "@/features/print/bridge";
 import { env } from "@/lib/env";
@@ -57,21 +64,28 @@ export type PrintJobAckResult =
   | { ok: true; job: LabelPrintJobRow }
   | { ok: false; error: string };
 
-function toProductInsert(item: IntakePreviewItem): ProductInsert {
+function toProductInsert(
+  item: IntakeFinalizeItem,
+  status: "available" | "inactive",
+): ProductInsert {
   const coverImageUrl = item.images[0]?.image_url ?? null;
-  const slugBase = item.slug || slugifyProductName(item.name);
+  const name = item.name.trim() || "Peça sem nome";
+  const slugBase = item.slug || slugifyProductName(name) || `peca-${item.client_id.slice(0, 8)}`;
+  const sizeLabel = item.size_label.trim()
+    ? coerceProductSizeLabel(item.size_label)
+    : "M";
   return {
-    name: item.name,
+    name,
     slug: slugBase,
-    description: item.description,
+    description: item.description ?? null,
     price: item.price,
-    compare_at_price: item.compare_at_price,
-    brand: item.brand,
-    size_label: item.size_label,
+    compare_at_price: item.compare_at_price ?? null,
+    brand: normalizeBrandName(item.brand),
+    size_label: sizeLabel,
     size_group: item.size_group,
     gender: item.gender,
     condition: item.condition,
-    status: "available",
+    status,
     quantity: 1,
     is_featured: false,
     tags: item.tags.length > 0 ? item.tags : null,
@@ -126,12 +140,11 @@ async function assignStaffCode(
     .from("products")
     .update({
       staff_code: nextCode,
-      status: "available",
       updated_at: new Date().toISOString(),
     })
     .eq("id", productId)
     .is("staff_code", null)
-    .select("id, staff_code")
+    .select("id, staff_code, status")
     .maybeSingle();
 
   if (updateError) {
@@ -139,11 +152,12 @@ async function assignStaffCode(
   }
 
   const staffCode = updated?.staff_code ?? nextCode;
+  const toStatus = updated?.status ?? product.status;
 
   const emitted = await emitProductStatusEvent({
     productId,
     fromStatus: null,
-    toStatus: "available",
+    toStatus,
     actorType: "admin",
     actorId: adminId,
     context: "activation",
@@ -220,9 +234,48 @@ export async function confirmIntakeBatchAction(
   }> = [];
   const jobRows: LabelPrintJobRow[] = [];
 
+  const { data: categoryRows } = await supabase
+    .from("categories")
+    .select("id, name, slug")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  let categories = (categoryRows ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+  }));
+
   for (let index = 0; index < parsed.data.items.length; index += 1) {
-    const item = parsed.data.items[index];
-    let row = toProductInsert(item);
+    let item = parsed.data.items[index];
+
+    if (!item.category_id && item.category_name?.trim()) {
+      const matched = matchCategoryByName(categories, item.category_name);
+      if (matched) {
+        item = { ...item, category_id: matched.id };
+      } else {
+        const createdCat = await createCategoryInlineAction(
+          item.category_name.trim(),
+        );
+        if (createdCat.ok) {
+          categories = [...categories, createdCat.category];
+          item = { ...item, category_id: createdCat.category.id };
+        }
+      }
+    }
+
+    const hasConflict = draftHasValidationConflicts(item);
+    const gate = evaluatePublishGate({
+      name: item.name,
+      price: item.price,
+      size_label: item.size_label,
+      images: item.images,
+      hasConflict,
+    });
+    const status =
+      item.publish && gate.ok ? ("available" as const) : ("inactive" as const);
+
+    let row = toProductInsert(item, status);
 
     // Unique slug: append short suffix on conflict.
     let createdProduct: { id: string; slug: string } | null = null;
@@ -244,7 +297,7 @@ export async function confirmIntakeBatchAction(
       if (error?.code !== "23505") {
         return {
           ok: false,
-          error: `Falha ao criar peça "${item.name}": ${error?.message ?? "erro"}`,
+          error: `Falha ao criar peça "${item.name || "sem nome"}": ${error?.message ?? "erro"}`,
         };
       }
       row = { ...row, slug };
@@ -253,7 +306,7 @@ export async function confirmIntakeBatchAction(
     if (!createdProduct) {
       return {
         ok: false,
-        error: `Não foi possível gerar slug único para "${item.name}".`,
+        error: `Não foi possível gerar slug único para "${item.name || "sem nome"}".`,
       };
     }
 

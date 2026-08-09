@@ -70,12 +70,13 @@ describe("mass-capture helpers", () => {
     ).toBe("Abrir preview (2 peças)");
   });
 
-  it("gates Finalizar on required preview fields", () => {
+  it("gates Finalizar on photo presence (D135 soft finalize)", () => {
     const incomplete = emptyIntakeDraft({
       client_id: "a",
       images: baseImages,
     });
     expect(isIntakeDraftReady(incomplete)).toBe(false);
+    expect(allIntakeDraftsReady([incomplete])).toBe(true);
 
     const ready = {
       ...incomplete,

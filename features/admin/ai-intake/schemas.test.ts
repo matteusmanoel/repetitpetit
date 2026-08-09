@@ -48,6 +48,36 @@ describe("ai-intake schemas", () => {
     expect(parsed.success).toBe(false);
   });
 
+  it("accepts a soft finalize payload (D135 inactive path)", () => {
+    const parsed = confirmIntakeBatchSchema.safeParse({
+      items: [
+        {
+          client_id: "c1",
+          name: "",
+          slug: "",
+          description: null,
+          price: null,
+          compare_at_price: null,
+          brand: null,
+          size_label: "",
+          size_group: "2_3a",
+          gender: "unissex",
+          condition: "seminovo",
+          tags: [],
+          category_id: null,
+          category_name: "vestido",
+          images: [{ image_url: "https://example.com/a.jpg" }],
+          publish: false,
+        },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.items[0]?.price).toBe(0);
+      expect(parsed.data.items[0]?.publish).toBe(false);
+    }
+  });
+
   it("accepts a filled confirm payload", () => {
     const parsed = confirmIntakeBatchSchema.safeParse({
       items: [
@@ -66,6 +96,7 @@ describe("ai-intake schemas", () => {
           tags: ["inverno"],
           category_id: null,
           images: [{ image_url: "https://example.com/a.jpg" }],
+          publish: true,
         },
       ],
     });

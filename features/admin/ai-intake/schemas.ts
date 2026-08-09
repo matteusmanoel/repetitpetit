@@ -102,6 +102,40 @@ export const intakeDraftItemSchema = z.object({
 
 export type IntakeDraftItem = z.infer<typeof intakeDraftItemSchema>;
 
+/** Soft finalize (D135): incomplete OK → inactive; publish gated separately. */
+export const intakeFinalizeItemSchema = z.object({
+  client_id: z.string().min(1),
+  name: z.string().trim().max(160).default(""),
+  slug: z.string().default(""),
+  description: z.preprocess(emptyToNull, z.string().max(5000).nullable()).optional(),
+  price: z.preprocess((value) => {
+    if (value === null || value === undefined || value === "") return 0;
+    if (typeof value === "string") {
+      const n = Number(value.replace(",", "."));
+      return Number.isFinite(n) ? n : 0;
+    }
+    return value;
+  }, z.number().min(0)),
+  compare_at_price: z.preprocess(
+    emptyToNull,
+    z.coerce.number().positive().nullable(),
+  ).optional(),
+  brand: z.preprocess(emptyToNull, z.string().max(80).nullable()).optional(),
+  size_label: z.string().default(""),
+  size_group: z.enum(SIZE_GROUPS).default("2_3a"),
+  gender: z.enum(PRODUCT_GENDERS).default("unissex"),
+  condition: z.enum(PRODUCT_CONDITIONS).default("seminovo"),
+  tags: tagsSchema,
+  category_id: optionalUuid,
+  category_name: z.preprocess(emptyToNull, z.string().max(120).nullable()).optional(),
+  images: z.array(intakeImageSchema).min(1, "Envie pelo menos uma foto."),
+  audio_note: z.preprocess(emptyToNull, z.string().max(8000).nullable()).optional(),
+  /** When true and publish gate passes, insert as available; else inactive. */
+  publish: z.boolean().default(false),
+});
+
+export type IntakeFinalizeItem = z.infer<typeof intakeFinalizeItemSchema>;
+
 export const generatePreviewInputSchema = z.object({
   items: z
     .array(
@@ -120,7 +154,7 @@ export const generatePreviewInputSchema = z.object({
 export type GeneratePreviewInput = z.infer<typeof generatePreviewInputSchema>;
 
 export const confirmIntakeBatchSchema = z.object({
-  items: z.array(intakePreviewItemSchema).min(1).max(30),
+  items: z.array(intakeFinalizeItemSchema).min(1).max(30),
 });
 
 export type ConfirmIntakeBatchInput = z.infer<typeof confirmIntakeBatchSchema>;

@@ -50,16 +50,21 @@ import {
   generateIntakePreviewAction,
 } from "@/features/admin/ai-intake/actions";
 import {
-  allIntakeDraftsReady,
   cameraErrorMessagePt,
   classifyCameraError,
   generatePreviewCtaLabel,
   isHoldLockPointer,
+  canFinalizeIntakeDrafts,
   resolveHoldLockHint,
   shouldCancelOnRelease,
   shouldLockFromDelta,
   type MicHint,
 } from "@/features/admin/ai-intake/mass-capture";
+import { VoiceScriptTip } from "@/components/admin/VoiceScriptTip";
+import {
+  validateIntakeDraft,
+} from "@/features/admin/ai-intake/business-validator";
+import { evaluatePublishGate } from "@/features/admin/ai-intake/category-match";
 import {
   emptyIntakeDraft,
   type IntakeDraftItem,
@@ -136,6 +141,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   const [uploading, setUploading] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [publishById, setPublishById] = useState<Record<string, boolean>>({});
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const aiInflight = useRef(new Set<string>());
@@ -155,7 +161,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   const canFinalize =
     seriesClosed &&
     tab === "preview" &&
-    allIntakeDraftsReady(drafts) &&
+    canFinalizeIntakeDrafts(drafts) &&
     !pending &&
     !batchId;
 
@@ -462,7 +468,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   }
 
   function handleConfirm() {
-    if (!allIntakeDraftsReady(drafts)) return;
+    if (!canFinalizeIntakeDrafts(drafts)) return;
     setError(null);
     setConfirmOpen(false);
 
@@ -482,6 +488,8 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
             : draft.compare_at_price,
       tags: draft.tags ?? [],
       images: draft.images,
+      category_name: draft.category_name ?? null,
+      publish: Boolean(publishById[draft.client_id]),
     }));
 
     startTransition(async () => {
@@ -517,6 +525,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
     setWarning(null);
     setError(null);
     setConfirmOpen(false);
+    setPublishById({});
     setCameraOn(false);
     setCameraError(null);
   }
@@ -615,8 +624,8 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
             canFinalize
               ? undefined
               : tab !== "preview"
-                ? "Primeiro gere o preview e preencha os campos obrigatórios"
-                : "Preencha nome, preço e tamanho em todas as peças"
+                ? "Primeiro gere o preview (ao menos uma foto)"
+                : "Cada peça precisa de foto para finalizar (campos incompletos → inativo)"
           }
         >
           <CheckCircle2 className="size-4" />
@@ -668,8 +677,12 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
         <PreviewPane
           drafts={drafts}
           categories={categoryOptions}
+          publishById={publishById}
           onChange={updateDraft}
           onCategoriesChange={setCategoryOptions}
+          onPublishChange={(clientId, publish) =>
+            setPublishById((prev) => ({ ...prev, [clientId]: publish }))
+          }
           onRegenerate={(clientId) => {
             const slot = slots.find((s) => s.client_id === clientId);
             if (slot) void runAiForSlot(slot, { force: true });
@@ -904,12 +917,14 @@ function CapturePane({
           <Sparkles className="mr-1.5 size-4 shrink-0" />
           <span className="truncate">{previewCta}</span>
         </Button>
-        <HoldLockMic
-          disabled={!activeSlot?.image_url || uploading}
-          onRecorded={(dataUrl) => {
-            if (activeSlot) onAttachAudio(activeSlot.client_id, dataUrl);
-          }}
-        />
+        <div className="relative">
+          <HoldLockMic
+            disabled={!activeSlot?.image_url || uploading}
+            onRecorded={(dataUrl) => {
+              if (activeSlot) onAttachAudio(activeSlot.client_id, dataUrl);
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -1075,6 +1090,7 @@ function HoldLockMic({
 
   return (
     <div className="relative flex items-center gap-2">
+      <VoiceScriptTip visible={recording || desktopArmed} />
       {recording ? (
         <span className="absolute -top-10 right-0 whitespace-nowrap rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white">
           {desktopArmed
@@ -1136,14 +1152,18 @@ function HoldLockMic({
 function PreviewPane({
   drafts,
   categories,
+  publishById,
   onChange,
   onCategoriesChange,
+  onPublishChange,
   onRegenerate,
 }: {
   drafts: IntakeDraftItem[];
   categories: CategoryOption[];
+  publishById: Record<string, boolean>;
   onChange: (clientId: string, patch: Partial<IntakeDraftItem>) => void;
   onCategoriesChange: (next: CategoryOption[]) => void;
+  onPublishChange: (clientId: string, publish: boolean) => void;
   onRegenerate: (clientId: string) => void;
 }) {
   const brandOptions = useMemo(() => {
@@ -1195,8 +1215,12 @@ function PreviewPane({
                 draft={draft}
                 categories={categories}
                 brandOptions={brandOptions}
+                publish={Boolean(publishById[draft.client_id])}
                 onChange={(patch) => onChange(draft.client_id, patch)}
                 onCategoriesChange={onCategoriesChange}
+                onPublishChange={(publish) =>
+                  onPublishChange(draft.client_id, publish)
+                }
                 onRegenerate={() => onRegenerate(draft.client_id)}
               />
             </CarouselItem>
@@ -1218,16 +1242,20 @@ function PreviewCard({
   draft,
   categories,
   brandOptions,
+  publish,
   onChange,
   onCategoriesChange,
+  onPublishChange,
   onRegenerate,
 }: {
   index: number;
   draft: IntakeDraftItem;
   categories: CategoryOption[];
   brandOptions: string[];
+  publish: boolean;
   onChange: (patch: Partial<IntakeDraftItem>) => void;
   onCategoriesChange: (next: CategoryOption[]) => void;
+  onPublishChange: (publish: boolean) => void;
   onRegenerate: () => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -1245,6 +1273,22 @@ function PreviewCard({
     ? formatPrice(priceNum)
     : "Preço pendente";
   const metaLine = [draft.size_label, draft.brand].filter(Boolean).join(" · ");
+  const conflicts = validateIntakeDraft(draft);
+  const hasConflict = conflicts.length > 0;
+  const gate = evaluatePublishGate({
+    name: draft.name,
+    price: draft.price,
+    size_label: draft.size_label,
+    images: draft.images,
+    hasConflict,
+  });
+  const chipParts = [
+    draft.category_name,
+    draft.brand,
+    draft.tags.find((t) => t.length < 20),
+    draft.size_label ? `Tam. ${draft.size_label}` : null,
+    draft.size_group ? SIZE_GROUP_LABELS[draft.size_group] : null,
+  ].filter(Boolean) as string[];
 
   const fieldLocked = !editing;
   const selectTriggerClass = cn(
@@ -1341,6 +1385,32 @@ function PreviewCard({
           )}
         </Button>
         </div>
+      </div>
+
+      <div className="space-y-1 px-3 pt-2">
+        {chipParts.length > 0 ? (
+          <p className="text-xs font-medium leading-snug text-foreground">
+            {chipParts.join(" · ")}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Aguardando dados do áudio…
+          </p>
+        )}
+        {hasConflict ? (
+          <p className="text-[11px] text-amber-700" role="status">
+            ⚠ {conflicts[0]?.message} — revise antes de publicar
+          </p>
+        ) : draft.audio_note ? (
+          <p className="text-[11px] text-muted-foreground">
+            ✓ Identificado automaticamente — revise e publique se pronto
+          </p>
+        ) : null}
+        {draft.category_name && !draft.category_id ? (
+          <p className="text-[11px] text-muted-foreground">
+            Categoria nova “{draft.category_name}” será criada no Finalizar
+          </p>
+        ) : null}
       </div>
 
       <div className="relative mx-3 mt-3 overflow-hidden rounded-xl bg-muted">
@@ -1632,6 +1702,35 @@ function PreviewCard({
             }
           />
         </div>
+      </div>
+
+      <div className="mt-auto border-t border-border px-3 py-3">
+        <label
+          className={cn(
+            "flex items-start gap-3 rounded-xl border px-3 py-2.5",
+            gate.ok
+              ? "border-[var(--brand-green)]/30 bg-[var(--brand-green)]/5"
+              : "border-border bg-muted/30 opacity-80",
+          )}
+        >
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-[var(--brand-green)]"
+            checked={publish}
+            disabled={!gate.ok}
+            onChange={(e) => onPublishChange(e.target.checked)}
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium">
+              Publicar no catálogo
+            </span>
+            <span className="block text-[11px] text-muted-foreground">
+              {gate.ok
+                ? "Produto entra como disponível."
+                : `Desabilitado: ${gate.reasons.join(", ")}. Finalizar grava como inativo.`}
+            </span>
+          </span>
+        </label>
       </div>
     </article>
   );

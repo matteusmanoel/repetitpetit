@@ -16,7 +16,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <SiteFooter />
       <CartSheet />
       <BottomBar />
-      <Toaster position="top-center" richColors closeButton />
+      <Toaster position="top-center" closeButton />
       <WhatsAppFab whatsappNumber={publicEnv.NEXT_PUBLIC_STORE_WHATSAPP} />
     </div>
   );

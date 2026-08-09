@@ -4,7 +4,6 @@ import { MoreHorizontalIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +24,7 @@ import {
   activateProductAction,
   deactivateProductAction,
 } from "@/features/admin/product-actions";
+import { brandToast } from "@/lib/brand-toast";
 import {
   productLabelPdfPath,
   productLabelPrintPath,
@@ -61,18 +61,11 @@ export function AdminProductRowActions({
     try {
       const result = await activateProductAction(productId);
       if (!result.ok) {
-        toast.error(result.error);
+        brandToast.error(result.error);
         return;
       }
       const pdfHref = productLabelPdfPath(result.productId);
-      toast.success(`Peça ativada: ${result.staffCode}`, {
-        action: {
-          label: "Imprimir etiqueta",
-          onClick: () => {
-            window.open(pdfHref, "_blank", "noopener,noreferrer");
-          },
-        },
-      });
+      brandToast.success(`Peça ativada: ${result.staffCode}`);
       window.open(pdfHref, "_blank", "noopener,noreferrer");
       router.refresh();
     } finally {

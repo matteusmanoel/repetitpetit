@@ -18,6 +18,7 @@ import {
   updateBannerAction,
 } from "@/features/banners/actions";
 import type { Banner } from "@/features/banners/data";
+import { brandToast } from "@/lib/brand-toast";
 
 export function BannersAdminClient({ banners }: { banners: Banner[] }) {
   const router = useRouter();
@@ -41,9 +42,19 @@ export function BannersAdminClient({ banners }: { banners: Banner[] }) {
     if (!window.confirm(`Excluir o banner “${title}”?`)) return;
     setDeletingId(banner.id);
     startTransition(async () => {
-      await deleteBannerAction(banner.id);
-      setDeletingId(null);
-      router.refresh();
+      try {
+        await deleteBannerAction(banner.id);
+        brandToast.success("Banner excluído");
+        router.refresh();
+      } catch (error) {
+        brandToast.error(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível excluir o banner.",
+        );
+      } finally {
+        setDeletingId(null);
+      }
     });
   }
 

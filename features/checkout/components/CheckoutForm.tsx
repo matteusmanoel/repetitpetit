@@ -28,6 +28,8 @@ import {
   checkoutAddressSchema,
   createOrderSchema,
 } from "@/features/checkout/schemas";
+import { formatPrice } from "@/features/catalog/format-price";
+import { brandToast } from "@/lib/brand-toast";
 import type { CheckoutPageData, FulfillmentType } from "@/features/checkout/types";
 import { useCartStore } from "@/features/cart/store";
 import { formatPhoneBrDisplay } from "@/lib/phone";
@@ -135,6 +137,7 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
 
     if (!result.ok) {
       setFrete({ status: "error", message: result.error });
+      brandToast.error("Não foi possível calcular o frete", result.error);
       return;
     }
 
@@ -144,6 +147,10 @@ export function CheckoutForm({ pageData }: CheckoutFormProps) {
       distanceKm: result.distanceKm,
       postalCode: result.postalCode,
     });
+    brandToast.success(
+      `Frete: ${formatPrice(result.amount)}`,
+      `${result.distanceKm.toFixed(1).replace(".", ",")} km da loja`,
+    );
   }
 
   function validateClient(): boolean {

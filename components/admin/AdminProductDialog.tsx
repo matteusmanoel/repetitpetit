@@ -1,8 +1,8 @@
 "use client";
 
 import { CheckCircle2, ChevronDown, Mic, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 
 import { AdminProductImageManager } from "@/components/admin/AdminProductImageManager";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
@@ -32,6 +32,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  activateProductAction,
+  createProductAction,
+  updateProductAction,
+} from "@/features/admin/product-actions";
+import {
   createCategoryInlineAction,
   processProductAudioAction,
 } from "@/features/admin/product-dialog-actions";
@@ -55,10 +60,6 @@ import {
   type SizeGroup,
 } from "@/features/admin/product-constants";
 import {
-  createProductAction,
-  updateProductAction,
-} from "@/features/admin/product-actions";
-import {
   initialProductActionState,
   type ProductActionState,
   type ProductImageInput,
@@ -67,7 +68,12 @@ import type {
   CategoryOption,
   ProductWithImages,
 } from "@/features/admin/product-types";
+import { brandToast } from "@/lib/brand-toast";
 import { digitsOnly, reaisToCents } from "@/lib/br-masks";
+import {
+  productLabelPdfPath,
+  productLabelPrintPath,
+} from "@/lib/qr/passport-url";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -141,22 +147,44 @@ export function AdminProductDialog({
 function AdminProductDialogSkeleton() {
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4"
+      className="flex min-h-0 flex-1 flex-col"
       aria-busy="true"
       aria-label="Carregando formulário"
     >
-      <div className="flex gap-2">
-        <div className="h-11 flex-1 animate-pulse rounded-lg bg-muted" />
-        <div className="h-11 flex-1 animate-pulse rounded-lg bg-muted" />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-        <div className="aspect-3/4 animate-pulse rounded-xl bg-muted" />
-        <div className="flex flex-col gap-3">
-          <div className="h-10 animate-pulse rounded-lg bg-muted" />
-          <div className="h-10 animate-pulse rounded-lg bg-muted" />
-          <div className="h-10 animate-pulse rounded-lg bg-muted" />
-          <div className="h-10 animate-pulse rounded-lg bg-muted" />
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="mb-4 flex gap-2">
+          <div className="h-11 flex-1 animate-pulse rounded-lg bg-muted" />
+          <div className="h-11 flex-1 animate-pulse rounded-lg bg-muted" />
         </div>
+        <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+          <div className="flex flex-col gap-2">
+            <div className="aspect-3/4 w-full animate-pulse rounded-xl bg-muted" />
+            <div className="flex gap-2">
+              <div className="h-8 flex-1 animate-pulse rounded-lg bg-muted" />
+              <div className="h-8 flex-1 animate-pulse rounded-lg bg-muted" />
+            </div>
+            <div className="flex gap-2 overflow-hidden">
+              {Array.from({ length: 3 }, (_, i) => (
+                <div
+                  key={i}
+                  className="aspect-3/4 w-24 shrink-0 animate-pulse rounded-xl bg-muted"
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} className="flex flex-col gap-1.5">
+                <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+                <div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="flex shrink-0 gap-3 border-t border-border p-5">
+        <div className="h-12 flex-1 animate-pulse rounded-lg bg-muted" />
+        <div className="h-12 flex-1 animate-pulse rounded-lg bg-muted" />
       </div>
     </div>
   );
@@ -216,6 +244,8 @@ function AdminProductDialogForm({
         alt_text: image.alt_text,
       })) ?? [],
   );
+  const [staffCode, setStaffCode] = useState(product?.staff_code ?? null);
+  const [isActivating, setIsActivating] = useState(false);
 
   const [creatingCat, setCreatingCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -256,28 +286,52 @@ function AdminProductDialogForm({
 
   useEffect(() => {
     if (state.error) {
-      toast.error(state.error);
+      brandToast.error(state.error);
     }
   }, [state.error]);
+
+  const canActivate =
+    mode === "edit" &&
+    product &&
+    !staffCode &&
+    (status === "available" || status === "inactive");
+
+  async function handleActivate() {
+    if (!product) return;
+    setIsActivating(true);
+    try {
+      const result = await activateProductAction(product.id);
+      if (!result.ok) {
+        brandToast.error(result.error);
+        return;
+      }
+      setStaffCode(result.staffCode);
+      const pdfHref = productLabelPdfPath(result.productId);
+      brandToast.success(`Peça ativada: ${result.staffCode}`);
+      window.open(pdfHref, "_blank", "noopener,noreferrer");
+    } finally {
+      setIsActivating(false);
+    }
+  }
 
   async function handleCreateCategory() {
     const trimmed = newCatName.trim();
     if (!trimmed) {
-      toast.error("Informe o nome da categoria.");
+      brandToast.error("Informe o nome da categoria.");
       return;
     }
     setCreatingCatPending(true);
     try {
       const result = await createCategoryInlineAction(trimmed);
       if (!result.ok) {
-        toast.error(result.error);
+        brandToast.error(result.error);
         return;
       }
       onCategoriesChange([...categories, result.category]);
       setCategoryId(result.category.id);
       setNewCatName("");
       setCreatingCat(false);
-      toast.success("Categoria criada");
+      brandToast.success("Categoria criada");
     } finally {
       setCreatingCatPending(false);
     }
@@ -295,7 +349,7 @@ function AdminProductDialogForm({
       setAudioProcessed(false);
       setAudioSizeKb(null);
       setAudioNote("Áudio gravado (mock — microfone indisponível).");
-      toast.success("Áudio gravado (mock)");
+      brandToast.success("Áudio gravado (mock)");
       return;
     }
 
@@ -317,7 +371,7 @@ function AdminProductDialogForm({
         setAudioNote(
           kb != null ? `Áudio capturado (${kb} KB).` : "Áudio gravado.",
         );
-        toast.success("Áudio gravado");
+        brandToast.success("Áudio gravado");
       };
       mediaRecorderRef.current = recorder;
       recorder.start();
@@ -325,27 +379,27 @@ function AdminProductDialogForm({
       setHasAudio(false);
       setAudioProcessed(false);
       setAudioSizeKb(null);
-      toast.message("Gravando…", { description: "Toque de novo para parar" });
+      brandToast.message("Gravando…", "Toque de novo para parar");
     } catch {
       setHasAudio(true);
       setAudioProcessed(false);
       setAudioSizeKb(null);
       setAudioNote("Áudio gravado (mock — permissão negada).");
-      toast.success("Áudio gravado (mock)");
+      brandToast.success("Áudio gravado (mock)");
     }
   }
 
   async function handleProcessAudio() {
     if (!hasAudio || processingAudio) return;
     setProcessingAudio(true);
-    toast.message("Processando áudio…", { description: "Gerando campos" });
+    brandToast.message("Processando áudio…", "Gerando campos");
     try {
       const result = await processProductAudioAction({
         audioNote,
         imageUrls: images.map((image) => image.image_url),
       });
       if (!result.ok) {
-        toast.error(result.error);
+        brandToast.error(result.error);
         return;
       }
 
@@ -362,9 +416,9 @@ function AdminProductDialogForm({
       setAudioProcessed(true);
 
       if (result.warning) {
-        toast.message("Campos preenchidos", { description: result.warning });
+        brandToast.message("Campos preenchidos", result.warning);
       } else {
-        toast.success("Campos preenchidos pelo áudio");
+        brandToast.success("Campos preenchidos pelo áudio");
       }
     } finally {
       setProcessingAudio(false);
@@ -753,6 +807,54 @@ function AdminProductDialogForm({
           >
             {state.error}
           </p>
+        ) : null}
+
+        {mode === "edit" && product ? (
+          <div className="mt-4 rounded-2xl border border-border bg-muted/30 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Código de chão (RP)
+                </p>
+                <p className="font-mono text-sm font-semibold text-foreground">
+                  {staffCode ?? "Ainda sem código"}
+                </p>
+              </div>
+              {canActivate ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10"
+                  disabled={isActivating || isPending}
+                  onClick={() => void handleActivate()}
+                >
+                  {isActivating ? "Ativando…" : "Ativar peça"}
+                </Button>
+              ) : null}
+            </div>
+            {staffCode ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" className="h-10" asChild>
+                  <a
+                    href={productLabelPdfPath(product.id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Imprimir etiqueta
+                  </a>
+                </Button>
+                <Button type="button" variant="outline" className="h-10" asChild>
+                  <Link href={productLabelPrintPath(product.id)}>
+                    Imprimir térmica
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Ative a peça para gerar o RP e liberar a impressão da etiqueta.
+              </p>
+            )}
+          </div>
         ) : null}
       </div>
 

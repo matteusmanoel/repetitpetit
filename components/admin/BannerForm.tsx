@@ -13,6 +13,7 @@ import {
   type BannerActionState,
 } from "@/features/banners/action-state";
 import type { Banner } from "@/features/banners/data";
+import { brandToast } from "@/lib/brand-toast";
 
 type BannerFormProps = {
   banner?: Banner;
@@ -38,10 +39,19 @@ export function BannerForm({
   const [isActive, setIsActive] = useState(banner?.is_active ?? true);
 
   useEffect(() => {
+    if (state.error) {
+      brandToast.error(state.error);
+    }
+  }, [state.error]);
+
+  useEffect(() => {
     if (!state.success) return;
+    brandToast.success(
+      banner ? "Banner atualizado" : "Banner criado",
+    );
     onSuccess?.();
     router.refresh();
-  }, [state.success, onSuccess, router]);
+  }, [state.success, onSuccess, router, banner]);
 
   return (
     <form action={formAction} className="flex max-w-xl flex-col gap-5">

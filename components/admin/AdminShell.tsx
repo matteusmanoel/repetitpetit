@@ -21,7 +21,7 @@ export function AdminShell({
   return (
     <div className="admin-shell min-h-screen bg-[#eceff3] font-sans antialiased">
       <AdminChrome admin={admin}>{children}</AdminChrome>
-      <Toaster position="top-center" richColors closeButton />
+      <Toaster position="top-center" closeButton />
     </div>
   );
 }

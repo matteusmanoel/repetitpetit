@@ -1,17 +1,17 @@
 "use client";
 
 import {
-  CircleCheckIcon,
-  InfoIcon,
+  CheckCircle2,
+  Info,
   Loader2Icon,
-  OctagonXIcon,
-  TriangleAlertIcon,
+  TriangleAlert,
+  XCircle,
 } from "lucide-react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
 /**
  * Toaster light-only (D17 — sem dark mode no MVP).
- * Não usa `next-themes` para evitar ThemeProvider só por toast.
+ * Chrome alinhado a `lib/brand-toast` / proto-toast (brand borders).
  */
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
@@ -19,23 +19,26 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme="light"
       className="toaster group"
       icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
+        success: (
+          <CheckCircle2 className="size-5 text-[var(--brand-green)]" />
+        ),
+        info: <Info className="size-5 text-[var(--brand-blue)]" />,
+        warning: <TriangleAlert className="size-5 text-amber-600" />,
+        error: <XCircle className="size-5 text-[var(--brand-pink)]" />,
         loading: <Loader2Icon className="size-4 animate-spin" />,
       }}
-      style={
-        {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
-        } as React.CSSProperties
-      }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast:
+            "group toast !rounded-2xl !border !bg-white !font-sans !text-sm !text-foreground !shadow-lg !px-4 !py-3",
+          description: "!text-muted-foreground !font-sans",
+          success: "!border-[var(--brand-green)]/35",
+          error: "!border-[var(--brand-pink)]/40",
+          info: "!border-black/10",
+          warning: "!border-amber-200 !bg-amber-50",
+          actionButton:
+            "!rounded-xl !bg-[var(--brand-green)] !text-white !font-medium",
+          cancelButton: "!rounded-xl !bg-muted !text-foreground",
         },
       }}
       {...props}

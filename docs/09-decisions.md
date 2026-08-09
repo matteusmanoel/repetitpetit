@@ -2542,3 +2542,51 @@ continuam em `size_group`.
 
 ---
 
+## D135 — Cadastro em massa por voz (STT + LLM; sem vision no MVP)
+
+**Data**: 2026-08-09
+**Contexto**: Grill Slice T. Intake atual envia foto (vision) e ignora o áudio
+real (`audio_note` placeholder). Meta ~5k peças com baixo custo; realce de
+imagem (fundo branco) desejável no longo prazo mas caro no sync. Marca é
+string livre; categoria é FK com create inline já existente.
+**Decisão**:
+
+1. **Pipeline MVP**: foto **apenas anexada** ao produto (não enviada ao LLM).
+   Por peça, ao soltar o áudio: **STT → LLM texto** → draft → staff confirma.
+   Sem reprocessar se status `done`, salvo **Regenerar** explícito.
+2. **Sem vision** no preenchimento de campos neste MVP. Sem parser rígido de
+   roteiro (custo LLM pós-STT irrelevante vs complexidade).
+3. **Roteiro / tip + checklist** no mic (ordem flexível, orientação):
+   Categoria → Marca → Cor → Tamanho → Idade → Características →
+   condição → sexo → preço. Cor → tags/descrição. Omissões → vazio/default
+   seguro (ex. sem marca); **não** obrigar falar “sem marca”. Preço omitido
+   → vazio (**sem** chute da IA). Descrição = reescrita fiel ao falado.
+4. **Extrair vs inferir**: LLM extrai o explícito; infere só se necessário.
+   Inferência aparece no preview com badge; **não** promover a “fato
+   explícito” sem confirmação. Provenance (`source`/`confidence`) é **só UX**
+   — não persiste no DB (valores finais após Finalizar).
+5. **Validador determinístico** pós-LLM (ex. RN vs faixa adolescente).
+   **Conflitos do validador não impedem Finalizar; impedem apenas Publicar.**
+   Produtos incompletos podem ser finalizados como **`inactive`**.
+6. **Switch “Publicar no catálogo”** no preview: default off; habilita só com
+   preço &gt; 0 + nome + tamanho (`size_label`) + foto; conflitos de
+   validador também desabilitam. Ligar → `available`; senão permanece
+   `inactive`.
+7. **Marca / categoria**: match case-insensitive (+ aliases de marca
+   conhecidas) no preview; **criar categoria / gravar marca nova só no
+   Finalizar**.
+8. **`size_label`** evolui D134 → **`RN | P | M | G`**. Relação com
+   `size_group` (idade) é **interpretação/validação**, não mapeamento rígido:
+   idade falada preenche faixa; só tamanho sem idade → idade unknown/omitida
+   salvo regra confiável; inferência de idade marcada na UI.
+9. **Imagem aprimorada** (fundo branco): **fora do MVP sync**. Sempre guardar
+   original; reprocessamento em lote depois sem refazer foto.
+10. Modelos: STT barato (ex. `gpt-4o-mini-transcribe` / Whisper) + LLM texto
+    barato (ex. `gpt-4o-mini`); telemetria de `usage` desejável nos tickets.
+
+**Consequência**: Tickets Slice T implementam D135; qualquer retorno de vision
+ou realce de imagem no caminho crítico exige ADR nova. D134 permanece
+histórico para P/M/G; valores operacionais vigentes = RN|P|M|G.
+
+---
+

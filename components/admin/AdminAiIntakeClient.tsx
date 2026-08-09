@@ -179,8 +179,9 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   }, []);
 
   const runAiForSlot = useCallback(
-    async (slot: CaptureSlot) => {
+    async (slot: CaptureSlot, options?: { force?: boolean }) => {
       if (!slot.image_url) return;
+      if (!options?.force && slot.ai_status === "done") return;
       if (aiInflight.current.has(slot.client_id)) return;
       aiInflight.current.add(slot.client_id);
       patchSlot(slot.client_id, { ai_status: "running" });
@@ -669,6 +670,10 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
           categories={categoryOptions}
           onChange={updateDraft}
           onCategoriesChange={setCategoryOptions}
+          onRegenerate={(clientId) => {
+            const slot = slots.find((s) => s.client_id === clientId);
+            if (slot) void runAiForSlot(slot, { force: true });
+          }}
         />
       )}
 
@@ -1133,11 +1138,13 @@ function PreviewPane({
   categories,
   onChange,
   onCategoriesChange,
+  onRegenerate,
 }: {
   drafts: IntakeDraftItem[];
   categories: CategoryOption[];
   onChange: (clientId: string, patch: Partial<IntakeDraftItem>) => void;
   onCategoriesChange: (next: CategoryOption[]) => void;
+  onRegenerate: (clientId: string) => void;
 }) {
   const brandOptions = useMemo(() => {
     const fromDrafts = drafts
@@ -1190,6 +1197,7 @@ function PreviewPane({
                 brandOptions={brandOptions}
                 onChange={(patch) => onChange(draft.client_id, patch)}
                 onCategoriesChange={onCategoriesChange}
+                onRegenerate={() => onRegenerate(draft.client_id)}
               />
             </CarouselItem>
           ))}
@@ -1212,6 +1220,7 @@ function PreviewCard({
   brandOptions,
   onChange,
   onCategoriesChange,
+  onRegenerate,
 }: {
   index: number;
   draft: IntakeDraftItem;
@@ -1219,6 +1228,7 @@ function PreviewCard({
   brandOptions: string[];
   onChange: (patch: Partial<IntakeDraftItem>) => void;
   onCategoriesChange: (next: CategoryOption[]) => void;
+  onRegenerate: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [creatingBrand, setCreatingBrand] = useState(false);
@@ -1290,20 +1300,34 @@ function PreviewCard({
             </span>
           ) : null}
         </div>
-        <Button
-          type="button"
-          variant={editing ? "default" : "outline"}
-          size="sm"
-          className="h-8 shrink-0 gap-1.5 px-2.5"
-          onClick={() => {
-            if (editing) {
-              setCreatingBrand(false);
-              setCreatingCat(false);
-            }
-            setEditing((v) => !v);
-          }}
-          aria-pressed={editing}
-        >
+        <div className="flex shrink-0 items-center gap-1.5">
+          {draft.audio_note ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1 px-2 text-xs"
+              onClick={onRegenerate}
+              title="Regenerar draft a partir do áudio"
+            >
+              <Sparkles className="size-3.5" />
+              Regenerar
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant={editing ? "default" : "outline"}
+            size="sm"
+            className="h-8 shrink-0 gap-1.5 px-2.5"
+            onClick={() => {
+              if (editing) {
+                setCreatingBrand(false);
+                setCreatingCat(false);
+              }
+              setEditing((v) => !v);
+            }}
+            aria-pressed={editing}
+          >
           {editing ? (
             <>
               <Check className="size-3.5" />
@@ -1316,6 +1340,7 @@ function PreviewCard({
             </>
           )}
         </Button>
+        </div>
       </div>
 
       <div className="relative mx-3 mt-3 overflow-hidden rounded-xl bg-muted">

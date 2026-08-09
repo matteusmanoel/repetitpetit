@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { toast } from "sonner";
 
 import { AdminProductDialog } from "@/components/admin/AdminProductDialog";
 import { AdminSearchField } from "@/components/admin/AdminSearchField";
@@ -27,6 +26,7 @@ import {
   formatCountdown,
   isReservationExpired,
 } from "@/features/cart/countdown";
+import { brandToast } from "@/lib/brand-toast";
 import { cn } from "@/lib/utils";
 
 const URGENT_MS = 5 * 60 * 1000;
@@ -100,7 +100,7 @@ export function AdminProductsClient({
 
   useEffect(() => {
     if (!savedFlash) return;
-    toast.success(
+    brandToast.success(
       savedFlash === "created" ? "Produto criado" : "Produto atualizado",
     );
     router.replace("/admin/produtos", { scroll: false });
@@ -140,7 +140,7 @@ export function AdminProductsClient({
     startEditTransition(async () => {
       const result = await loadProductForDialogAction(productId);
       if (!result.ok) {
-        toast.error(result.error);
+        brandToast.error(result.error);
         setDialogOpen(false);
         return;
       }

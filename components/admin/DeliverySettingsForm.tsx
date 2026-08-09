@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   type DeliverySettingsActionState,
 } from "@/features/admin/delivery-settings/action-state";
 import type { AdminDeliverySettings } from "@/features/admin/delivery-settings/queries";
+import { brandToast } from "@/lib/brand-toast";
 
 type DeliverySettingsFormProps = {
   settings: AdminDeliverySettings;
@@ -32,16 +33,23 @@ export function DeliverySettingsForm({
     settings.deliveryEnabled,
   );
 
+  useEffect(() => {
+    if (state.error) {
+      brandToast.error(state.error);
+    }
+  }, [state.error]);
+
+  useEffect(() => {
+    if (state.success) {
+      brandToast.success(state.success);
+    }
+  }, [state.success]);
+
   return (
     <form action={formAction} className="flex max-w-xl flex-col gap-5">
       {state.error ? (
         <p role="alert" className="text-sm text-destructive">
           {state.error}
-        </p>
-      ) : null}
-      {state.success ? (
-        <p role="status" className="text-sm text-primary">
-          {state.success}
         </p>
       ) : null}
 

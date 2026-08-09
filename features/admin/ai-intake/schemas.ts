@@ -94,6 +94,8 @@ export const intakeDraftItemSchema = z.object({
   condition: z.enum(PRODUCT_CONDITIONS).default("seminovo"),
   tags: z.array(z.string()).default([]),
   category_id: z.string().nullable().default(null),
+  /** Suggested category label from voice LLM — matched/created on Finalizar (D135). */
+  category_name: z.string().nullable().optional().default(null),
   images: z.array(intakeImageSchema).default([]),
   audio_note: z.string().nullable().optional(),
 });
@@ -106,7 +108,7 @@ export const generatePreviewInputSchema = z.object({
       z.object({
         client_id: z.string().min(1),
         images: z.array(intakeImageSchema).min(1),
-        /** Optional audio as data URL or https URL for multimodal (ignored without AI key). */
+        /** Audio capture as data URL for STT (D135). Images are not sent to the LLM. */
         audio_data_url: z.string().max(15_000_000).nullable().optional(),
         audio_note: z.string().max(8000).nullable().optional(),
       }),
@@ -142,6 +144,7 @@ export function emptyIntakeDraft(params: {
     condition: "seminovo",
     tags: [],
     category_id: null,
+    category_name: null,
     images: params.images,
     audio_note: params.audio_note ?? null,
   });

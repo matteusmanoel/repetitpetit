@@ -66,7 +66,7 @@ export const intakePreviewItemSchema = z.object({
   ),
   brand: z.preprocess(emptyToNull, z.string().max(80).nullable()),
   size_label: z.enum(PRODUCT_SIZE_LABELS, {
-    error: "Selecione o tamanho (P, M ou G).",
+    error: "Selecione o tamanho (RN, P, M ou G).",
   }),
   size_group: z.enum(SIZE_GROUPS),
   gender: z.enum(PRODUCT_GENDERS),

@@ -53,6 +53,22 @@ describe("parseProductsXlsx", () => {
     expect(result.rows[0]?.grupo_tamanho).toBe("2_3a");
   });
 
+  it("aceita tamanho RN (D135)", () => {
+    const buffer = workbookFromRows([
+      {
+        nome: "Body RN",
+        preco: "25",
+        tamanho: "RN",
+        grupo_tamanho: "rn_3m",
+        genero: "unissex",
+        condicao: "seminovo",
+      },
+    ]);
+    const result = parseProductsXlsx(buffer);
+    expect(result.errors).toHaveLength(0);
+    expect(result.rows[0]?.tamanho).toBe("RN");
+  });
+
   it("aceita aliases em inglês (name/brand/size_group)", () => {
     const worksheet = XLSX.utils.json_to_sheet([
       {

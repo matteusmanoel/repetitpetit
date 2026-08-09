@@ -1445,7 +1445,7 @@ function PreviewCard({
             }}
           >
             <SelectTrigger className={selectTriggerClass} size="sm">
-              <SelectValue placeholder="P, M ou G" />
+              <SelectValue placeholder="RN, P, M ou G" />
             </SelectTrigger>
             <SelectContent>
               {PRODUCT_SIZE_LABELS.map((label) => (

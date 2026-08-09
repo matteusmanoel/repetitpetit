@@ -165,7 +165,7 @@ const productImportRowSchema = z.object({
   ),
   marca: z.preprocess(emptyToNull, z.string().max(80).nullable()),
   tamanho: z.enum(PRODUCT_SIZE_LABELS, {
-    error: "Selecione o tamanho (P, M ou G).",
+    error: "Selecione o tamanho (RN, P, M ou G).",
   }),
   grupo_tamanho: z.preprocess(
     normalizeEnumToken,

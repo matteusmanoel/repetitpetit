@@ -239,7 +239,7 @@ export function AdminProductForm({ mode, product, categories }: Props) {
                 className="w-full"
                 aria-invalid={Boolean(state.fieldErrors?.size_label)}
               >
-                <SelectValue placeholder="P, M ou G" />
+                <SelectValue placeholder="RN, P, M ou G" />
               </SelectTrigger>
               <SelectContent>
                 {PRODUCT_SIZE_LABELS.map((label) => (

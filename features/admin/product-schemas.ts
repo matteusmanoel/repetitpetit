@@ -79,7 +79,7 @@ export const productFormSchema = z.object({
   compare_at_price: optionalPrice,
   brand: z.preprocess(emptyToNull, z.string().max(80).nullable()),
   size_label: z.enum(PRODUCT_SIZE_LABELS, {
-    error: "Selecione o tamanho (P, M ou G).",
+    error: "Selecione o tamanho (RN, P, M ou G).",
   }),
   size_group: z.enum(SIZE_GROUPS, { error: "Selecione o grupo de tamanho." }),
   gender: z.enum(PRODUCT_GENDERS, { error: "Selecione o gênero." }),

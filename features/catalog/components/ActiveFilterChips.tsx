@@ -10,8 +10,14 @@ import {
   hasActiveCatalogFilters,
 } from "@/features/catalog/filters";
 import { useCatalogFilters } from "@/features/catalog/use-catalog-filters";
+import { cn } from "@/lib/utils";
 
-export function ActiveFilterChips() {
+type ActiveFilterChipsProps = {
+  /** Layout estreito sob o card de filtros (sidebar / mobile). */
+  compact?: boolean;
+};
+
+export function ActiveFilterChips({ compact = false }: ActiveFilterChipsProps) {
   const { filters, replaceFilters, isPending } = useCatalogFilters();
 
   if (!hasActiveCatalogFilters(filters)) {
@@ -22,7 +28,10 @@ export function ActiveFilterChips() {
 
   return (
     <div
-      className="flex flex-col gap-2"
+      className={cn(
+        "flex flex-col gap-2",
+        compact && "rounded-2xl border border-border bg-card/60 p-3",
+      )}
       data-pending={isPending || undefined}
       aria-busy={isPending || undefined}
     >
@@ -32,7 +41,10 @@ export function ActiveFilterChips() {
           type="button"
           variant="ghost"
           size="sm"
-          className="h-11 min-h-11 px-3 text-sm"
+          className={cn(
+            "h-11 min-h-11 px-3 text-sm",
+            compact && "h-9 min-h-9 px-2 text-xs",
+          )}
           onClick={() => replaceFilters(EMPTY_CATALOG_FILTERS)}
         >
           Limpar tudo
@@ -52,7 +64,12 @@ export function ActiveFilterChips() {
               <button
                 type="button"
                 onClick={() => replaceFilters(chip.remove(filters))}
-                className="inline-flex h-11 min-h-11 items-center gap-1.5 rounded-full border border-border bg-muted px-3 text-sm text-foreground transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-muted/70"
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 text-sm text-foreground transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-muted/70",
+                  compact
+                    ? "h-9 min-h-9 px-2.5 text-xs"
+                    : "h-11 min-h-11",
+                )}
                 aria-label={`Remover filtro ${chip.label}`}
               >
                 <span>{chip.label}</span>

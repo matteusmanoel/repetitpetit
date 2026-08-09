@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   PRODUCT_CONDITIONS,
   PRODUCT_GENDERS,
+  PRODUCT_SIZE_LABELS,
   PRODUCT_STATUSES,
   SIZE_GROUPS,
   slugifyProductName,
@@ -163,11 +164,9 @@ const productImportRowSchema = z.object({
     z.coerce.number().positive().nullable(),
   ),
   marca: z.preprocess(emptyToNull, z.string().max(80).nullable()),
-  tamanho: z
-    .string({ error: "Informe o tamanho (ex.: 2 anos, P, 12-18m)." })
-    .trim()
-    .min(1, "Informe o tamanho.")
-    .max(40, "O tamanho pode ter no máximo 40 caracteres."),
+  tamanho: z.enum(PRODUCT_SIZE_LABELS, {
+    error: "Selecione o tamanho (P, M ou G).",
+  }),
   grupo_tamanho: z.preprocess(
     normalizeEnumToken,
     z.enum(SIZE_GROUPS, {
@@ -362,7 +361,7 @@ export function buildProductsXlsxTemplate(): ArrayBuffer {
     preco: 49.9,
     preco_comparacao: 89.9,
     marca: "GAP",
-    tamanho: "2 anos",
+    tamanho: "M",
     grupo_tamanho: "2_3a",
     genero: "unissex",
     condicao: "seminovo",

@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   PRODUCT_CONDITIONS,
   PRODUCT_GENDERS,
+  PRODUCT_SIZE_LABELS,
   PRODUCT_STATUSES,
   SIZE_GROUPS,
   slugifyProductName,
@@ -77,11 +78,9 @@ export const productFormSchema = z.object({
     .positive("O preço deve ser maior que zero."),
   compare_at_price: optionalPrice,
   brand: z.preprocess(emptyToNull, z.string().max(80).nullable()),
-  size_label: z
-    .string({ error: "Informe o tamanho (ex.: 2 anos, P, 12-18m)." })
-    .trim()
-    .min(1, "Informe o tamanho.")
-    .max(40, "O tamanho pode ter no máximo 40 caracteres."),
+  size_label: z.enum(PRODUCT_SIZE_LABELS, {
+    error: "Selecione o tamanho (P, M ou G).",
+  }),
   size_group: z.enum(SIZE_GROUPS, { error: "Selecione o grupo de tamanho." }),
   gender: z.enum(PRODUCT_GENDERS, { error: "Selecione o gênero." }),
   condition: z.enum(PRODUCT_CONDITIONS, { error: "Selecione a condição." }),

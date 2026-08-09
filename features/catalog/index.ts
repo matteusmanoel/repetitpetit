@@ -18,8 +18,10 @@ export type {
 } from "./types";
 export type { PdpPurchaseState } from "./pdp-purchase-state";
 export {
+  CATALOG_PAGE_SIZE,
   EMPTY_CATALOG_FILTERS,
   parseCatalogFilters,
+  parseCatalogPage,
   serializeCatalogFilters,
   hasActiveCatalogFilters,
   type CatalogFilters,

@@ -82,7 +82,7 @@ describe("mass-capture helpers", () => {
       name: "Casaco azul",
       slug: "casaco-azul",
       price: 29.9,
-      size_label: "2 anos",
+      size_label: "M",
     };
     expect(isIntakeDraftReady(ready)).toBe(true);
     expect(allIntakeDraftsReady([ready])).toBe(true);

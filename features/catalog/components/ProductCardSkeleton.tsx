@@ -17,10 +17,10 @@ export function ProductCardSkeleton() {
   );
 }
 
-export function ProductCardSkeletonGrid({ count = 8 }: { count?: number }) {
+export function ProductCardSkeletonGrid({ count = 9 }: { count?: number }) {
   return (
     <ul
-      className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+      className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4"
       aria-busy="true"
       aria-label="Carregando peças"
     >

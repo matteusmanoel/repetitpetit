@@ -28,7 +28,7 @@ export function SiteFooter() {
     <footer className="relative mt-8 overflow-hidden bg-footer text-brand-blue">
       <div className="pointer-events-none absolute inset-x-0 -top-6 h-8 bg-background [clip-path:ellipse(55%_100%_at_50%_0%)]" />
       <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 md:grid-cols-3 md:py-16">
-        <div>
+        <div className="flex flex-col items-center text-center md:items-start md:text-left">
           <BrandLogo className="h-auto w-[140px]" />
           <p className="mt-3 text-sm leading-relaxed text-brand-blue/80">
             Brechó infantil em Foz do Iguaçu. Peça única, Sacolinha sem pressa e

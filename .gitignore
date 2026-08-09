@@ -27,3 +27,4 @@ next-env.d.ts
 # Editor
 .vscode/
 supabase/.branches/
+.env.local.broken-vercel-pull.bak

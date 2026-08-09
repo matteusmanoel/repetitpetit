@@ -29,7 +29,7 @@ export function CheckoutMpHandoff() {
         </div>
       </div>
 
-      <aside className="lg:sticky lg:top-20">
+      <aside className="lg:sticky lg:top-44 lg:z-10 lg:self-start">
         <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
           <Loader2
             className="size-8 animate-spin text-primary"

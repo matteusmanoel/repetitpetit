@@ -14,6 +14,9 @@ import { navToneClass, STOREFRONT_NAV } from "@/features/storefront/nav";
 /**
  * TipTop→Repeti header (D112): logo, busca pill + autocomplete (SS-2),
  * Conta popover, categorias texto+Lucide centradas, hamburger mobile.
+ *
+ * Mobile: menu | logo centrada | sacolinha (mesma altura); busca abaixo.
+ * Desktop: logo à esquerda; search + utilitários; categorias sob a search.
  */
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -22,13 +25,19 @@ export function SiteHeader() {
   const hasHydrated = useCartStore((s) => s.hasHydrated);
   const count = hasHydrated ? itemCount : 0;
 
+  const cartLabel =
+    count > 0
+      ? `Abrir sacolinha, ${count} ${count === 1 ? "peça" : "peças"}`
+      : "Abrir sacolinha";
+
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-border bg-card">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:gap-5 md:py-4">
+        {/* Mobile top bar — logo in-flow (não absoluta) para não invadir a busca */}
+        <div className="mx-auto grid max-w-6xl grid-cols-[2.75rem_1fr_2.75rem] items-center gap-2 px-4 py-2 sm:hidden">
           <button
             type="button"
-            className="cursor-pointer text-primary transition hover:-translate-y-0.5 md:hidden"
+            className="flex size-11 cursor-pointer items-center justify-center text-primary"
             aria-label="Abrir menu"
             onClick={() => setMenuOpen(true)}
           >
@@ -38,66 +47,19 @@ export function SiteHeader() {
           <Link
             href="/"
             aria-label="Repeti Petit — página inicial"
-            className="shrink-0 transition hover:-translate-y-0.5"
+            className="justify-self-center"
           >
             <BrandLogo
               priority
-              className="!h-auto w-[min(240px,55vw)] max-w-[240px]"
+              className="!h-auto w-[min(132px,46vw)] max-w-[132px]"
             />
           </Link>
-
-          <StorefrontSearch
-            variant="desktop"
-            className="hidden min-w-0 flex-1 sm:block"
-          />
-
-          <div className="ml-auto hidden items-center gap-1 md:flex lg:gap-2">
-            <a
-              href="https://maps.google.com/?q=Av.+Rep%C3%BAblica+Argentina,+2554,+Foz+do+Igua%C3%A7u"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-primary transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <MapPin className="size-6" strokeWidth={1.75} />
-              Nossa loja
-            </a>
-            <span className="h-8 w-px bg-border" aria-hidden />
-            <AccountPopover />
-            <span
-              className="flex flex-col items-center gap-1 rounded-xl px-2 py-1 text-primary opacity-40"
-              title="Em breve"
-              aria-hidden
-            >
-              <Heart className="size-6 md:size-7" strokeWidth={1.75} />
-            </span>
-            <button
-              type="button"
-              onClick={openCart}
-              className="relative flex cursor-pointer flex-col items-center gap-1 rounded-xl px-2 py-1 text-primary transition hover:-translate-y-0.5 hover:shadow-md"
-              aria-label={
-                count > 0
-                  ? `Abrir sacolinha, ${count} ${count === 1 ? "peça" : "peças"}`
-                  : "Abrir sacolinha"
-              }
-            >
-              <ShoppingBag className="size-6 md:size-7" strokeWidth={1.75} />
-              {count > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-destructive text-[11px] font-bold text-destructive-foreground">
-                  {count > 9 ? "9+" : count}
-                </span>
-              ) : null}
-            </button>
-          </div>
 
           <button
             type="button"
             onClick={openCart}
-            className="relative ml-auto flex size-11 cursor-pointer items-center justify-center rounded-full bg-primary/10 text-primary transition hover:-translate-y-0.5 hover:shadow-md md:hidden"
-            aria-label={
-              count > 0
-                ? `Abrir sacolinha, ${count} ${count === 1 ? "peça" : "peças"}`
-                : "Abrir sacolinha"
-            }
+            className="relative flex size-11 cursor-pointer items-center justify-center justify-self-end rounded-full bg-primary/10 text-primary"
+            aria-label={cartLabel}
           >
             <ShoppingBag className="size-5" />
             {count > 0 ? (
@@ -108,34 +70,94 @@ export function SiteHeader() {
           </button>
         </div>
 
-        <nav
-          aria-label="Categorias"
-          className="mx-auto hidden max-w-6xl justify-center gap-6 overflow-x-auto px-4 pb-4 pt-1 md:flex lg:gap-10"
-        >
-          {STOREFRONT_NAV.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`group flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl px-2 py-2 transition hover:-translate-y-1 hover:shadow-lg ${navToneClass(item.tone)}`}
-              >
-                <Icon
-                  className="size-7 transition group-hover:scale-110 lg:size-8"
-                  strokeWidth={1.6}
-                />
-                <span className="text-center text-sm font-semibold lg:text-base">
-                  {item.name}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
-
         <StorefrontSearch
           variant="mobile"
           className="px-4 pb-3 sm:hidden"
         />
+
+        {/* sm+: logo + search (+ nav no md) */}
+        <div className="mx-auto hidden max-w-6xl items-end gap-5 px-4 py-2.5 sm:flex">
+          <Link
+            href="/"
+            aria-label="Repeti Petit — página inicial"
+            className="shrink-0 self-end transition hover:-translate-y-0.5"
+          >
+            <BrandLogo
+              priority
+              className="!h-auto w-[min(148px,42vw)] max-w-[148px]"
+            />
+          </Link>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="flex items-center gap-3 lg:gap-5">
+              <StorefrontSearch
+                variant="desktop"
+                className="min-w-0 flex-1"
+              />
+
+              <div className="ml-auto hidden shrink-0 items-center gap-1 md:flex lg:gap-2">
+                <a
+                  href="https://maps.google.com/?q=Av.+Rep%C3%BAblica+Argentina,+2554,+Foz+do+Igua%C3%A7u"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-primary transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <MapPin className="size-6" strokeWidth={1.75} />
+                  Nossa loja
+                </a>
+                <span className="h-8 w-px bg-border" aria-hidden />
+                <AccountPopover />
+                <span
+                  className="flex flex-col items-center gap-1 rounded-xl px-2 py-1 text-primary opacity-40"
+                  title="Em breve"
+                  aria-hidden
+                >
+                  <Heart className="size-6 md:size-7" strokeWidth={1.75} />
+                </span>
+                <button
+                  type="button"
+                  onClick={openCart}
+                  className="relative flex cursor-pointer flex-col items-center gap-1 rounded-xl px-2 py-1 text-primary transition hover:-translate-y-0.5 hover:shadow-md"
+                  aria-label={cartLabel}
+                >
+                  <ShoppingBag
+                    className="size-6 md:size-7"
+                    strokeWidth={1.75}
+                  />
+                  {count > 0 ? (
+                    <span className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-destructive text-[11px] font-bold text-destructive-foreground">
+                      {count > 9 ? "9+" : count}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+            </div>
+
+            <nav
+              aria-label="Categorias"
+              className="hidden justify-center gap-5 overflow-x-auto md:flex lg:gap-8"
+            >
+              {STOREFRONT_NAV.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`group flex cursor-pointer flex-col items-center gap-1 rounded-2xl px-1.5 py-1 transition hover:-translate-y-1 hover:shadow-lg ${navToneClass(item.tone)}`}
+                  >
+                    <Icon
+                      className="size-6 transition group-hover:scale-110 lg:size-7"
+                      strokeWidth={1.6}
+                    />
+                    <span className="text-center text-xs font-semibold lg:text-sm">
+                      {item.name}
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
       </header>
 
       <MobileNavDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />

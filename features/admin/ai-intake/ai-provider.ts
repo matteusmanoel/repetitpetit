@@ -44,7 +44,7 @@ export async function generateAiPreviewDrafts(params: {
     const system = `Você extrai dados de peças de brechó infantil (Repeti Petit).
 Responda APENAS JSON válido: {"items":[{...}]}.
 Campos por item: client_id (ecoar), name, description, price (número BRL), brand,
-size_label, size_group (um de: ${SIZE_GROUPS.join(", ")}), gender (menino|menina|unissex),
+size_label (um de: P, M, G), size_group (um de: ${SIZE_GROUPS.join(", ")}), gender (menino|menina|unissex),
 condition (novo|seminovo|bom_estado|com_detalhes), tags (array de strings).
 Preço sugerido realista para seminovos infantis no Brasil.`;
 

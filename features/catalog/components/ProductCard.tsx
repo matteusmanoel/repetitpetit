@@ -20,12 +20,15 @@ function genderAccentClass(gender: CatalogProduct["gender"]): string {
 
 /**
  * Card TipTop→Repeti (D112 / SQ-3 / SS-3): altura fixa + nome truncado,
- * hover ATC no desktop sem mudar altura.
+ * hover ATC no desktop substitui a faixa de preço (padrão TipTop).
+ * Hold: botão "Reservada" disabled no lugar do ATC.
  */
 export function ProductCard({ product, priority = false }: ProductCardProps) {
   const compareAt = product.compare_at_price;
   const hasCompare = compareAt != null && compareAt > product.price;
+  const isHold = product.status === "hold";
   const canQuickAdd = product.status === "available";
+  const showHoverAction = canQuickAdd || isHold;
 
   return (
     <Link
@@ -42,7 +45,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             alt={product.name}
             priority={priority}
           />
-          {product.status === "hold" ? (
+          {isHold ? (
             <Badge className="absolute top-2 left-2 z-10 h-auto rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold tracking-wide text-foreground uppercase shadow-sm ring-1 ring-border">
               Reservada
             </Badge>
@@ -50,17 +53,6 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             <Badge className="absolute top-2 left-2 z-10 h-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground uppercase shadow-sm">
               Única
             </Badge>
-          ) : null}
-          {canQuickAdd ? (
-            <div className="absolute inset-x-0 bottom-0 hidden p-2 md:block">
-              <ProductCardQuickAdd
-                productId={product.id}
-                name={product.name}
-                slug={product.slug}
-                price={product.price}
-                coverImageUrl={product.cover_image_url}
-              />
-            </div>
           ) : null}
         </div>
 
@@ -80,14 +72,46 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             {product.name}
           </h2>
 
-          <div className="mt-auto flex items-baseline gap-2 pt-0.5">
-            <span className="text-lg font-bold text-primary md:text-xl">
-              {formatPrice(product.price)}
-            </span>
-            {hasCompare ? (
-              <span className="text-xs text-destructive line-through">
-                {formatPrice(compareAt)}
+          {/* Faixa de preço ↔ ATC / Reservada no hover (desktop TipTop) */}
+          <div className="relative mt-auto min-h-11 pt-0.5">
+            <div
+              className={cn(
+                "flex items-baseline gap-2 transition-opacity duration-150",
+                showHoverAction &&
+                  "md:group-hover:pointer-events-none md:group-hover:opacity-0",
+              )}
+            >
+              <span className="text-lg font-bold text-primary md:text-xl">
+                {formatPrice(product.price)}
               </span>
+              {hasCompare ? (
+                <span className="text-xs text-destructive line-through">
+                  {formatPrice(compareAt)}
+                </span>
+              ) : null}
+            </div>
+
+            {showHoverAction ? (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden opacity-0 transition-opacity duration-150 md:block md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:group-focus-within:pointer-events-auto md:group-focus-within:opacity-100">
+                {isHold ? (
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    className="flex h-11 w-full cursor-not-allowed items-center justify-center rounded-full bg-muted px-3 text-sm font-semibold text-muted-foreground ring-1 ring-border"
+                  >
+                    Reservada
+                  </button>
+                ) : (
+                  <ProductCardQuickAdd
+                    productId={product.id}
+                    name={product.name}
+                    slug={product.slug}
+                    price={product.price}
+                    coverImageUrl={product.cover_image_url}
+                  />
+                )}
+              </div>
             ) : null}
           </div>
         </div>

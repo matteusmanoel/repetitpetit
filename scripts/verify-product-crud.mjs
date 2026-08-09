@@ -104,7 +104,7 @@ async function main() {
       price: 39.9,
       compare_at_price: 59.9,
       brand: "TestBrand",
-      size_label: "2 anos",
+      size_label: "M",
       size_group: "2_3a",
       gender: "unissex",
       condition: "seminovo",

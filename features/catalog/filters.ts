@@ -48,6 +48,9 @@ export const EMPTY_CATALOG_FILTERS: CatalogFilters = {
 /** Teto do slider na UI; valor == ceiling → sem filtro (`precoMax` null). */
 export const PRICE_SLIDER_CEILING = 300;
 
+/** Cards por página no catálogo (grade 3×3). */
+export const CATALOG_PAGE_SIZE = 9;
+
 export const SIZE_GROUPS = [
   "rn_3m",
   "3_6m",
@@ -178,6 +181,23 @@ function parsePrecoMax(raw: string | undefined): number | null {
   const n = Number(raw.replace(",", "."));
   if (!Number.isFinite(n) || n <= 0) return null;
   return Math.min(Math.round(n * 100) / 100, PRICE_SLIDER_CEILING);
+}
+
+/**
+ * Página atual do catálogo (`?page=`). Inválido / ausente → 1.
+ */
+export function parseCatalogPage(
+  params: Record<string, string | string[] | undefined> | URLSearchParams,
+): number {
+  const raw =
+    params instanceof URLSearchParams
+      ? params.get("page")
+      : Array.isArray(params.page)
+        ? params.page[0]
+        : params.page;
+  const n = Number.parseInt(raw ?? "1", 10);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.floor(n);
 }
 
 /**
@@ -318,7 +338,7 @@ export type ActiveFilterChip = {
   remove: (filters: CatalogFilters) => CatalogFilters;
 };
 
-/** Chips removíveis acima do grid, na ordem de prioridade dos filtros. */
+/** Chips removíveis abaixo do card de filtros, na ordem de prioridade. */
 export function getActiveFilterChips(
   filters: CatalogFilters,
 ): ActiveFilterChip[] {

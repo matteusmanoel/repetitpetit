@@ -4,9 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   Camera,
+  Check,
   CheckCircle2,
   Mic,
   MicOff,
+  Pencil,
   Sparkles,
   Upload,
   X,
@@ -14,6 +16,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -23,7 +26,15 @@ import {
 import { toast } from "sonner";
 
 import { AdminLabelPrintQueue } from "@/components/admin/AdminLabelPrintQueue";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -58,11 +69,16 @@ import {
   PRODUCT_CONDITIONS,
   PRODUCT_GENDER_LABELS,
   PRODUCT_GENDERS,
+  PRODUCT_SIZE_LABELS,
   SIZE_GROUP_LABELS,
   SIZE_GROUPS,
+  isProductSizeLabel,
   slugifyProductName,
 } from "@/features/admin/product-constants";
+import { createCategoryInlineAction } from "@/features/admin/product-dialog-actions";
 import type { CategoryOption } from "@/features/admin/product-types";
+import { formatPrice } from "@/features/catalog/format-price";
+import { FEATURED_BRANDS } from "@/features/storefront/nav";
 import type { Database } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
@@ -106,6 +122,8 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<IntakeDraftItem[]>([]);
   const [previewMode, setPreviewMode] = useState<"ai" | "manual" | null>(null);
+  const [categoryOptions, setCategoryOptions] =
+    useState<CategoryOption[]>(categories);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [batchId, setBatchId] = useState<string | null>(null);
@@ -121,6 +139,10 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const aiInflight = useRef(new Set<string>());
+
+  useEffect(() => {
+    setCategoryOptions(categories);
+  }, [categories]);
 
   const activeSlot =
     (selectedId
@@ -528,21 +550,66 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
 
   return (
     <div className="relative mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">
-            {aiConfigured
-              ? "Foto → áudio (opcional) → próxima. Ao terminar, Gerar preview IA → revise → Finalizar."
-              : "Foto → áudio (opcional) → próxima. Ao terminar, Abra o preview → preencha → Finalizar."}
-          </p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex w-fit gap-0 rounded-2xl bg-black/5 p-1">
+          {(
+            [
+              { id: "captura" as const, label: "Captura" },
+              {
+                id: "preview" as const,
+                label:
+                  !seriesClosed && capturedSlots.length > 0
+                    ? aiConfigured
+                      ? `Gerar preview (${capturedSlots.length})`
+                      : `Abrir preview (${capturedSlots.length})`
+                    : `Preview (${capturedSlots.length})`,
+              },
+            ] as const
+          ).map((t) => {
+            const previewBlocked =
+              t.id === "preview" && capturedSlots.length === 0;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                disabled={previewBlocked}
+                onClick={() => {
+                  if (t.id === "preview") {
+                    if (seriesClosed) {
+                      setTab("preview");
+                      return;
+                    }
+                    endSeriesAndPreview();
+                    return;
+                  }
+                  setTab("captura");
+                }}
+                className={cn(
+                  "inline-flex h-11 items-center rounded-xl px-4 text-sm font-medium transition",
+                  tab === t.id
+                    ? "bg-white text-foreground shadow-sm"
+                    : "text-muted-foreground",
+                  previewBlocked && "cursor-not-allowed opacity-45",
+                )}
+                title={
+                  previewBlocked
+                    ? "Capture ao menos uma foto para abrir o preview"
+                    : !seriesClosed && t.id === "preview"
+                      ? "Encerra a série e gera o preview editável"
+                      : undefined
+                }
+              >
+                {t.label}
+              </button>
+            );
+          })}
         </div>
         <Button
           type="button"
           variant="outline"
-          size="sm"
           disabled={!canFinalize}
           onClick={() => setConfirmOpen(true)}
-          className="shrink-0 border-[var(--brand-green)]/40 text-[var(--brand-green)]"
+          className="h-11 shrink-0 gap-2 px-4 border-[var(--brand-green)]/40 text-[var(--brand-green)]"
           title={
             canFinalize
               ? undefined
@@ -551,7 +618,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
                 : "Preencha nome, preço e tamanho em todas as peças"
           }
         >
-          <CheckCircle2 className="mr-1.5 size-4" />
+          <CheckCircle2 className="size-4" />
           Finalizar
         </Button>
       </div>
@@ -572,60 +639,6 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
           {warning}
         </p>
       ) : null}
-
-      <div className="flex w-fit gap-0 rounded-2xl bg-black/5 p-1">
-        {(
-          [
-            { id: "captura" as const, label: "Captura" },
-            {
-              id: "preview" as const,
-              label:
-                !seriesClosed && capturedSlots.length > 0
-                  ? aiConfigured
-                    ? `Gerar preview (${capturedSlots.length})`
-                    : `Abrir preview (${capturedSlots.length})`
-                  : `Preview (${capturedSlots.length})`,
-            },
-          ] as const
-        ).map((t) => {
-          const previewBlocked =
-            t.id === "preview" && capturedSlots.length === 0;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              disabled={previewBlocked}
-              onClick={() => {
-                if (t.id === "preview") {
-                  if (seriesClosed) {
-                    setTab("preview");
-                    return;
-                  }
-                  endSeriesAndPreview();
-                  return;
-                }
-                setTab("captura");
-              }}
-              className={cn(
-                "inline-flex h-11 items-center rounded-xl px-4 text-sm font-medium transition",
-                tab === t.id
-                  ? "bg-white text-foreground shadow-sm"
-                  : "text-muted-foreground",
-                previewBlocked && "cursor-not-allowed opacity-45",
-              )}
-              title={
-                previewBlocked
-                  ? "Capture ao menos uma foto para abrir o preview"
-                  : !seriesClosed && t.id === "preview"
-                    ? "Encerra a série e gera o preview editável"
-                    : undefined
-              }
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
 
       {tab === "captura" ? (
         <CapturePane
@@ -653,14 +666,9 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
       ) : (
         <PreviewPane
           drafts={drafts}
-          categories={categories}
-          previewMode={previewMode}
-          pending={pending}
+          categories={categoryOptions}
           onChange={updateDraft}
-          onBackToCapture={() => {
-            setSeriesClosed(false);
-            setTab("captura");
-          }}
+          onCategoriesChange={setCategoryOptions}
         />
       )}
 
@@ -810,7 +818,7 @@ function CapturePane({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center text-white">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 text-center text-white">
             <Camera className="size-12 opacity-80" />
             <button
               type="button"
@@ -1123,148 +1131,344 @@ function HoldLockMic({
 function PreviewPane({
   drafts,
   categories,
-  previewMode,
-  pending,
   onChange,
-  onBackToCapture,
+  onCategoriesChange,
 }: {
   drafts: IntakeDraftItem[];
   categories: CategoryOption[];
-  previewMode: "ai" | "manual" | null;
-  pending: boolean;
   onChange: (clientId: string, patch: Partial<IntakeDraftItem>) => void;
-  onBackToCapture: () => void;
+  onCategoriesChange: (next: CategoryOption[]) => void;
 }) {
-  return (
-    <section className="flex flex-col gap-4 pb-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="font-heading text-base font-extrabold">
-            Preview editável
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Modo:{" "}
-            {previewMode === "ai"
-              ? "IA (best-effort)"
-              : previewMode === "manual"
-                ? "manual"
-                : "aguardando"}
-            . Ajuste os obrigatórios antes de Finalizar.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onBackToCapture}
-          disabled={pending}
-        >
-          Voltar à captura
-        </Button>
-      </div>
+  const brandOptions = useMemo(() => {
+    const fromDrafts = drafts
+      .map((d) => d.brand?.trim())
+      .filter((b): b is string => Boolean(b));
+    return Array.from(new Set([...FEATURED_BRANDS, ...fromDrafts])).sort(
+      (a, b) => a.localeCompare(b, "pt-BR"),
+    );
+  }, [drafts]);
 
-      {drafts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Nenhuma peça na série.
-        </p>
-      ) : (
-        drafts.map((draft, index) => (
-          <PreviewCard
-            key={draft.client_id}
-            index={index}
-            draft={draft}
-            categories={categories}
-            onChange={(patch) => onChange(draft.client_id, patch)}
-          />
-        ))
-      )}
+  if (drafts.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">Nenhuma peça na série.</p>
+    );
+  }
+
+  return (
+    <section className="pb-4" aria-label="Preview das peças">
+      <Carousel
+        opts={{ align: "start", containScroll: "trimSnaps" }}
+        className="w-full"
+      >
+        {drafts.length > 1 ? (
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              {drafts.length} peças · deslize para revisar
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <CarouselPrevious
+                className="static inset-auto size-9 translate-none border-border bg-card shadow-sm"
+                aria-label="Peça anterior"
+              />
+              <CarouselNext
+                className="static inset-auto size-9 translate-none border-border bg-card shadow-sm"
+                aria-label="Próxima peça"
+              />
+            </div>
+          </div>
+        ) : null}
+        <CarouselContent className="-ml-3">
+          {drafts.map((draft, index) => (
+            <CarouselItem
+              key={draft.client_id}
+              className="pl-3 basis-[min(100%,22rem)] sm:basis-[20rem]"
+            >
+              <PreviewCard
+                index={index}
+                draft={draft}
+                categories={categories}
+                brandOptions={brandOptions}
+                onChange={(patch) => onChange(draft.client_id, patch)}
+                onCategoriesChange={onCategoriesChange}
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
     </section>
   );
+}
+
+function genderAccentClass(gender: IntakeDraftItem["gender"]): string {
+  if (gender === "menina") return "text-brand-pink";
+  if (gender === "menino") return "text-brand-blue";
+  return "text-brand-green";
 }
 
 function PreviewCard({
   index,
   draft,
   categories,
+  brandOptions,
   onChange,
+  onCategoriesChange,
 }: {
   index: number;
   draft: IntakeDraftItem;
   categories: CategoryOption[];
+  brandOptions: string[];
   onChange: (patch: Partial<IntakeDraftItem>) => void;
+  onCategoriesChange: (next: CategoryOption[]) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [creatingBrand, setCreatingBrand] = useState(false);
+  const [newBrand, setNewBrand] = useState("");
+  const [creatingCat, setCreatingCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [creatingCatPending, setCreatingCatPending] = useState(false);
+
+  const cover = draft.images[0]?.image_url ?? null;
+  const priceNum = Number.parseFloat(
+    String(draft.price ?? "").replace(",", "."),
+  );
+  const priceLabel = Number.isFinite(priceNum)
+    ? formatPrice(priceNum)
+    : "Preço pendente";
+  const metaLine = [draft.size_label, draft.brand].filter(Boolean).join(" · ");
+
+  const fieldLocked = !editing;
+  const selectTriggerClass = cn(
+    "w-full",
+    fieldLocked && "disabled:cursor-default disabled:opacity-100",
+  );
+  const inputClass = cn(
+    fieldLocked && "cursor-default bg-muted/40 focus-visible:ring-0",
+  );
+
+  async function handleCreateCategory() {
+    const trimmed = newCatName.trim();
+    if (!trimmed) {
+      toast.error("Informe o nome da categoria.");
+      return;
+    }
+    setCreatingCatPending(true);
+    try {
+      const result = await createCategoryInlineAction(trimmed);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      onCategoriesChange([...categories, result.category]);
+      onChange({ category_id: result.category.id });
+      setNewCatName("");
+      setCreatingCat(false);
+      toast.success("Categoria criada");
+    } finally {
+      setCreatingCatPending(false);
+    }
+  }
+
+  function commitNewBrand() {
+    const trimmed = newBrand.trim();
+    if (!trimmed) {
+      toast.error("Informe o nome da marca.");
+      return;
+    }
+    onChange({ brand: trimmed });
+    setNewBrand("");
+    setCreatingBrand(false);
+  }
+
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Peça {index + 1}</h3>
-        {draft.audio_note ? (
-          <span className="text-xs text-muted-foreground">Com áudio/nota</span>
-        ) : null}
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between gap-2 px-3 pt-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <h3 className="text-sm font-semibold">Peça {index + 1}</h3>
+          {draft.audio_note ? (
+            <span className="truncate text-[11px] text-muted-foreground">
+              Com áudio/nota
+            </span>
+          ) : null}
+        </div>
+        <Button
+          type="button"
+          variant={editing ? "default" : "outline"}
+          size="sm"
+          className="h-8 shrink-0 gap-1.5 px-2.5"
+          onClick={() => {
+            if (editing) {
+              setCreatingBrand(false);
+              setCreatingCat(false);
+            }
+            setEditing((v) => !v);
+          }}
+          aria-pressed={editing}
+        >
+          {editing ? (
+            <>
+              <Check className="size-3.5" />
+              Pronto
+            </>
+          ) : (
+            <>
+              <Pencil className="size-3.5" />
+              Editar
+            </>
+          )}
+        </Button>
       </div>
 
-      {draft.images[0] ? (
-        <div className="relative h-32 w-full overflow-hidden rounded-md bg-muted sm:h-40">
-          <Image
-            src={draft.images[0].image_url}
-            alt=""
-            fill
-            unoptimized
-            className="object-cover"
-            sizes="(max-width: 640px) 100vw, 480px"
-          />
+      <div className="relative mx-3 mt-3 overflow-hidden rounded-xl bg-muted">
+        <div className="relative aspect-3/4 w-full">
+          {cover ? (
+            <Image
+              src={cover}
+              alt={draft.name || `Peça ${index + 1}`}
+              fill
+              unoptimized
+              className="object-cover"
+              sizes="(max-width: 640px) 90vw, 320px"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Sem foto
+            </div>
+          )}
+          <Badge className="absolute top-2 left-2 z-10 h-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground uppercase shadow-sm">
+            Única
+          </Badge>
         </div>
-      ) : null}
+        <div className="space-y-0.5 px-2.5 py-2.5">
+          {metaLine ? (
+            <p
+              className={cn(
+                "truncate text-sm font-semibold tracking-wide",
+                genderAccentClass(draft.gender),
+              )}
+            >
+              {metaLine}
+            </p>
+          ) : null}
+          <p className="truncate text-sm font-medium text-foreground/90">
+            {draft.name || "Sem nome"}
+          </p>
+          <p className="text-base font-bold text-primary">{priceLabel}</p>
+        </div>
+      </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label>Nome *</Label>
+      <div className="mt-3 grid flex-1 grid-cols-2 gap-2.5 px-3 pb-3">
+        <div className="col-span-2 flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Nome *</Label>
           <Input
             value={draft.name}
+            readOnly={fieldLocked}
+            tabIndex={fieldLocked ? -1 : undefined}
+            className={inputClass}
             onChange={(event) => {
               const name = event.target.value;
-              onChange({
-                name,
-                slug: slugifyProductName(name),
-              });
+              onChange({ name, slug: slugifyProductName(name) });
             }}
           />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label>Preço (R$) *</Label>
+
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Preço (R$) *</Label>
           <Input
             inputMode="decimal"
             value={draft.price ?? ""}
+            readOnly={fieldLocked}
+            tabIndex={fieldLocked ? -1 : undefined}
+            className={inputClass}
             onChange={(event) => onChange({ price: event.target.value })}
           />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label>Marca</Label>
-          <Input
-            value={draft.brand ?? ""}
-            onChange={(event) =>
-              onChange({ brand: event.target.value || null })
+
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Marca</Label>
+          <Select
+            value={creatingBrand ? "__new__" : (draft.brand ?? "none")}
+            disabled={fieldLocked}
+            onValueChange={(value) => {
+              if (value === "__new__") {
+                setCreatingBrand(true);
+                setNewBrand(draft.brand ?? "");
+                return;
+              }
+              setCreatingBrand(false);
+              onChange({ brand: value === "none" ? null : value });
+            }}
+          >
+            <SelectTrigger className={selectTriggerClass} size="sm">
+              <SelectValue placeholder="Sem marca" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sem marca</SelectItem>
+              {brandOptions.map((brand) => (
+                <SelectItem key={brand} value={brand}>
+                  {brand}
+                </SelectItem>
+              ))}
+              <SelectItem value="__new__">+ Nova marca…</SelectItem>
+            </SelectContent>
+          </Select>
+          {creatingBrand && editing ? (
+            <div className="mt-1 flex gap-1.5">
+              <Input
+                placeholder="Nome da marca"
+                value={newBrand}
+                onChange={(event) => setNewBrand(event.target.value)}
+                className="h-8"
+              />
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 shrink-0 px-2.5"
+                onClick={commitNewBrand}
+              >
+                Usar
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Tamanho *</Label>
+          <Select
+            value={
+              isProductSizeLabel(draft.size_label) ? draft.size_label : undefined
             }
-          />
+            disabled={fieldLocked}
+            onValueChange={(value) => {
+              if (value && isProductSizeLabel(value)) {
+                onChange({ size_label: value });
+              }
+            }}
+          >
+            <SelectTrigger className={selectTriggerClass} size="sm">
+              <SelectValue placeholder="P, M ou G" />
+            </SelectTrigger>
+            <SelectContent>
+              {PRODUCT_SIZE_LABELS.map((label) => (
+                <SelectItem key={label} value={label}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label>Tamanho *</Label>
-          <Input
-            value={draft.size_label}
-            onChange={(event) => onChange({ size_label: event.target.value })}
-            placeholder="2 anos"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label>Grupo</Label>
+
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Grupo</Label>
           <Select
             value={draft.size_group}
+            disabled={fieldLocked}
             onValueChange={(value) =>
               onChange({
                 size_group: value as IntakeDraftItem["size_group"],
               })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger className={selectTriggerClass} size="sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1276,15 +1480,17 @@ function PreviewCard({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label>Gênero</Label>
+
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Gênero</Label>
           <Select
             value={draft.gender}
+            disabled={fieldLocked}
             onValueChange={(value) =>
               onChange({ gender: value as IntakeDraftItem["gender"] })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger className={selectTriggerClass} size="sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1296,17 +1502,19 @@ function PreviewCard({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label>Condição</Label>
+
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Condição</Label>
           <Select
             value={draft.condition}
+            disabled={fieldLocked}
             onValueChange={(value) =>
               onChange({
                 condition: value as IntakeDraftItem["condition"],
               })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger className={selectTriggerClass} size="sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1318,18 +1526,23 @@ function PreviewCard({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label>Categoria</Label>
+
+        <div className="col-span-2 flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Categoria</Label>
           <Select
-            value={draft.category_id ?? "none"}
-            onValueChange={(value) =>
-              onChange({
-                category_id: value === "none" ? null : value,
-              })
-            }
+            value={creatingCat ? "__new__" : (draft.category_id ?? "none")}
+            disabled={fieldLocked}
+            onValueChange={(value) => {
+              if (value === "__new__") {
+                setCreatingCat(true);
+                return;
+              }
+              setCreatingCat(false);
+              onChange({ category_id: value === "none" ? null : value });
+            }}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Opcional" />
+            <SelectTrigger className={selectTriggerClass} size="sm">
+              <SelectValue placeholder="Sem categoria" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Sem categoria</SelectItem>
@@ -1338,23 +1551,52 @@ function PreviewCard({
                   {category.name}
                 </SelectItem>
               ))}
+              <SelectItem value="__new__">+ Criar categoria…</SelectItem>
             </SelectContent>
           </Select>
+          {creatingCat && editing ? (
+            <div className="mt-1 flex gap-1.5">
+              <Input
+                placeholder="Nome da categoria"
+                value={newCatName}
+                onChange={(event) => setNewCatName(event.target.value)}
+                disabled={creatingCatPending}
+                className="h-8"
+              />
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 shrink-0 px-2.5"
+                disabled={creatingCatPending}
+                onClick={() => void handleCreateCategory()}
+              >
+                {creatingCatPending ? "…" : "Criar"}
+              </Button>
+            </div>
+          ) : null}
         </div>
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label>Descrição</Label>
+
+        <div className="col-span-2 flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Descrição</Label>
           <Textarea
             value={draft.description ?? ""}
+            readOnly={fieldLocked}
+            tabIndex={fieldLocked ? -1 : undefined}
+            className={cn("min-h-16 resize-none", inputClass)}
+            rows={3}
             onChange={(event) =>
               onChange({ description: event.target.value || null })
             }
-            rows={3}
           />
         </div>
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label>Tags (vírgula)</Label>
+
+        <div className="col-span-2 flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Tags (vírgula)</Label>
           <Input
             value={(draft.tags ?? []).join(", ")}
+            readOnly={fieldLocked}
+            tabIndex={fieldLocked ? -1 : undefined}
+            className={inputClass}
             onChange={(event) =>
               onChange({
                 tags: event.target.value
@@ -1366,6 +1608,6 @@ function PreviewCard({
           />
         </div>
       </div>
-    </div>
+    </article>
   );
 }

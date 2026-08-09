@@ -8,6 +8,7 @@ import {
 } from "@/features/admin/ai-intake/ai-provider";
 import { buildMockAudioFieldSuggestions } from "@/features/admin/product-audio-fields";
 import type { ProductAudioFieldSuggestion } from "@/features/admin/product-audio-fields";
+import { coerceProductSizeLabel } from "@/features/admin/product-constants";
 import { getAdminProduct } from "@/features/admin/product-queries";
 import type {
   CategoryOption,
@@ -189,7 +190,7 @@ export async function processProductAudioAction(input: {
           buildMockAudioFieldSuggestions(audioNote).description,
         price: Number.isFinite(priceNum) && priceNum > 0 ? priceNum : 89,
         brand: draft.brand?.trim() || "Hering Kids",
-        size_label: draft.size_label?.trim() || "4 anos",
+        size_label: coerceProductSizeLabel(draft.size_label),
         size_group: draft.size_group,
         gender: draft.gender,
         condition: draft.condition,

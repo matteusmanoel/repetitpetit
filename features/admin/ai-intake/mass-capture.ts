@@ -116,6 +116,17 @@ export function isIntakeDraftReady(draft: IntakeDraftItem): boolean {
   }).success;
 }
 
+/**
+ * Finalizar (D135): requires photo on every draft; other fields may be incomplete.
+ */
+export function canFinalizeIntakeDrafts(drafts: IntakeDraftItem[]): boolean {
+  return (
+    drafts.length > 0 &&
+    drafts.every((draft) => Boolean(draft.images[0]?.image_url))
+  );
+}
+
+/** @deprecated Prefer canFinalizeIntakeDrafts for D135 soft finalize. */
 export function allIntakeDraftsReady(drafts: IntakeDraftItem[]): boolean {
-  return drafts.length > 0 && drafts.every(isIntakeDraftReady);
+  return canFinalizeIntakeDrafts(drafts);
 }

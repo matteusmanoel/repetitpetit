@@ -649,6 +649,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
           </div>
         ) : (
           <div className="relative flex min-h-0 flex-1 flex-col">
+            {/* Foto + pulse central (protótipo A) */}
             <div className="relative min-h-[28%] flex-1">
               {photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -689,9 +690,10 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
               ) : null}
             </div>
 
+            {/* Dock checklist — sempre visível (antes e durante Gravando) */}
             <div
               className={cn(
-                "max-h-[42vh] shrink-0 overflow-y-auto overscroll-contain rounded-t-3xl px-3 pb-2 pt-3 touch-pan-y",
+                "shrink-0 rounded-t-3xl px-3 pb-2 pt-3",
                 recording ? "bg-red-700" : "bg-zinc-100",
               )}
             >

@@ -38,7 +38,7 @@ export function VoiceScriptTip({
   return (
     <ul
       className={cn(
-        "grid grid-cols-1 gap-2 sm:grid-cols-2",
+        "grid grid-cols-2 gap-2",
         tone === "dark" && "text-white",
       )}
       role="group"
@@ -53,7 +53,7 @@ export function VoiceScriptTip({
               aria-pressed={on}
               onClick={() => onToggle(item.id)}
               className={cn(
-                "flex min-h-12 w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left text-[15px] leading-snug transition active:scale-[0.98]",
+                "flex min-h-12 w-full items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left text-[14px] leading-snug transition active:scale-[0.98]",
                 tone === "light" &&
                   (on
                     ? "border-[var(--brand-green)]/50 bg-[var(--brand-green)]/12 font-semibold text-foreground"

@@ -1,15 +1,20 @@
 "use client";
 
+/**
+ * Cadastro em massa — sessão fullscreen (D137 / #185).
+ * Fluxo: lobby → câmera → áudio → confirmar IA → preview edit → aprovar → próxima.
+ * Finalizar → commit lote → /admin/produtos + toast.
+ */
+
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  ArrowRight,
   Camera,
   Check,
-  CheckCircle2,
   Mic,
-  MicOff,
-  Pencil,
   Sparkles,
+  Square,
   Upload,
   X,
 } from "lucide-react";
@@ -20,21 +25,11 @@ import {
   useRef,
   useState,
   useTransition,
-  type PointerEvent as ReactPointerEvent,
-  type RefObject,
 } from "react";
 import { toast } from "sonner";
 
-import { AdminLabelPrintQueue } from "@/components/admin/AdminLabelPrintQueue";
-import { Badge } from "@/components/ui/badge";
+import { VoiceScriptTip, VOICE_SCRIPT_ITEMS } from "@/components/admin/VoiceScriptTip";
 import { Button } from "@/components/ui/button";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -51,19 +46,10 @@ import {
 } from "@/features/admin/ai-intake/actions";
 import {
   cameraErrorMessagePt,
-  classifyCameraError,
-  generatePreviewCtaLabel,
-  isHoldLockPointer,
   canFinalizeIntakeDrafts,
-  resolveHoldLockHint,
-  shouldCancelOnRelease,
-  shouldLockFromDelta,
-  type MicHint,
+  classifyCameraError,
 } from "@/features/admin/ai-intake/mass-capture";
-import { VoiceScriptTip } from "@/components/admin/VoiceScriptTip";
-import {
-  validateIntakeDraft,
-} from "@/features/admin/ai-intake/business-validator";
+import { validateIntakeDraft } from "@/features/admin/ai-intake/business-validator";
 import { evaluatePublishGate } from "@/features/admin/ai-intake/category-match";
 import {
   emptyIntakeDraft,
@@ -82,23 +68,16 @@ import {
 } from "@/features/admin/product-constants";
 import { createCategoryInlineAction } from "@/features/admin/product-dialog-actions";
 import type { CategoryOption } from "@/features/admin/product-types";
-import { formatPrice } from "@/features/catalog/format-price";
 import { FEATURED_BRANDS } from "@/features/storefront/nav";
-import type { Database } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
-type Job = Database["public"]["Tables"]["label_print_jobs"]["Row"];
-
-type CaptureSlot = {
-  client_id: string;
-  image_url: string | null;
-  audio_data_url: string | null;
-  audio_note: string;
-  has_audio: boolean;
-  ai_status: "idle" | "running" | "done" | "manual";
-};
-
-type TabId = "captura" | "preview";
+type Mode =
+  | "lobby"
+  | "camera"
+  | "record"
+  | "confirm"
+  | "working"
+  | "preview";
 
 type Props = {
   categories: CategoryOption[];
@@ -109,137 +88,41 @@ function newClientId(): string {
   return crypto.randomUUID();
 }
 
-function blankSlot(): CaptureSlot {
-  return {
-    client_id: newClientId(),
-    image_url: null,
-    audio_data_url: null,
-    audio_note: "",
-    has_audio: false,
-    ai_status: "idle",
-  };
-}
-
 export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
-  const [tab, setTab] = useState<TabId>("captura");
-  const [seriesClosed, setSeriesClosed] = useState(false);
-  const [slots, setSlots] = useState<CaptureSlot[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<IntakeDraftItem[]>([]);
-  const [previewMode, setPreviewMode] = useState<"ai" | "manual" | null>(null);
+  const router = useRouter();
+  const [mode, setMode] = useState<Mode>("lobby");
   const [categoryOptions, setCategoryOptions] =
     useState<CategoryOption[]>(categories);
-  const [warning, setWarning] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [batchId, setBatchId] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [createdSummary, setCreatedSummary] = useState<
-    Array<{ staffCode: string; productId: string }>
-  >([]);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const [uploading, setUploading] = useState(false);
-  const [cameraOn, setCameraOn] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [approved, setApproved] = useState<IntakeDraftItem[]>([]);
   const [publishById, setPublishById] = useState<Record<string, boolean>>({});
+  const [clientId, setClientId] = useState(() => newClientId());
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [audioDataUrl, setAudioDataUrl] = useState<string | null>(null);
+  const [draft, setDraft] = useState<IntakeDraftItem | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recMs, setRecMs] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [exitConfirm, setExitConfirm] = useState<"cancel" | "finish" | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const aiInflight = useRef(new Set<string>());
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recTimer = useRef<number | null>(null);
 
   useEffect(() => {
     setCategoryOptions(categories);
   }, [categories]);
 
-  const activeSlot =
-    (selectedId
-      ? slots.find((s) => s.client_id === selectedId)
-      : undefined) ??
-    slots[slots.length - 1] ??
-    null;
-
-  const capturedSlots = slots.filter((s) => s.image_url);
-  const canFinalize =
-    seriesClosed &&
-    tab === "preview" &&
-    canFinalizeIntakeDrafts(drafts) &&
-    !pending &&
-    !batchId;
-
-  const patchSlot = useCallback(
-    (clientId: string, patch: Partial<CaptureSlot>) => {
-      setSlots((prev) =>
-        prev.map((s) => (s.client_id === clientId ? { ...s, ...patch } : s)),
-      );
-    },
-    [],
-  );
-
-  const upsertDraft = useCallback((draft: IntakeDraftItem) => {
-    setDrafts((prev) => {
-      const idx = prev.findIndex((d) => d.client_id === draft.client_id);
-      if (idx === -1) return [...prev, draft];
-      const next = [...prev];
-      next[idx] = { ...next[idx], ...draft, images: draft.images };
-      return next;
-    });
-  }, []);
-
-  const runAiForSlot = useCallback(
-    async (slot: CaptureSlot, options?: { force?: boolean }) => {
-      if (!slot.image_url) return;
-      if (!options?.force && slot.ai_status === "done") return;
-      if (aiInflight.current.has(slot.client_id)) return;
-      aiInflight.current.add(slot.client_id);
-      patchSlot(slot.client_id, { ai_status: "running" });
-
-      try {
-        const result = await generateIntakePreviewAction({
-          items: [
-            {
-              client_id: slot.client_id,
-              images: [{ image_url: slot.image_url, alt_text: null }],
-              audio_data_url: slot.audio_data_url,
-              audio_note: slot.audio_note.trim() || null,
-            },
-          ],
-        });
-        if (!result.ok) {
-          upsertDraft(
-            emptyIntakeDraft({
-              client_id: slot.client_id,
-              images: [{ image_url: slot.image_url, alt_text: null }],
-              audio_note: slot.audio_note || null,
-            }),
-          );
-          patchSlot(slot.client_id, { ai_status: "manual" });
-          return;
-        }
-        const draft = result.drafts[0];
-        if (draft) upsertDraft(draft);
-        setPreviewMode((mode) => mode ?? result.mode);
-        if (result.warning) setWarning(result.warning);
-        patchSlot(slot.client_id, {
-          ai_status: result.mode === "ai" ? "done" : "manual",
-        });
-      } catch {
-        upsertDraft(
-          emptyIntakeDraft({
-            client_id: slot.client_id,
-            images: [{ image_url: slot.image_url!, alt_text: null }],
-            audio_note: slot.audio_note || null,
-          }),
-        );
-        patchSlot(slot.client_id, { ai_status: "manual" });
-      } finally {
-        aiInflight.current.delete(slot.client_id);
-      }
-    },
-    [patchSlot, upsertDraft],
-  );
-
   useEffect(() => {
     let stream: MediaStream | null = null;
-    if (!cameraOn || tab !== "captura" || seriesClosed) return;
+    if (mode !== "camera") return;
     void (async () => {
       const mediaDevicesAvailable = Boolean(
         typeof navigator !== "undefined" &&
@@ -247,15 +130,11 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
       );
       const secure =
         typeof window !== "undefined" ? window.isSecureContext : true;
-
       if (!secure || !mediaDevicesAvailable) {
         const message = cameraErrorMessagePt("insecure_context");
-        setCameraOn(false);
         setCameraError(message);
-        toast.error(message);
         return;
       }
-
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
@@ -269,7 +148,6 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
       } catch (err) {
         const kind = classifyCameraError(err, secure, mediaDevicesAvailable);
         const message = cameraErrorMessagePt(kind);
-        setCameraOn(false);
         setCameraError(message);
         toast.error(message);
       }
@@ -277,20 +155,43 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
     return () => {
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [cameraOn, tab, seriesClosed]);
+  }, [mode]);
 
-  async function uploadBlob(blob: Blob, pathPrefix: string): Promise<string> {
+  useEffect(() => {
+    if (!recording) return;
+    recTimer.current = window.setInterval(() => setRecMs((m) => m + 100), 100);
+    return () => {
+      if (recTimer.current) window.clearInterval(recTimer.current);
+    };
+  }, [recording]);
+
+  function resetPiece() {
+    setClientId(newClientId());
+    setPhotoUrl(null);
+    setAudioDataUrl(null);
+    setDraft(null);
+    setRecording(false);
+    setRecMs(0);
+    setError(null);
+  }
+
+  function resetSession() {
+    resetPiece();
+    setApproved([]);
+    setPublishById({});
+    setExitConfirm(null);
+    setMode("lobby");
+  }
+
+  async function uploadBlob(blob: Blob): Promise<string> {
     const body = new FormData();
     const file = new File([blob], `capture-${Date.now()}.jpg`, {
       type: blob.type || "image/jpeg",
     });
     body.set("file", file);
     body.set("bucket", "productImages");
-    body.set("pathPrefix", pathPrefix);
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      body,
-    });
+    body.set("pathPrefix", "ai-intake");
+    const response = await fetch("/api/upload", { method: "POST", body });
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as {
         error?: string;
@@ -305,41 +206,19 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
     setUploading(true);
     setError(null);
     try {
-      const url = await uploadBlob(blob, "ai-intake");
-      const target =
-        activeSlot && !activeSlot.image_url ? activeSlot : blankSlot();
-      const nextSlot: CaptureSlot = {
-        ...target,
-        image_url: url,
-        ai_status: aiConfigured ? "running" : "manual",
-      };
-
-      setSlots((prev) => {
-        if (activeSlot && !activeSlot.image_url) {
-          return prev.map((s) =>
-            s.client_id === activeSlot.client_id ? nextSlot : s,
-          );
-        }
-        return [...prev, nextSlot];
-      });
-      setSelectedId(nextSlot.client_id);
-      setSeriesClosed(false);
-      upsertDraft(
-        emptyIntakeDraft({
-          client_id: nextSlot.client_id,
-          images: [{ image_url: url, alt_text: null }],
-        }),
-      );
-      toast.message(
-        "Foto capturada — grave o áudio (opcional) ou tire a próxima",
-      );
-      void runAiForSlot(nextSlot);
+      const url = await uploadBlob(blob);
+      setPhotoUrl(url);
+      setAudioDataUrl(null);
+      setDraft(null);
+      setMode("record");
+      toast.message("Foto ok — grave o áudio da peça");
     } catch (uploadError) {
-      setError(
+      const message =
         uploadError instanceof Error
           ? uploadError.message
-          : "Falha ao enviar foto.",
-      );
+          : "Falha ao enviar foto.";
+      setError(message);
+      toast.error(message);
     } finally {
       setUploading(false);
     }
@@ -366,602 +245,13 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
     );
   }
 
-  function attachAudio(clientId: string, dataUrl: string) {
-    const note = "[áudio gravado]";
-    setSlots((prev) =>
-      prev.map((s) =>
-        s.client_id === clientId
-          ? {
-              ...s,
-              audio_data_url: dataUrl,
-              has_audio: true,
-              audio_note: s.audio_note || note,
-            }
-          : s,
-      ),
-    );
-    setDrafts((prev) =>
-      prev.map((d) =>
-        d.client_id === clientId
-          ? {
-              ...d,
-              audio_note: d.audio_note || note,
-              description: d.description || note,
-            }
-          : d,
-      ),
-    );
-    const slot = slots.find((s) => s.client_id === clientId);
-    if (slot?.image_url) {
-      void runAiForSlot({
-        ...slot,
-        audio_data_url: dataUrl,
-        has_audio: true,
-        audio_note: slot.audio_note || note,
-      });
-    }
-    toast.success(
-      "Áudio ok — tire a próxima foto ou toque em Gerar preview",
-    );
-    setSelectedId(null);
-  }
-
-  function ensureManualDrafts() {
-    const withPhoto = slots.filter((s) => s.image_url);
-    setDrafts((prev) => {
-      const byId = new Map(prev.map((d) => [d.client_id, d]));
-      return withPhoto.map((s) => {
-        const existing = byId.get(s.client_id);
-        if (existing) {
-          return {
-            ...existing,
-            images: [{ image_url: s.image_url!, alt_text: null }],
-            audio_note: s.audio_note || existing.audio_note || null,
-          };
-        }
-        return emptyIntakeDraft({
-          client_id: s.client_id,
-          images: [{ image_url: s.image_url!, alt_text: null }],
-          audio_note: s.audio_note || null,
-        });
-      });
-    });
-  }
-
-  function endSeriesAndPreview() {
-    if (capturedSlots.length === 0) {
-      toast.error("Capture ao menos uma foto");
-      return;
-    }
-    ensureManualDrafts();
-    setSeriesClosed(true);
-    setTab("preview");
-    setCameraOn(false);
-    if (!aiConfigured) {
-      setPreviewMode("manual");
-      setWarning(
-        "IA não configurada — preencha o preview manualmente e toque em Finalizar.",
-      );
-      toast.message("Preview manual aberto — revise e finalize");
-    } else {
-      const pendingAi = capturedSlots.some(
-        (s) => s.ai_status === "idle" || s.ai_status === "running",
-      );
-      toast.message(
-        pendingAi
-          ? "Gerando preview IA — revise os campos e finalize"
-          : "Preview pronto — revise e toque em Finalizar",
-      );
-    }
-    // Kick remaining AI best-effort without blocking preview
-    for (const slot of capturedSlots) {
-      if (slot.ai_status === "idle" || slot.ai_status === "running") {
-        void runAiForSlot(slot);
-      }
-    }
-  }
-
-  function updateDraft(clientId: string, patch: Partial<IntakeDraftItem>) {
-    setDrafts((prev) =>
-      prev.map((d) => (d.client_id === clientId ? { ...d, ...patch } : d)),
-    );
-  }
-
-  function handleConfirm() {
-    if (!canFinalizeIntakeDrafts(drafts)) return;
-    setError(null);
-    setConfirmOpen(false);
-
-    const prepared = drafts.map((draft) => ({
-      ...draft,
-      name: draft.name.trim(),
-      slug: draft.slug.trim() || slugifyProductName(draft.name),
-      price:
-        typeof draft.price === "string"
-          ? Number(draft.price.replace(",", "."))
-          : draft.price,
-      compare_at_price:
-        draft.compare_at_price === "" || draft.compare_at_price == null
-          ? null
-          : typeof draft.compare_at_price === "string"
-            ? Number(draft.compare_at_price.replace(",", "."))
-            : draft.compare_at_price,
-      tags: draft.tags ?? [],
-      images: draft.images,
-      category_name: draft.category_name ?? null,
-      publish: Boolean(publishById[draft.client_id]),
-    }));
-
-    startTransition(async () => {
-      const result = await confirmIntakeBatchAction({ items: prepared });
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      setBatchId(result.batchId);
-      setJobs(result.jobs);
-      setCreatedSummary(
-        result.created.map((c) => ({
-          staffCode: c.staffCode,
-          productId: c.productId,
-        })),
-      );
-      toast.success(
-        `${result.created.length} peça(s) cadastrada(s)`,
-      );
-    });
-  }
-
-  function resetSession() {
-    setBatchId(null);
-    setJobs([]);
-    setDrafts([]);
-    setCreatedSummary([]);
-    setSlots([]);
-    setSelectedId(null);
-    setSeriesClosed(false);
-    setTab("captura");
-    setPreviewMode(null);
-    setWarning(null);
-    setError(null);
-    setConfirmOpen(false);
-    setPublishById({});
-    setCameraOn(false);
-    setCameraError(null);
-  }
-
-  if (batchId) {
-    return (
-      <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <h2 className="font-heading text-base font-extrabold">
-            Peças cadastradas
-          </h2>
-          <ul className="mt-2 flex flex-col gap-1 text-sm">
-            {createdSummary.map((row) => (
-              <li key={row.productId}>
-                <Link
-                  href={`/admin/produtos/${row.productId}`}
-                  className="font-mono underline-offset-2 hover:underline"
-                >
-                  {row.staffCode}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <AdminLabelPrintQueue batchId={batchId} initialJobs={jobs} />
-        <Button type="button" variant="outline" onClick={resetSession}>
-          Nova série em massa
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex w-fit gap-0 rounded-2xl bg-black/5 p-1">
-          {(
-            [
-              { id: "captura" as const, label: "Captura" },
-              {
-                id: "preview" as const,
-                label:
-                  !seriesClosed && capturedSlots.length > 0
-                    ? aiConfigured
-                      ? `Gerar preview (${capturedSlots.length})`
-                      : `Abrir preview (${capturedSlots.length})`
-                    : `Preview (${capturedSlots.length})`,
-              },
-            ] as const
-          ).map((t) => {
-            const previewBlocked =
-              t.id === "preview" && capturedSlots.length === 0;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                disabled={previewBlocked}
-                onClick={() => {
-                  if (t.id === "preview") {
-                    if (seriesClosed) {
-                      setTab("preview");
-                      return;
-                    }
-                    endSeriesAndPreview();
-                    return;
-                  }
-                  setTab("captura");
-                }}
-                className={cn(
-                  "inline-flex h-11 items-center rounded-xl px-4 text-sm font-medium transition",
-                  tab === t.id
-                    ? "bg-white text-foreground shadow-sm"
-                    : "text-muted-foreground",
-                  previewBlocked && "cursor-not-allowed opacity-45",
-                )}
-                title={
-                  previewBlocked
-                    ? "Capture ao menos uma foto para abrir o preview"
-                    : !seriesClosed && t.id === "preview"
-                      ? "Encerra a série e gera o preview editável"
-                      : undefined
-                }
-              >
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!canFinalize}
-          onClick={() => setConfirmOpen(true)}
-          className="h-11 shrink-0 gap-2 px-4 border-[var(--brand-green)]/40 text-[var(--brand-green)]"
-          title={
-            canFinalize
-              ? undefined
-              : tab !== "preview"
-                ? "Primeiro gere o preview (ao menos uma foto)"
-                : "Cada peça precisa de foto para finalizar (campos incompletos → inativo)"
-          }
-        >
-          <CheckCircle2 className="size-4" />
-          Finalizar
-        </Button>
-      </div>
-
-      {error ? (
-        <p
-          className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-          role="alert"
-        >
-          {error}
-        </p>
-      ) : null}
-      {warning ? (
-        <p
-          className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
-          role="status"
-        >
-          {warning}
-        </p>
-      ) : null}
-
-      {tab === "captura" ? (
-        <CapturePane
-          slots={slots}
-          activeSlot={activeSlot}
-          cameraOn={cameraOn}
-          cameraError={cameraError}
-          uploading={uploading}
-          aiConfigured={aiConfigured}
-          videoRef={videoRef}
-          fileRef={fileRef}
-          onOpenCamera={() => {
-            setCameraError(null);
-            setCameraOn(true);
-          }}
-          onSnap={snapFromCamera}
-          onSelectSlot={setSelectedId}
-          onFile={(file) => {
-            if (file) void commitPhoto(file);
-          }}
-          onAttachAudio={attachAudio}
-          onEndSeries={endSeriesAndPreview}
-          capturedCount={capturedSlots.length}
-        />
-      ) : (
-        <PreviewPane
-          drafts={drafts}
-          categories={categoryOptions}
-          publishById={publishById}
-          onChange={updateDraft}
-          onCategoriesChange={setCategoryOptions}
-          onPublishChange={(clientId, publish) =>
-            setPublishById((prev) => ({ ...prev, [clientId]: publish }))
-          }
-          onRegenerate={(clientId) => {
-            const slot = slots.find((s) => s.client_id === clientId);
-            if (slot) void runAiForSlot(slot, { force: true });
-          }}
-        />
-      )}
-
-      {confirmOpen ? (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
-            <h2 className="text-lg font-semibold">
-              Confirmar cadastro em lote?
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {drafts.length} peça(s) serão criadas com código RP e entram na
-              fila de etiquetas.
-            </p>
-            <div className="mt-5 flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-12 flex-1"
-                onClick={() => setConfirmOpen(false)}
-              >
-                Voltar
-              </Button>
-              <Button
-                type="button"
-                className="h-12 flex-1 bg-[var(--brand-green)] hover:bg-[var(--brand-green)]/90"
-                disabled={pending}
-                onClick={handleConfirm}
-              >
-                {pending ? "Cadastrando…" : "Confirmar"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function CapturePane({
-  slots,
-  activeSlot,
-  cameraOn,
-  cameraError,
-  uploading,
-  aiConfigured,
-  videoRef,
-  fileRef,
-  onOpenCamera,
-  onSnap,
-  onSelectSlot,
-  onFile,
-  onAttachAudio,
-  onEndSeries,
-  capturedCount,
-}: {
-  slots: CaptureSlot[];
-  activeSlot: CaptureSlot | null;
-  cameraOn: boolean;
-  cameraError: string | null;
-  uploading: boolean;
-  aiConfigured: boolean;
-  videoRef: RefObject<HTMLVideoElement | null>;
-  fileRef: RefObject<HTMLInputElement | null>;
-  onOpenCamera: () => void;
-  onSnap: () => void;
-  onSelectSlot: (id: string) => void;
-  onFile: (file: File | null) => void;
-  onAttachAudio: (clientId: string, dataUrl: string) => void;
-  onEndSeries: () => void;
-  capturedCount: number;
-}) {
-  const previewCta = generatePreviewCtaLabel({
-    aiConfigured,
-    capturedCount,
-  });
-
-  return (
-    <div className="flex min-h-[min(70dvh,36rem)] flex-col gap-3 overflow-hidden">
-      {/* Reserved strip — always present to avoid layout jump */}
-      <div className="h-[4.5rem] shrink-0">
-        <ul className="flex h-full gap-2 overflow-x-auto rounded-2xl border border-dashed border-black/10 bg-white/60 px-2 py-2">
-          {slots.length === 0 ? (
-            <li className="flex h-full flex-1 items-center justify-center text-xs text-muted-foreground">
-              Série vazia — as miniaturas aparecem aqui
-            </li>
-          ) : (
-            slots.map((slot, idx) => {
-              const active = slot.client_id === activeSlot?.client_id;
-              return (
-                <li key={slot.client_id} className="shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => onSelectSlot(slot.client_id)}
-                    className={cn(
-                      "relative h-full w-14 overflow-hidden rounded-xl ring-2",
-                      active
-                        ? "ring-[var(--brand-green)]"
-                        : "ring-transparent",
-                    )}
-                  >
-                    {slot.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={slot.image_url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-full items-center justify-center bg-muted text-[10px]">
-                        —
-                      </span>
-                    )}
-                    <span className="absolute left-1 top-1 rounded bg-black/50 px-1 text-[9px] text-white">
-                      {idx + 1}
-                    </span>
-                    <span
-                      className={cn(
-                        "absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full",
-                        slot.has_audio
-                          ? "bg-[var(--brand-green)] text-white"
-                          : "bg-black/55 text-white",
-                      )}
-                    >
-                      {slot.has_audio ? (
-                        <Mic className="size-3" />
-                      ) : (
-                        <MicOff className="size-3" />
-                      )}
-                    </span>
-                    {slot.ai_status === "running" ? (
-                      <Sparkles className="absolute inset-0 m-auto size-4 text-white drop-shadow" />
-                    ) : null}
-                  </button>
-                </li>
-              );
-            })
-          )}
-        </ul>
-      </div>
-
-      <div className="relative min-h-0 flex-1 overflow-hidden rounded-3xl bg-zinc-900">
-        {cameraOn ? (
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 text-center text-white">
-            <Camera className="size-12 opacity-80" />
-            <button
-              type="button"
-              className="h-12 rounded-2xl bg-white px-6 text-sm font-semibold text-foreground"
-              onClick={onOpenCamera}
-            >
-              Abrir câmera
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 text-sm underline opacity-80"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-            >
-              <Upload className="size-3.5" />
-              {uploading ? "Enviando…" : "Enviar foto"}
-            </button>
-            <p className="max-w-xs text-xs text-white/70">
-              No celular: permita a câmera quando o navegador pedir. A câmera
-              exige HTTPS (ou localhost).
-            </p>
-            {cameraError ? (
-              <p
-                className="max-w-sm rounded-xl bg-white/10 px-3 py-2 text-xs text-white"
-                role="alert"
-              >
-                {cameraError}
-              </p>
-            ) : null}
-          </div>
-        )}
-        {cameraOn ? (
-          <button
-            type="button"
-            onClick={onSnap}
-            disabled={uploading}
-            className="absolute bottom-5 left-1/2 h-[4.25rem] w-[4.25rem] -translate-x-1/2 rounded-full border-[5px] border-white bg-white/25 disabled:opacity-50"
-            aria-label="Capturar foto"
-          />
-        ) : null}
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/avif"
-          capture="environment"
-          className="sr-only"
-          disabled={uploading}
-          onChange={(event) => {
-            onFile(event.target.files?.[0] ?? null);
-            event.target.value = "";
-          }}
-        />
-      </div>
-
-      <p className="min-h-5 shrink-0 text-center text-sm text-muted-foreground">
-        {activeSlot?.image_url ? (
-          <>
-            Slot{" "}
-            <strong className="text-foreground">
-              #
-              {slots.findIndex((s) => s.client_id === activeSlot.client_id) + 1}
-            </strong>
-            {activeSlot.has_audio ? " · áudio ✓" : " · áudio opcional"}
-            {activeSlot.ai_status === "running" ? " · IA…" : null}
-          </>
-        ) : (
-          "Capture a foto; em seguida segure o microfone (mobile) ou toque (desktop)"
-        )}
-      </p>
-
-      <div className="flex shrink-0 items-center justify-between gap-3 pb-2">
-        <Button
-          type="button"
-          className="h-12 min-w-0 flex-1 bg-[var(--brand-green)] text-white hover:bg-[var(--brand-green)]/90"
-          disabled={capturedCount === 0 || uploading}
-          onClick={onEndSeries}
-        >
-          <Sparkles className="mr-1.5 size-4 shrink-0" />
-          <span className="truncate">{previewCta}</span>
-        </Button>
-        <div className="relative">
-          <HoldLockMic
-            disabled={!activeSlot?.image_url || uploading}
-            onRecorded={(dataUrl) => {
-              if (activeSlot) onAttachAudio(activeSlot.client_id, dataUrl);
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HoldLockMic({
-  disabled,
-  onRecorded,
-}: {
-  disabled: boolean;
-  onRecorded: (dataUrl: string) => void;
-}) {
-  const [recording, setRecording] = useState(false);
-  const [locked, setLocked] = useState(false);
-  const [holdMs, setHoldMs] = useState(0);
-  const [hint, setHint] = useState<MicHint>("none");
-  const [desktopArmed, setDesktopArmed] = useState(false);
-  const origin = useRef<{ x: number; y: number } | null>(null);
-  const holdTimer = useRef<number | null>(null);
-  const mediaRecorder = useRef<MediaRecorder | null>(null);
-  const chunks = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const modeRef = useRef<"hold" | "tap" | null>(null);
-
-  function clearTimer() {
-    if (holdTimer.current) {
-      window.clearInterval(holdTimer.current);
-      holdTimer.current = null;
-    }
-  }
-
   function stopTracks() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }
 
-  async function startRecorder(): Promise<boolean> {
+  async function startRecording() {
+    if (!photoUrl || recording) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -972,35 +262,25 @@ function HoldLockMic({
         if (event.data.size > 0) chunks.current.push(event.data);
       };
       recorder.start();
-      return true;
+      setRecMs(0);
+      setRecording(true);
     } catch {
       toast.error("Microfone indisponível");
-      return false;
     }
   }
 
-  function finish(ok: boolean) {
-    clearTimer();
-    setRecording(false);
-    setLocked(false);
-    setHoldMs(0);
-    setHint("none");
-    setDesktopArmed(false);
-    origin.current = null;
-    modeRef.current = null;
-
+  function stopRecording() {
     const recorder = mediaRecorder.current;
     mediaRecorder.current = null;
+    setRecording(false);
     if (!recorder) {
       stopTracks();
-      if (!ok) toast.message("Gravação cancelada");
       return;
     }
-
     recorder.onstop = () => {
       stopTracks();
-      if (!ok || chunks.current.length === 0) {
-        toast.message("Gravação cancelada");
+      if (chunks.current.length === 0) {
+        toast.message("Gravação vazia");
         return;
       }
       const blob = new Blob(chunks.current, {
@@ -1008,271 +288,577 @@ function HoldLockMic({
       });
       const reader = new FileReader();
       reader.onload = () => {
-        if (typeof reader.result === "string") onRecorded(reader.result);
+        if (typeof reader.result === "string") {
+          setAudioDataUrl(reader.result);
+          setMode("confirm");
+        }
       };
       reader.readAsDataURL(blob);
     };
     if (recorder.state !== "inactive") recorder.stop();
-    else {
-      stopTracks();
-      if (!ok) toast.message("Gravação cancelada");
-    }
+    else stopTracks();
   }
 
-  async function onPointerDown(e: ReactPointerEvent<HTMLButtonElement>) {
-    if (disabled) {
-      toast.error("Capture a foto primeiro");
+  function toggleRecording() {
+    if (recording) stopRecording();
+    else void startRecording();
+  }
+
+  const runAi = useCallback(
+    async (audioUrl: string | null) => {
+      if (!photoUrl) return;
+      setMode("working");
+      setError(null);
+      try {
+        const result = await generateIntakePreviewAction({
+          items: [
+            {
+              client_id: clientId,
+              images: [{ image_url: photoUrl, alt_text: null }],
+              audio_data_url: audioUrl,
+              audio_note: audioUrl ? "[áudio gravado]" : null,
+            },
+          ],
+        });
+        if (!result.ok || !result.drafts[0]) {
+          setDraft(
+            emptyIntakeDraft({
+              client_id: clientId,
+              images: [{ image_url: photoUrl, alt_text: null }],
+              audio_note: audioUrl ? "[áudio gravado]" : null,
+            }),
+          );
+          toast.message("Preencha o preview manualmente");
+        } else {
+          setDraft(result.drafts[0]);
+          if (result.warning) toast.message(result.warning);
+        }
+        setMode("preview");
+      } catch {
+        setDraft(
+          emptyIntakeDraft({
+            client_id: clientId,
+            images: [{ image_url: photoUrl, alt_text: null }],
+            audio_note: audioUrl ? "[áudio gravado]" : null,
+          }),
+        );
+        toast.error("Falha na IA — preencha manualmente");
+        setMode("preview");
+      }
+    },
+    [clientId, photoUrl],
+  );
+
+  function confirmSendAudio() {
+    void runAi(audioDataUrl);
+  }
+
+  function skipAudioManual() {
+    void runAi(null);
+  }
+
+  function approveAndNext() {
+    if (!draft) return;
+    if (!draft.images[0]?.image_url) {
+      toast.error("Peça sem foto");
       return;
     }
+    setApproved((prev) => [...prev, draft]);
+    resetPiece();
+    setMode("camera");
+    toast.success("Peça aprovada — próxima");
+  }
 
-    const holdMode = isHoldLockPointer(e.pointerType);
+  function draftsToCommit(): IntakeDraftItem[] {
+    if (mode === "preview" && draft) {
+      const already = approved.some((d) => d.client_id === draft.client_id);
+      return already ? approved : [...approved, draft];
+    }
+    return approved;
+  }
 
-    if (!holdMode) {
-      // Desktop tap toggle
-      if (recording || desktopArmed) {
-        finish(true);
+  function handleFinalize() {
+    const items = draftsToCommit();
+    if (items.length === 0) {
+      toast.error("Aprove ao menos uma peça antes de finalizar");
+      setExitConfirm(null);
+      return;
+    }
+    if (!canFinalizeIntakeDrafts(items)) {
+      toast.error("Cada peça precisa de foto");
+      setExitConfirm(null);
+      return;
+    }
+    setExitConfirm(null);
+    setError(null);
+
+    const prepared = items.map((item) => ({
+      ...item,
+      name: item.name.trim(),
+      slug: item.slug.trim() || slugifyProductName(item.name),
+      price:
+        typeof item.price === "string"
+          ? Number(item.price.replace(",", "."))
+          : item.price,
+      compare_at_price:
+        item.compare_at_price === "" || item.compare_at_price == null
+          ? null
+          : typeof item.compare_at_price === "string"
+            ? Number(item.compare_at_price.replace(",", "."))
+            : item.compare_at_price,
+      tags: item.tags ?? [],
+      images: item.images,
+      category_name: item.category_name ?? null,
+      publish: Boolean(publishById[item.client_id]),
+    }));
+
+    startTransition(async () => {
+      const result = await confirmIntakeBatchAction({ items: prepared });
+      if (!result.ok) {
+        setError(result.error);
+        toast.error(result.error);
         return;
       }
-      modeRef.current = "tap";
-      const ok = await startRecorder();
-      if (!ok) return;
-      setRecording(true);
-      setDesktopArmed(true);
-      setHoldMs(0);
-      holdTimer.current = window.setInterval(() => {
-        setHoldMs((m) => m + 100);
-      }, 100);
-      toast.message("Gravando — toque de novo para enviar");
-      return;
-    }
-
-    // Mobile hold+lock
-    modeRef.current = "hold";
-    origin.current = { x: e.clientX, y: e.clientY };
-    const ok = await startRecorder();
-    if (!ok) return;
-    setRecording(true);
-    setLocked(false);
-    setHoldMs(0);
-    setHint("none");
-    holdTimer.current = window.setInterval(() => {
-      setHoldMs((m) => m + 100);
-    }, 100);
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      toast.success(
+        `${result.created.length} peça(s) cadastrada(s) com sucesso`,
+      );
+      router.push("/admin/produtos");
+    });
   }
 
-  function onPointerMove(e: ReactPointerEvent<HTMLButtonElement>) {
-    if (modeRef.current !== "hold" || !recording || !origin.current || locked) {
-      return;
-    }
-    const dx = e.clientX - origin.current.x;
-    const dy = e.clientY - origin.current.y;
-    if (shouldLockFromDelta(dy)) {
-      setLocked(true);
-      setHint("lock");
-      toast.message("Gravação travada — toque X para cancelar");
-      return;
-    }
-    setHint(resolveHoldLockHint(dx, dy, false));
+  const pieceIndex = approved.length + 1;
+
+  // —— Lobby (shell padrão visível) ——
+  if (mode === "lobby") {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-6 px-4 py-10 text-center">
+        <div className="rounded-full bg-[var(--brand-green)]/15 p-5">
+          <Camera className="size-10 text-[var(--brand-green)]" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold">Sessão de cadastro</h2>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Uma peça por vez: foto → áudio → confirmar → revisar → próxima.
+            Finalizar grava o lote e volta para Produtos.
+          </p>
+        </div>
+        {!aiConfigured ? (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            IA não configurada — o preview será manual após a foto/áudio.
+          </p>
+        ) : null}
+        <Button
+          type="button"
+          className="h-12 w-full max-w-xs gap-2 bg-[var(--brand-green)] hover:bg-[var(--brand-green)]/90"
+          onClick={() => {
+            resetPiece();
+            setApproved([]);
+            setPublishById({});
+            setMode("camera");
+          }}
+        >
+          Iniciar sessão
+          <ArrowRight className="size-4" />
+        </Button>
+      </div>
+    );
   }
 
-  function onPointerUp(e: ReactPointerEvent<HTMLButtonElement>) {
-    if (modeRef.current !== "hold" || !recording) return;
-    if (locked) return;
-    const dx = origin.current ? e.clientX - origin.current.x : 0;
-    if (shouldCancelOnRelease(dx, hint)) {
-      finish(false);
-      return;
-    }
-    if (holdMs > 200) finish(true);
-    else finish(false);
-  }
-
+  // —— Session chrome ——
   return (
-    <div className="relative flex items-center gap-2">
-      <VoiceScriptTip visible={recording || desktopArmed} />
-      {recording ? (
-        <span className="absolute -top-10 right-0 whitespace-nowrap rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white">
-          {desktopArmed
-            ? `Gravando ${Math.floor(holdMs / 1000)}s · toque p/ enviar`
-            : locked
-              ? "Travado · X cancela"
-              : hint === "cancel"
-                ? "← Solte para cancelar"
-                : hint === "lock"
-                  ? "↑ Solte para travar"
-                  : `Gravando ${Math.floor(holdMs / 1000)}s · ↑ trava · ← cancela`}
-        </span>
-      ) : null}
-      {locked ? (
+    <div className="fixed inset-0 z-[60] flex flex-col bg-zinc-950 text-white">
+      <header className="flex items-center justify-between px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
           type="button"
-          onClick={() => finish(false)}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-foreground shadow ring-1 ring-black/10"
-          aria-label="Cancelar gravação"
+          className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-sm text-white/80"
+          onClick={() => setExitConfirm("cancel")}
+          disabled={pending || recording}
         >
-          <X className="size-5" />
+          <X className="size-4" />
+          Cancelar
         </button>
-      ) : null}
-      <button
-        type="button"
-        disabled={disabled && !recording}
-        onPointerDown={(e) => void onPointerDown(e)}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={() => {
-          if (modeRef.current === "hold") finish(false);
-        }}
-        className={cn(
-          "flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition",
-          recording
-            ? "scale-105 bg-[var(--brand-pink)]"
-            : "bg-[var(--brand-pink)]",
-          hint === "cancel" && "opacity-50",
-          disabled && !recording && "opacity-40",
-        )}
-        aria-label="Gravar áudio"
-      >
-        <Mic className="size-7" />
-      </button>
-      {locked ? (
+        <ModeDots mode={mode} />
         <button
           type="button"
-          onClick={() => finish(true)}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-green)] text-white shadow"
-          aria-label="Enviar áudio"
+          className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-sm font-medium text-[var(--brand-green)] disabled:opacity-40"
+          onClick={() => setExitConfirm("finish")}
+          disabled={pending || recording}
         >
-          <CheckCircle2 className="size-5" />
+          <Check className="size-4" />
+          Finalizar
         </button>
+      </header>
+
+      {error ? (
+        <p className="mx-3 mb-2 rounded-xl bg-red-500/20 px-3 py-2 text-xs text-red-100">
+          {error}
+        </p>
       ) : null}
+
+      {mode === "camera" ? (
+        <div className="relative flex flex-1 flex-col">
+          <div className="relative flex-1 bg-zinc-800">
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="pointer-events-none absolute inset-8 rounded-[2.5rem] border border-white/35" />
+            {cameraError ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-zinc-900/90 px-6 text-center">
+                <Camera className="size-12 opacity-50" />
+                <p className="text-sm text-white/80">{cameraError}</p>
+              </div>
+            ) : null}
+          </div>
+          <div className="flex flex-col items-center gap-3 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
+            <p className="text-xs text-white/60">
+              Peça #{pieceIndex} · Passo 1 · Foto
+              {approved.length > 0
+                ? ` · ${approved.length} aprovada(s)`
+                : ""}
+            </p>
+            <button
+              type="button"
+              disabled={uploading}
+              className="h-[4.75rem] w-[4.75rem] rounded-full border-[6px] border-white bg-white/20 disabled:opacity-50"
+              onClick={snapFromCamera}
+              aria-label="Capturar foto"
+            />
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 text-xs text-white/70 underline"
+              disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload className="size-3.5" />
+              {uploading ? "Enviando…" : "Enviar foto"}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              capture="environment"
+              className="sr-only"
+              disabled={uploading}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void commitPhoto(file);
+                event.target.value = "";
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {mode === "record" || mode === "confirm" ? (
+        <div className="relative flex flex-1 flex-col">
+          <div className="relative flex-1">
+            {photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={photoUrl}
+                alt=""
+                className={cn(
+                  "h-full w-full object-cover",
+                  recording && "opacity-60",
+                )}
+              />
+            ) : null}
+            {recording ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-red-700/75">
+                <div className="flex h-16 items-end gap-1">
+                  {Array.from({ length: 14 }).map((_, i) => (
+                    <span
+                      key={i}
+                      className="w-1.5 animate-pulse rounded-full bg-white"
+                      style={{
+                        height: `${10 + ((i * 19) % 36)}px`,
+                        animationDelay: `${i * 40}ms`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <p className="text-lg font-bold tracking-wide">
+                  Gravando… {Math.floor(recMs / 1000)}s
+                </p>
+                <ul className="flex max-w-xs flex-wrap justify-center gap-1.5 px-4">
+                  {VOICE_SCRIPT_ITEMS.slice(0, 6).map((item) => (
+                    <li
+                      key={item.id}
+                      className="rounded-full bg-white/15 px-2 py-0.5 text-[10px]"
+                    >
+                      {item.label}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {mode === "confirm" && !recording ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-end bg-gradient-to-t from-black/85 via-black/35 to-transparent p-6 pb-8">
+                <p className="mb-1 text-sm font-semibold">Áudio pronto</p>
+                <p className="mb-4 text-center text-xs text-white/70">
+                  Confirme para processar com IA (STT + LLM). Evita envios
+                  acidentais.
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="relative flex flex-col items-center gap-3 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+            {mode === "record" && !recording ? (
+              <>
+                <p className="text-xs text-white/60">
+                  Peça #{pieceIndex} · Passo 2 · Áudio
+                </p>
+                <div className="relative">
+                  <VoiceScriptTip visible />
+                  <button
+                    type="button"
+                    onClick={toggleRecording}
+                    className="flex h-16 w-16 flex-col items-center justify-center rounded-full bg-red-600 shadow-xl"
+                    aria-label="Gravar áudio"
+                  >
+                    <Mic className="size-6" />
+                    <span className="text-[9px] font-bold">Gravar</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="text-xs text-white/60 underline"
+                  onClick={skipAudioManual}
+                >
+                  Sem áudio — preencher manual
+                </button>
+                <button
+                  type="button"
+                  className="text-xs text-white/50 underline"
+                  onClick={() => {
+                    setPhotoUrl(null);
+                    setMode("camera");
+                  }}
+                >
+                  Trocar foto
+                </button>
+              </>
+            ) : null}
+
+            {recording ? (
+              <button
+                type="button"
+                onClick={toggleRecording}
+                className="flex h-16 min-w-16 flex-col items-center justify-center rounded-full bg-white text-zinc-900 shadow-xl"
+                aria-label="Parar gravação"
+                aria-pressed
+              >
+                <Square className="size-5 fill-current" />
+                <span className="text-[9px] font-bold">Parar</span>
+              </button>
+            ) : null}
+
+            {mode === "confirm" ? (
+              <div className="flex w-full max-w-sm gap-2">
+                <button
+                  type="button"
+                  className="h-12 flex-1 rounded-2xl border border-white/30 text-sm font-medium"
+                  onClick={() => {
+                    setAudioDataUrl(null);
+                    setRecMs(0);
+                    setMode("record");
+                  }}
+                >
+                  Regravar
+                </button>
+                <button
+                  type="button"
+                  className="h-12 flex-[1.4] rounded-2xl bg-[var(--brand-green)] text-sm font-semibold text-white"
+                  onClick={confirmSendAudio}
+                >
+                  Enviar para IA
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {mode === "working" ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3">
+          <Sparkles className="size-10 animate-pulse text-[var(--brand-green)]" />
+          <p className="text-sm font-semibold">Processando STT + LLM…</p>
+          <p className="text-xs text-white/50">Peça #{pieceIndex}</p>
+        </div>
+      ) : null}
+
+      {mode === "preview" && draft ? (
+        <div className="flex flex-1 flex-col overflow-hidden bg-zinc-100 text-foreground">
+          <div className="border-b border-black/5 bg-white px-4 py-2 text-xs text-muted-foreground">
+            Peça #{pieceIndex} · Passo 3 · Revisar e editar
+            {approved.length > 0
+              ? ` · ${approved.length} já aprovada(s)`
+              : ""}
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 pb-28">
+            <SessionDraftForm
+              draft={draft}
+              categories={categoryOptions}
+              publish={Boolean(publishById[draft.client_id])}
+              onChange={(patch) => setDraft({ ...draft, ...patch })}
+              onCategoriesChange={setCategoryOptions}
+              onPublishChange={(publish) =>
+                setPublishById((prev) => ({
+                  ...prev,
+                  [draft.client_id]: publish,
+                }))
+              }
+              onRegenerate={() => {
+                if (audioDataUrl) void runAi(audioDataUrl);
+                else toast.message("Sem áudio para regenerar");
+              }}
+            />
+          </div>
+          <div className="border-t border-black/5 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <button
+              type="button"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-green)] text-sm font-semibold text-white"
+              onClick={approveAndNext}
+            >
+              <Check className="size-4" />
+              Aprovar · próxima peça
+              <ArrowRight className="size-4" />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <ConfirmSheet
+        open={exitConfirm === "cancel"}
+        title="Cancelar sessão?"
+        body="Descarta a peça em andamento e as aprovadas ainda não finalizadas. Nada será gravado."
+        confirmLabel="Cancelar sessão"
+        destructive
+        onCancel={() => setExitConfirm(null)}
+        onConfirm={resetSession}
+      />
+      <ConfirmSheet
+        open={exitConfirm === "finish"}
+        title="Finalizar e cadastrar?"
+        body={`${draftsToCommit().length} peça(s) serão criadas (inativas, salvo “Publicar”). Você será levado a Produtos.`}
+        confirmLabel={pending ? "Cadastrando…" : "Finalizar"}
+        onCancel={() => setExitConfirm(null)}
+        onConfirm={handleFinalize}
+      />
     </div>
   );
 }
 
-function PreviewPane({
-  drafts,
-  categories,
-  publishById,
-  onChange,
-  onCategoriesChange,
-  onPublishChange,
-  onRegenerate,
-}: {
-  drafts: IntakeDraftItem[];
-  categories: CategoryOption[];
-  publishById: Record<string, boolean>;
-  onChange: (clientId: string, patch: Partial<IntakeDraftItem>) => void;
-  onCategoriesChange: (next: CategoryOption[]) => void;
-  onPublishChange: (clientId: string, publish: boolean) => void;
-  onRegenerate: (clientId: string) => void;
-}) {
-  const brandOptions = useMemo(() => {
-    const fromDrafts = drafts
-      .map((d) => d.brand?.trim())
-      .filter((b): b is string => Boolean(b));
-    return Array.from(new Set([...FEATURED_BRANDS, ...fromDrafts])).sort(
-      (a, b) => a.localeCompare(b, "pt-BR"),
-    );
-  }, [drafts]);
-
-  if (drafts.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">Nenhuma peça na série.</p>
-    );
-  }
-
+function ModeDots({ mode }: { mode: Mode }) {
+  const step =
+    mode === "camera"
+      ? 0
+      : mode === "record" || mode === "confirm"
+        ? 1
+        : 2;
   return (
-    <section className="pb-4" aria-label="Preview das peças">
-      <Carousel
-        opts={{ align: "start", containScroll: "trimSnaps" }}
-        className="w-full"
-      >
-        {drafts.length > 1 ? (
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">
-              {drafts.length} peças · deslize para revisar
-            </p>
-            <div className="flex shrink-0 items-center gap-2">
-              <CarouselPrevious
-                className="static inset-auto size-9 translate-none border-border bg-card shadow-sm"
-                aria-label="Peça anterior"
-              />
-              <CarouselNext
-                className="static inset-auto size-9 translate-none border-border bg-card shadow-sm"
-                aria-label="Próxima peça"
-              />
-            </div>
-          </div>
-        ) : null}
-        <CarouselContent className="-ml-3">
-          {drafts.map((draft, index) => (
-            <CarouselItem
-              key={draft.client_id}
-              className="pl-3 basis-[min(100%,22rem)] sm:basis-[20rem]"
-            >
-              <PreviewCard
-                index={index}
-                draft={draft}
-                categories={categories}
-                brandOptions={brandOptions}
-                publish={Boolean(publishById[draft.client_id])}
-                onChange={(patch) => onChange(draft.client_id, patch)}
-                onCategoriesChange={onCategoriesChange}
-                onPublishChange={(publish) =>
-                  onPublishChange(draft.client_id, publish)
-                }
-                onRegenerate={() => onRegenerate(draft.client_id)}
-              />
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-      </Carousel>
-    </section>
+    <div className="flex items-center gap-1.5" aria-label={`Passo ${step + 1}`}>
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className={cn(
+            "h-1.5 w-6 rounded-full",
+            i === step ? "bg-white" : "bg-white/25",
+          )}
+        />
+      ))}
+    </div>
   );
 }
 
-function genderAccentClass(gender: IntakeDraftItem["gender"]): string {
-  if (gender === "menina") return "text-brand-pink";
-  if (gender === "menino") return "text-brand-blue";
-  return "text-brand-green";
+function ConfirmSheet({
+  open,
+  title,
+  body,
+  confirmLabel,
+  destructive,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  body: string;
+  confirmLabel: string;
+  destructive?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 p-4 sm:items-center">
+      <div
+        role="dialog"
+        aria-modal
+        className="w-full max-w-sm rounded-3xl bg-white p-5 text-foreground shadow-2xl"
+      >
+        <h2 className="text-base font-semibold">{title}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            className="h-12 flex-1 rounded-2xl border border-border text-sm font-medium"
+            onClick={onCancel}
+          >
+            Voltar
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "h-12 flex-1 rounded-2xl text-sm font-semibold text-white",
+              destructive
+                ? "bg-[var(--brand-pink)]"
+                : "bg-[var(--brand-green)]",
+            )}
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function PreviewCard({
-  index,
+function SessionDraftForm({
   draft,
   categories,
-  brandOptions,
   publish,
   onChange,
   onCategoriesChange,
   onPublishChange,
   onRegenerate,
 }: {
-  index: number;
   draft: IntakeDraftItem;
   categories: CategoryOption[];
-  brandOptions: string[];
   publish: boolean;
   onChange: (patch: Partial<IntakeDraftItem>) => void;
   onCategoriesChange: (next: CategoryOption[]) => void;
   onPublishChange: (publish: boolean) => void;
   onRegenerate: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
   const [creatingBrand, setCreatingBrand] = useState(false);
   const [newBrand, setNewBrand] = useState("");
   const [creatingCat, setCreatingCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [creatingCatPending, setCreatingCatPending] = useState(false);
 
+  const brandOptions = useMemo(() => {
+    const fromDraft = draft.brand?.trim();
+    return Array.from(
+      new Set([...FEATURED_BRANDS, ...(fromDraft ? [fromDraft] : [])]),
+    ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [draft.brand]);
+
   const cover = draft.images[0]?.image_url ?? null;
-  const priceNum = Number.parseFloat(
-    String(draft.price ?? "").replace(",", "."),
-  );
-  const priceLabel = Number.isFinite(priceNum)
-    ? formatPrice(priceNum)
-    : "Preço pendente";
-  const metaLine = [draft.size_label, draft.brand].filter(Boolean).join(" · ");
   const conflicts = validateIntakeDraft(draft);
   const hasConflict = conflicts.length > 0;
   const gate = evaluatePublishGate({
@@ -1282,22 +868,6 @@ function PreviewCard({
     images: draft.images,
     hasConflict,
   });
-  const chipParts = [
-    draft.category_name,
-    draft.brand,
-    draft.tags.find((t) => t.length < 20),
-    draft.size_label ? `Tam. ${draft.size_label}` : null,
-    draft.size_group ? SIZE_GROUP_LABELS[draft.size_group] : null,
-  ].filter(Boolean) as string[];
-
-  const fieldLocked = !editing;
-  const selectTriggerClass = cn(
-    "w-full",
-    fieldLocked && "disabled:cursor-default disabled:opacity-100",
-  );
-  const inputClass = cn(
-    fieldLocked && "cursor-default bg-muted/40 focus-visible:ring-0",
-  );
 
   async function handleCreateCategory() {
     const trimmed = newCatName.trim();
@@ -1322,143 +892,45 @@ function PreviewCard({
     }
   }
 
-  function commitNewBrand() {
-    const trimmed = newBrand.trim();
-    if (!trimmed) {
-      toast.error("Informe o nome da marca.");
-      return;
-    }
-    onChange({ brand: trimmed });
-    setNewBrand("");
-    setCreatingBrand(false);
-  }
-
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex items-center justify-between gap-2 px-3 pt-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <h3 className="text-sm font-semibold">Peça {index + 1}</h3>
-          {draft.audio_note ? (
-            <span className="truncate text-[11px] text-muted-foreground">
-              Com áudio/nota
-            </span>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {draft.audio_note ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1 px-2 text-xs"
-              onClick={onRegenerate}
-              title="Regenerar draft a partir do áudio"
-            >
-              <Sparkles className="size-3.5" />
-              Regenerar
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant={editing ? "default" : "outline"}
-            size="sm"
-            className="h-8 shrink-0 gap-1.5 px-2.5"
-            onClick={() => {
-              if (editing) {
-                setCreatingBrand(false);
-                setCreatingCat(false);
-              }
-              setEditing((v) => !v);
-            }}
-            aria-pressed={editing}
-          >
-          {editing ? (
-            <>
-              <Check className="size-3.5" />
-              Pronto
-            </>
-          ) : (
-            <>
-              <Pencil className="size-3.5" />
-              Editar
-            </>
-          )}
+    <div className="mx-auto flex max-w-lg flex-col gap-4">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-muted">
+        {cover ? (
+          <Image
+            src={cover}
+            alt={draft.name || "Peça"}
+            fill
+            unoptimized
+            className="object-cover"
+            sizes="100vw"
+          />
+        ) : null}
+      </div>
+
+      {hasConflict ? (
+        <p className="text-xs text-amber-700" role="status">
+          ⚠ {conflicts[0]?.message} — revise antes de publicar
+        </p>
+      ) : null}
+
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-1 px-2 text-xs"
+          onClick={onRegenerate}
+        >
+          <Sparkles className="size-3.5" />
+          Regenerar
         </Button>
-        </div>
       </div>
 
-      <div className="space-y-1 px-3 pt-2">
-        {chipParts.length > 0 ? (
-          <p className="text-xs font-medium leading-snug text-foreground">
-            {chipParts.join(" · ")}
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Aguardando dados do áudio…
-          </p>
-        )}
-        {hasConflict ? (
-          <p className="text-[11px] text-amber-700" role="status">
-            ⚠ {conflicts[0]?.message} — revise antes de publicar
-          </p>
-        ) : draft.audio_note ? (
-          <p className="text-[11px] text-muted-foreground">
-            ✓ Identificado automaticamente — revise e publique se pronto
-          </p>
-        ) : null}
-        {draft.category_name && !draft.category_id ? (
-          <p className="text-[11px] text-muted-foreground">
-            Categoria nova “{draft.category_name}” será criada no Finalizar
-          </p>
-        ) : null}
-      </div>
-
-      <div className="relative mx-3 mt-3 overflow-hidden rounded-xl bg-muted">
-        <div className="relative aspect-3/4 w-full">
-          {cover ? (
-            <Image
-              src={cover}
-              alt={draft.name || `Peça ${index + 1}`}
-              fill
-              unoptimized
-              className="object-cover"
-              sizes="(max-width: 640px) 90vw, 320px"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Sem foto
-            </div>
-          )}
-          <Badge className="absolute top-2 left-2 z-10 h-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground uppercase shadow-sm">
-            Única
-          </Badge>
-        </div>
-        <div className="space-y-0.5 px-2.5 py-2.5">
-          {metaLine ? (
-            <p
-              className={cn(
-                "truncate text-sm font-semibold tracking-wide",
-                genderAccentClass(draft.gender),
-              )}
-            >
-              {metaLine}
-            </p>
-          ) : null}
-          <p className="truncate text-sm font-medium text-foreground/90">
-            {draft.name || "Sem nome"}
-          </p>
-          <p className="text-base font-bold text-primary">{priceLabel}</p>
-        </div>
-      </div>
-
-      <div className="mt-3 grid flex-1 grid-cols-2 gap-2.5 px-3 pb-3">
+      <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 flex flex-col gap-1">
           <Label className="text-xs text-muted-foreground">Nome *</Label>
           <Input
             value={draft.name}
-            readOnly={fieldLocked}
-            tabIndex={fieldLocked ? -1 : undefined}
-            className={inputClass}
             onChange={(event) => {
               const name = event.target.value;
               onChange({ name, slug: slugifyProductName(name) });
@@ -1467,79 +939,27 @@ function PreviewCard({
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs text-muted-foreground">Preço (R$) *</Label>
+          <Label className="text-xs text-muted-foreground">Preço (R$)</Label>
           <Input
             inputMode="decimal"
             value={draft.price ?? ""}
-            readOnly={fieldLocked}
-            tabIndex={fieldLocked ? -1 : undefined}
-            className={inputClass}
             onChange={(event) => onChange({ price: event.target.value })}
           />
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs text-muted-foreground">Marca</Label>
-          <Select
-            value={creatingBrand ? "__new__" : (draft.brand ?? "none")}
-            disabled={fieldLocked}
-            onValueChange={(value) => {
-              if (value === "__new__") {
-                setCreatingBrand(true);
-                setNewBrand(draft.brand ?? "");
-                return;
-              }
-              setCreatingBrand(false);
-              onChange({ brand: value === "none" ? null : value });
-            }}
-          >
-            <SelectTrigger className={selectTriggerClass} size="sm">
-              <SelectValue placeholder="Sem marca" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Sem marca</SelectItem>
-              {brandOptions.map((brand) => (
-                <SelectItem key={brand} value={brand}>
-                  {brand}
-                </SelectItem>
-              ))}
-              <SelectItem value="__new__">+ Nova marca…</SelectItem>
-            </SelectContent>
-          </Select>
-          {creatingBrand && editing ? (
-            <div className="mt-1 flex gap-1.5">
-              <Input
-                placeholder="Nome da marca"
-                value={newBrand}
-                onChange={(event) => setNewBrand(event.target.value)}
-                className="h-8"
-              />
-              <Button
-                type="button"
-                size="sm"
-                className="h-8 shrink-0 px-2.5"
-                onClick={commitNewBrand}
-              >
-                Usar
-              </Button>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label className="text-xs text-muted-foreground">Tamanho *</Label>
+          <Label className="text-xs text-muted-foreground">Tamanho</Label>
           <Select
             value={
               isProductSizeLabel(draft.size_label) ? draft.size_label : undefined
             }
-            disabled={fieldLocked}
             onValueChange={(value) => {
               if (value && isProductSizeLabel(value)) {
                 onChange({ size_label: value });
               }
             }}
           >
-            <SelectTrigger className={selectTriggerClass} size="sm">
+            <SelectTrigger className="w-full" size="sm">
               <SelectValue placeholder="RN, P, M ou G" />
             </SelectTrigger>
             <SelectContent>
@@ -1553,17 +973,71 @@ function PreviewCard({
         </div>
 
         <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">Marca</Label>
+          <Select
+            value={creatingBrand ? "__new__" : (draft.brand ?? "none")}
+            onValueChange={(value) => {
+              if (value === "__new__") {
+                setCreatingBrand(true);
+                setNewBrand(draft.brand ?? "");
+                return;
+              }
+              setCreatingBrand(false);
+              onChange({ brand: value === "none" ? null : value });
+            }}
+          >
+            <SelectTrigger className="w-full" size="sm">
+              <SelectValue placeholder="Sem marca" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sem marca</SelectItem>
+              {brandOptions.map((brand) => (
+                <SelectItem key={brand} value={brand}>
+                  {brand}
+                </SelectItem>
+              ))}
+              <SelectItem value="__new__">+ Nova marca…</SelectItem>
+            </SelectContent>
+          </Select>
+          {creatingBrand ? (
+            <div className="mt-1 flex gap-1.5">
+              <Input
+                placeholder="Nome da marca"
+                value={newBrand}
+                onChange={(event) => setNewBrand(event.target.value)}
+                className="h-8"
+              />
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 shrink-0 px-2.5"
+                onClick={() => {
+                  const trimmed = newBrand.trim();
+                  if (!trimmed) {
+                    toast.error("Informe o nome da marca.");
+                    return;
+                  }
+                  onChange({ brand: trimmed });
+                  setCreatingBrand(false);
+                }}
+              >
+                Usar
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col gap-1">
           <Label className="text-xs text-muted-foreground">Grupo</Label>
           <Select
             value={draft.size_group}
-            disabled={fieldLocked}
             onValueChange={(value) =>
               onChange({
                 size_group: value as IntakeDraftItem["size_group"],
               })
             }
           >
-            <SelectTrigger className={selectTriggerClass} size="sm">
+            <SelectTrigger className="w-full" size="sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1580,12 +1054,11 @@ function PreviewCard({
           <Label className="text-xs text-muted-foreground">Gênero</Label>
           <Select
             value={draft.gender}
-            disabled={fieldLocked}
             onValueChange={(value) =>
               onChange({ gender: value as IntakeDraftItem["gender"] })
             }
           >
-            <SelectTrigger className={selectTriggerClass} size="sm">
+            <SelectTrigger className="w-full" size="sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1602,14 +1075,13 @@ function PreviewCard({
           <Label className="text-xs text-muted-foreground">Condição</Label>
           <Select
             value={draft.condition}
-            disabled={fieldLocked}
             onValueChange={(value) =>
               onChange({
                 condition: value as IntakeDraftItem["condition"],
               })
             }
           >
-            <SelectTrigger className={selectTriggerClass} size="sm">
+            <SelectTrigger className="w-full" size="sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1626,7 +1098,6 @@ function PreviewCard({
           <Label className="text-xs text-muted-foreground">Categoria</Label>
           <Select
             value={creatingCat ? "__new__" : (draft.category_id ?? "none")}
-            disabled={fieldLocked}
             onValueChange={(value) => {
               if (value === "__new__") {
                 setCreatingCat(true);
@@ -1636,7 +1107,7 @@ function PreviewCard({
               onChange({ category_id: value === "none" ? null : value });
             }}
           >
-            <SelectTrigger className={selectTriggerClass} size="sm">
+            <SelectTrigger className="w-full" size="sm">
               <SelectValue placeholder="Sem categoria" />
             </SelectTrigger>
             <SelectContent>
@@ -1649,7 +1120,7 @@ function PreviewCard({
               <SelectItem value="__new__">+ Criar categoria…</SelectItem>
             </SelectContent>
           </Select>
-          {creatingCat && editing ? (
+          {creatingCat ? (
             <div className="mt-1 flex gap-1.5">
               <Input
                 placeholder="Nome da categoria"
@@ -1675,63 +1146,39 @@ function PreviewCard({
           <Label className="text-xs text-muted-foreground">Descrição</Label>
           <Textarea
             value={draft.description ?? ""}
-            readOnly={fieldLocked}
-            tabIndex={fieldLocked ? -1 : undefined}
-            className={cn("min-h-16 resize-none", inputClass)}
+            className="min-h-16 resize-none"
             rows={3}
             onChange={(event) =>
               onChange({ description: event.target.value || null })
             }
           />
         </div>
-
-        <div className="col-span-2 flex flex-col gap-1">
-          <Label className="text-xs text-muted-foreground">Tags (vírgula)</Label>
-          <Input
-            value={(draft.tags ?? []).join(", ")}
-            readOnly={fieldLocked}
-            tabIndex={fieldLocked ? -1 : undefined}
-            className={inputClass}
-            onChange={(event) =>
-              onChange({
-                tags: event.target.value
-                  .split(",")
-                  .map((tag) => tag.trim())
-                  .filter(Boolean),
-              })
-            }
-          />
-        </div>
       </div>
 
-      <div className="mt-auto border-t border-border px-3 py-3">
-        <label
-          className={cn(
-            "flex items-start gap-3 rounded-xl border px-3 py-2.5",
-            gate.ok
-              ? "border-[var(--brand-green)]/30 bg-[var(--brand-green)]/5"
-              : "border-border bg-muted/30 opacity-80",
-          )}
-        >
-          <input
-            type="checkbox"
-            className="mt-1 size-4 accent-[var(--brand-green)]"
-            checked={publish}
-            disabled={!gate.ok}
-            onChange={(e) => onPublishChange(e.target.checked)}
-          />
-          <span className="min-w-0">
-            <span className="block text-sm font-medium">
-              Publicar no catálogo
-            </span>
-            <span className="block text-[11px] text-muted-foreground">
-              {gate.ok
-                ? "Produto entra como disponível."
-                : `Desabilitado: ${gate.reasons.join(", ")}. Finalizar grava como inativo.`}
-            </span>
+      <label
+        className={cn(
+          "flex items-start gap-3 rounded-xl border px-3 py-2.5",
+          gate.ok
+            ? "border-[var(--brand-green)]/30 bg-[var(--brand-green)]/5"
+            : "border-border bg-muted/30 opacity-80",
+        )}
+      >
+        <input
+          type="checkbox"
+          className="mt-1 size-4 accent-[var(--brand-green)]"
+          checked={publish}
+          disabled={!gate.ok}
+          onChange={(e) => onPublishChange(e.target.checked)}
+        />
+        <span className="min-w-0">
+          <span className="block text-sm font-medium">Publicar no catálogo</span>
+          <span className="block text-[11px] text-muted-foreground">
+            {gate.ok
+              ? "Produto entra como disponível."
+              : `Desabilitado: ${gate.reasons.join(", ")}. Finalizar grava como inativo.`}
           </span>
-        </label>
-      </div>
-    </article>
+        </span>
+      </label>
+    </div>
   );
 }

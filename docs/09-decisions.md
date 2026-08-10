@@ -2609,3 +2609,30 @@ recovery é dono dos tokens em `/auth/reset`.
 
 ---
 
+## D137 — Intake IA: sessão fullscreen (1 peça) + Finalizar → Produtos
+
+**Data**: 2026-08-09
+**Contexto**: HITL no protótipo `app/prototype/ai-intake-ux` (#185). A UI
+série+miniaturas + hold-lock mic quebrava usabilidade (scroll, feedback de
+gravação, triggers acidentais de STT). Veredito: Variant **C** (modos
+fullscreen) + preview **editável** da Variant B.
+**Decisão**:
+
+1. **Fluxo de sessão**: lobby (shell) → câmera fullscreen → áudio (Gravar/Parar
+   explícito) → **confirmação** antes de STT/LLM → preview editável →
+   Aprovar · próxima peça. Sem strip de miniaturas / multi-imagem no capture.
+2. **Cancelar / Finalizar** com confirm dialog. Cancelar descarta a sessão
+   (nada gravado). Finalizar faz commit do lote aprovado (+ peça em preview,
+   se houver) via `confirmIntakeBatchAction` (D135: `inactive` / publish gate).
+3. **Pós-Finalizar**: toast de sucesso + **redirect** para `/admin/produtos`
+   (não permanece na tela de fila de etiquetas do intake).
+4. Pipeline D135 permanece (foto anexada; STT+LLM só após confirmar áudio;
+   skip áudio → preview manual).
+
+**Consequência**: `AdminAiIntakeClient` é o dono desta UX; protótipo em
+`/prototype/ai-intake-ux` é fonte primária do veredito (C+edit B), não código
+de produção.
+
+---
+---
+

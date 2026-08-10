@@ -28,7 +28,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 
-import { VoiceScriptTip, VOICE_SCRIPT_ITEMS } from "@/components/admin/VoiceScriptTip";
+import { VoiceScriptTip } from "@/components/admin/VoiceScriptTip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,6 +88,19 @@ function newClientId(): string {
   return crypto.randomUUID();
 }
 
+/** Soft money coerce — never emit NaN to the finalize schema. */
+function coerceMoney(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const n = Number(value.replace(",", ".").trim());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("lobby");
@@ -119,6 +132,42 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   useEffect(() => {
     setCategoryOptions(categories);
   }, [categories]);
+
+  // Lock scroll + pinch-zoom while in fullscreen session modes.
+  useEffect(() => {
+    if (mode === "lobby") return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevTouchAction = body.style.touchAction;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.touchAction =
+      mode === "preview" || mode === "record" || mode === "confirm"
+        ? "pan-y"
+        : "none";
+
+    const meta = document.querySelector('meta[name="viewport"]');
+    const prevContent = meta?.getAttribute("content") ?? null;
+    meta?.setAttribute(
+      "content",
+      "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+    );
+
+    const preventGesture = (e: Event) => e.preventDefault();
+    document.addEventListener("gesturestart", preventGesture, {
+      passive: false,
+    });
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      body.style.touchAction = prevTouchAction;
+      if (meta && prevContent != null) meta.setAttribute("content", prevContent);
+      document.removeEventListener("gesturestart", preventGesture);
+    };
+  }, [mode]);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -396,16 +445,8 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
       ...item,
       name: item.name.trim(),
       slug: item.slug.trim() || slugifyProductName(item.name),
-      price:
-        typeof item.price === "string"
-          ? Number(item.price.replace(",", "."))
-          : item.price,
-      compare_at_price:
-        item.compare_at_price === "" || item.compare_at_price == null
-          ? null
-          : typeof item.compare_at_price === "string"
-            ? Number(item.compare_at_price.replace(",", "."))
-            : item.compare_at_price,
+      price: coerceMoney(item.price),
+      compare_at_price: coerceMoney(item.compare_at_price),
       tags: item.tags ?? [],
       images: item.images,
       category_name: item.category_name ?? null,
@@ -466,7 +507,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
 
   // —— Session chrome ——
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-zinc-950 text-white">
+    <div className="fixed inset-0 z-[60] flex flex-col overscroll-none bg-zinc-950 text-white">
       <header className="flex items-center justify-between px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
           type="button"
@@ -496,7 +537,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
       ) : null}
 
       {mode === "camera" ? (
-        <div className="relative flex flex-1 flex-col">
+        <div className="relative flex flex-1 touch-none flex-col">
           <div className="relative flex-1 bg-zinc-800">
             <video
               ref={videoRef}
@@ -553,8 +594,13 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
       ) : null}
 
       {mode === "record" || mode === "confirm" ? (
-        <div className="relative flex flex-1 flex-col">
-          <div className="relative flex-1">
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            className={cn(
+              "relative min-h-0 flex-1",
+              mode === "record" && !recording && "touch-none",
+            )}
+          >
             {photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -562,37 +608,21 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
                 alt=""
                 className={cn(
                   "h-full w-full object-cover",
-                  recording && "opacity-60",
+                  recording && "opacity-40",
                 )}
               />
             ) : null}
             {recording ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-red-700/75">
-                <div className="flex h-16 items-end gap-1">
-                  {Array.from({ length: 14 }).map((_, i) => (
-                    <span
-                      key={i}
-                      className="w-1.5 animate-pulse rounded-full bg-white"
-                      style={{
-                        height: `${10 + ((i * 19) % 36)}px`,
-                        animationDelay: `${i * 40}ms`,
-                      }}
-                    />
-                  ))}
+              <div className="absolute inset-0 flex flex-col bg-red-700/80">
+                <div className="flex items-center justify-center gap-2 px-4 pt-4">
+                  <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
+                  <p className="text-sm font-bold tracking-wide">
+                    Gravando… {Math.floor(recMs / 1000)}s
+                  </p>
                 </div>
-                <p className="text-lg font-bold tracking-wide">
-                  Gravando… {Math.floor(recMs / 1000)}s
-                </p>
-                <ul className="flex max-w-xs flex-wrap justify-center gap-1.5 px-4">
-                  {VOICE_SCRIPT_ITEMS.slice(0, 6).map((item) => (
-                    <li
-                      key={item.id}
-                      className="rounded-full bg-white/15 px-2 py-0.5 text-[10px]"
-                    >
-                      {item.label}
-                    </li>
-                  ))}
-                </ul>
+                <div className="flex min-h-0 flex-1 touch-pan-y items-start justify-center overflow-y-auto overscroll-contain px-3 py-3">
+                  <VoiceScriptTip recording />
+                </div>
               </div>
             ) : null}
             {mode === "confirm" && !recording ? (
@@ -606,24 +636,21 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
             ) : null}
           </div>
 
-          <div className="relative flex flex-col items-center gap-3 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+          <div className="relative flex shrink-0 flex-col items-center gap-3 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
             {mode === "record" && !recording ? (
               <>
                 <p className="text-xs text-white/60">
                   Peça #{pieceIndex} · Passo 2 · Áudio
                 </p>
-                <div className="relative">
-                  <VoiceScriptTip visible />
-                  <button
-                    type="button"
-                    onClick={toggleRecording}
-                    className="flex h-16 w-16 flex-col items-center justify-center rounded-full bg-red-600 shadow-xl"
-                    aria-label="Gravar áudio"
-                  >
-                    <Mic className="size-6" />
-                    <span className="text-[9px] font-bold">Gravar</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={toggleRecording}
+                  className="flex h-16 w-16 flex-col items-center justify-center rounded-full bg-red-600 shadow-xl"
+                  aria-label="Gravar áudio"
+                >
+                  <Mic className="size-6" />
+                  <span className="text-[9px] font-bold">Gravar</span>
+                </button>
                 <button
                   type="button"
                   className="text-xs text-white/60 underline"
@@ -699,7 +726,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
               ? ` · ${approved.length} já aprovada(s)`
               : ""}
           </div>
-          <div className="flex-1 overflow-y-auto p-4 pb-28">
+          <div className="flex-1 touch-pan-y overflow-y-auto overscroll-contain p-4 pb-28">
             <SessionDraftForm
               draft={draft}
               categories={categoryOptions}
@@ -1155,30 +1182,47 @@ function SessionDraftForm({
         </div>
       </div>
 
-      <label
+      <button
+        type="button"
         className={cn(
-          "flex items-start gap-3 rounded-xl border px-3 py-2.5",
+          "flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left",
           gate.ok
             ? "border-[var(--brand-green)]/30 bg-[var(--brand-green)]/5"
-            : "border-border bg-muted/30 opacity-80",
+            : "border-border bg-muted/30",
         )}
+        onClick={() => {
+          if (!gate.ok) {
+            toast.message(
+              `Ainda não dá para publicar: ${gate.reasons.join(", ")}. Finalizar grava como inativo.`,
+            );
+            return;
+          }
+          onPublishChange(!publish);
+        }}
+        aria-pressed={publish}
       >
-        <input
-          type="checkbox"
-          className="mt-1 size-4 accent-[var(--brand-green)]"
-          checked={publish}
-          disabled={!gate.ok}
-          onChange={(e) => onPublishChange(e.target.checked)}
-        />
+        <span
+          className={cn(
+            "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border",
+            publish && gate.ok
+              ? "border-[var(--brand-green)] bg-[var(--brand-green)] text-white"
+              : "border-muted-foreground/40 bg-white",
+          )}
+          aria-hidden
+        >
+          {publish && gate.ok ? (
+            <Check className="size-3.5" />
+          ) : null}
+        </span>
         <span className="min-w-0">
           <span className="block text-sm font-medium">Publicar no catálogo</span>
-          <span className="block text-[11px] text-muted-foreground">
-            {gate.ok
-              ? "Produto entra como disponível."
-              : `Desabilitado: ${gate.reasons.join(", ")}. Finalizar grava como inativo.`}
-          </span>
+          {gate.ok ? (
+            <span className="block text-[11px] text-muted-foreground">
+              Produto entra como disponível.
+            </span>
+          ) : null}
         </span>
-      </label>
+      </button>
     </div>
   );
 }

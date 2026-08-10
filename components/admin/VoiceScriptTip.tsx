@@ -1,40 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Roteiro de narração (D135) — ordem descritiva da peça.
+ * Labels incluem exemplo curto para memória; sem textos extras na UI.
+ */
 export const VOICE_SCRIPT_ITEMS = [
-  { id: "categoria", label: "Categoria" },
-  { id: "marca", label: "Marca" },
-  { id: "cor", label: "Cor" },
+  { id: "categoria", label: "Categoria (body, calça…)" },
+  { id: "marca", label: "Marca (GAP, Carters…)" },
+  { id: "cor", label: "Cor (azul, floral…)" },
   { id: "tamanho", label: "Tamanho (RN/P/M/G)" },
-  { id: "idade", label: "Idade / faixa" },
-  { id: "caracteristicas", label: "Características" },
-  { id: "condicao", label: "Condição" },
-  { id: "sexo", label: "Sexo" },
-  { id: "preco", label: "Preço" },
+  { id: "idade", label: "Idade (2–3a, 4–5a…)" },
+  { id: "caracteristicas", label: "Detalhes (manga, botões…)" },
+  { id: "condicao", label: "Condição (novo/seminovo)" },
+  { id: "sexo", label: "Sexo (menino/menina/unissex)" },
+  { id: "preco", label: "Preço (29,90)" },
 ] as const;
 
-export function VoiceScriptTip({ visible }: { visible: boolean }) {
+type VoiceScriptTipProps = {
+  /** Show only while recording — not as a pre-record dialog. */
+  recording: boolean;
+};
+
+/**
+ * Checklist clean para marcar o que já foi falado **durante** a gravação.
+ */
+export function VoiceScriptTip({ recording }: VoiceScriptTipProps) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (!recording) setChecked({});
+  }, [recording]);
+
+  if (!recording) return null;
 
   return (
     <div
-      className="absolute bottom-full left-1/2 z-20 mb-3 w-[min(100vw-2rem,20rem)] -translate-x-1/2 rounded-2xl border border-border bg-card p-3 shadow-lg"
-      role="dialog"
-      aria-label="Roteiro do áudio"
+      className="mx-auto w-full max-w-sm rounded-2xl bg-white/95 p-3 text-foreground shadow-lg backdrop-blur"
+      role="group"
+      aria-label="Checklist do áudio"
     >
-      <p className="text-xs font-semibold text-foreground">
-        Diga no áudio (marque o que já falou)
-      </p>
-      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-        Categoria → marca → cor → tamanho → idade → detalhes → condição → sexo →
-        preço. Omissões ficam vazias (sem chute de preço).
-      </p>
-      <ul className="mt-2 grid grid-cols-2 gap-1.5">
+      <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {VOICE_SCRIPT_ITEMS.map((item) => {
           const on = Boolean(checked[item.id]);
           return (
@@ -42,27 +51,28 @@ export function VoiceScriptTip({ visible }: { visible: boolean }) {
               <button
                 type="button"
                 className={cn(
-                  "flex w-full items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left text-[11px] transition",
+                  "flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-[12px] leading-snug transition",
                   on
-                    ? "border-[var(--brand-green)]/40 bg-[var(--brand-green)]/10 text-foreground"
-                    : "border-border bg-muted/30 text-muted-foreground",
+                    ? "border-[var(--brand-green)]/50 bg-[var(--brand-green)]/12 font-medium text-foreground"
+                    : "border-black/10 bg-white text-foreground/85",
                 )}
                 onClick={() =>
                   setChecked((prev) => ({ ...prev, [item.id]: !on }))
                 }
+                aria-pressed={on}
               >
                 <span
                   className={cn(
-                    "inline-flex size-3.5 shrink-0 items-center justify-center rounded border text-[9px]",
+                    "inline-flex size-4 shrink-0 items-center justify-center rounded border text-[10px]",
                     on
                       ? "border-[var(--brand-green)] bg-[var(--brand-green)] text-white"
-                      : "border-muted-foreground/40",
+                      : "border-muted-foreground/35",
                   )}
                   aria-hidden
                 >
                   {on ? "✓" : ""}
                 </span>
-                {item.label}
+                <span className="min-w-0">{item.label}</span>
               </button>
             </li>
           );

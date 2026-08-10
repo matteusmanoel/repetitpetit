@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { ResetPasswordForm } from "@/components/admin/ResetPasswordForm";
 
@@ -10,7 +11,15 @@ export default function ResetPasswordPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted px-4 py-12">
       <div className="w-full max-w-sm">
-        <ResetPasswordForm />
+        <Suspense
+          fallback={
+            <div className="rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-8">
+              <p className="text-sm text-muted-foreground">Validando link…</p>
+            </div>
+          }
+        >
+          <ResetPasswordForm />
+        </Suspense>
       </div>
     </main>
   );

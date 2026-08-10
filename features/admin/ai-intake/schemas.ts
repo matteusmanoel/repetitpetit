@@ -110,16 +110,26 @@ export const intakeFinalizeItemSchema = z.object({
   description: z.preprocess(emptyToNull, z.string().max(5000).nullable()).optional(),
   price: z.preprocess((value) => {
     if (value === null || value === undefined || value === "") return 0;
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : 0;
+    }
     if (typeof value === "string") {
-      const n = Number(value.replace(",", "."));
+      const n = Number(value.replace(",", ".").trim());
       return Number.isFinite(n) ? n : 0;
     }
-    return value;
+    return 0;
   }, z.number().min(0)),
-  compare_at_price: z.preprocess(
-    emptyToNull,
-    z.coerce.number().positive().nullable(),
-  ).optional(),
+  compare_at_price: z.preprocess((value) => {
+    if (value === null || value === undefined || value === "") return null;
+    if (typeof value === "number") {
+      return Number.isFinite(value) && value > 0 ? value : null;
+    }
+    if (typeof value === "string") {
+      const n = Number(value.replace(",", ".").trim());
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }
+    return null;
+  }, z.number().positive().nullable()).optional(),
   brand: z.preprocess(emptyToNull, z.string().max(80).nullable()).optional(),
   size_label: z.string().default(""),
   size_group: z.enum(SIZE_GROUPS).default("2_3a"),

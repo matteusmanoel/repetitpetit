@@ -102,6 +102,33 @@ describe("ai-intake schemas", () => {
     });
     expect(parsed.success).toBe(true);
   });
+
+  it("coerces NaN / invalid price to 0 on soft finalize", () => {
+    const parsed = confirmIntakeBatchSchema.safeParse({
+      items: [
+        {
+          client_id: "c1",
+          name: "",
+          slug: "",
+          price: Number.NaN,
+          compare_at_price: Number.NaN,
+          size_label: "",
+          size_group: "2_3a",
+          gender: "unissex",
+          condition: "seminovo",
+          tags: [],
+          category_id: null,
+          images: [{ image_url: "https://example.com/a.jpg" }],
+          publish: false,
+        },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.items[0]?.price).toBe(0);
+      expect(parsed.data.items[0]?.compare_at_price).toBeNull();
+    }
+  });
 });
 
 describe("ai-intake provider gates", () => {

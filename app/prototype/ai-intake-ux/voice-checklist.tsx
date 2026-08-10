@@ -1,40 +1,35 @@
 "use client";
 
+/**
+ * PROTOTYPE — persistent voice checklist (memory aid during recording).
+ * No instructional copy — only fields + short examples.
+ */
+
 import { cn } from "@/lib/utils";
 
-/**
- * Roteiro de narração (D135 / D137 dock) — ordem descritiva.
- * Só campos + exemplos curtos; sem textos extras.
- */
-export const VOICE_SCRIPT_ITEMS = [
+export const SCRIPT_ITEMS = [
   { id: "categoria", label: "Categoria (body, calça…)" },
   { id: "marca", label: "Marca (GAP, Carters…)" },
   { id: "cor", label: "Cor (azul, floral…)" },
   { id: "tamanho", label: "Tamanho (RN/P/M/G)" },
   { id: "idade", label: "Idade (2–3a, 4–5a…)" },
-  { id: "caracteristicas", label: "Detalhes (manga, botões…)" },
+  { id: "detalhes", label: "Detalhes (manga, botões…)" },
   { id: "condicao", label: "Condição (novo/seminovo)" },
   { id: "sexo", label: "Sexo (menino/menina/unissex)" },
   { id: "preco", label: "Preço (29,90)" },
 ] as const;
 
-export type VoiceScriptChecked = Record<string, boolean>;
+export type ScriptChecked = Record<string, boolean>;
 
-type VoiceScriptTipProps = {
-  checked: VoiceScriptChecked;
-  onToggle: (id: string) => void;
-  /** light = pré-gravação; dark = durante Gravando (dock vermelho) */
-  tone?: "light" | "dark";
-};
-
-/**
- * Checklist de memória — permanece visível antes e durante a gravação (dock).
- */
-export function VoiceScriptTip({
+export function VoiceChecklist({
   checked,
   onToggle,
   tone = "light",
-}: VoiceScriptTipProps) {
+}: {
+  checked: ScriptChecked;
+  onToggle: (id: string) => void;
+  tone?: "light" | "dark";
+}) {
   return (
     <ul
       className={cn(
@@ -44,7 +39,7 @@ export function VoiceScriptTip({
       role="group"
       aria-label="Checklist do áudio"
     >
-      {VOICE_SCRIPT_ITEMS.map((item) => {
+      {SCRIPT_ITEMS.map((item) => {
         const on = Boolean(checked[item.id]);
         return (
           <li key={item.id}>
@@ -85,3 +80,4 @@ export function VoiceScriptTip({
     </ul>
   );
 }
+

@@ -2590,3 +2590,22 @@ histórico para P/M/G; valores operacionais vigentes = RN|P|M|G.
 
 ---
 
+## D136 — Password reset: não encaminhar `/auth/reset` ao buyer callback
+
+**Data**: 2026-08-09
+**Contexto**: Após D129, middleware encaminhava qualquer `?code=` /
+`token_hash` para `/auth/callback`. O link de redefinição admin
+(`redirectTo=/auth/reset`) era hijackado → exchange no fluxo de comprador
+falhava → `/entrar?erro=link&next=/sacolinha` (“Não foi possível validar o
+link…”).
+**Decisão**: (1) `shouldForwardAuthParamsToCallback` exclui `/auth/reset`
+(além de `/auth/callback`). (2) `/auth/reset` troca `code`/sessão no client
+antes de `updateUser({ password })` — com `?code=` **sempre** faz
+`exchangeCodeForSession` (não reutilizar sessão pré-existente de outro
+usuário). (3) Se `type=recovery` ainda cair em `/auth/callback`,
+redirecionar de volta a `/auth/reset` preservando query.
+**Consequência**: D129 permanece para Site URL / paths stray do magic link;
+recovery é dono dos tokens em `/auth/reset`.
+
+---
+

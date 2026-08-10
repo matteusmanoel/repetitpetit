@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { publicEnv } from "@/lib/env/public";
+import { shouldForwardAuthParamsToCallback } from "@/lib/supabase/auth-callback-forward";
 import type { Database } from "@/lib/supabase/types";
 
 /**
@@ -16,17 +17,16 @@ import type { Database } from "@/lib/supabase/types";
  * Não decide autorização (isso é responsabilidade de `requireAdminSession()`
  * em `features/admin/session.ts`) — apenas mantém a sessão fresca.
  *
- * D128: se o Auth dashboard cair no Site URL (`/`) com `?code=` / `token_hash`,
+ * D129: se o Auth dashboard cair no Site URL (`/`) com `?code=` / `token_hash`,
  * encaminha para `/auth/callback` preservando query (e cookie `next`).
+ * `/auth/reset` is excluded — password recovery must not enter buyer callback
+ * (D136).
  */
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const params = request.nextUrl.searchParams;
-  const hasAuthCode = params.has("code");
-  const hasTokenHash = params.has("token_hash") && params.has("type");
-  const isCallback = pathname === "/auth/callback";
 
-  if (!isCallback && (hasAuthCode || hasTokenHash)) {
+  if (shouldForwardAuthParamsToCallback(pathname, params)) {
     const callbackUrl = request.nextUrl.clone();
     callbackUrl.pathname = "/auth/callback";
     return NextResponse.redirect(callbackUrl);

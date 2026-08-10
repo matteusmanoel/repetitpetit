@@ -59,6 +59,17 @@ export async function GET(request: NextRequest) {
     return response;
   };
 
+  // Password recovery must not enter the buyer magic-link path. Send tokens
+  // back to `/auth/reset`, which owns the exchange (middleware also excludes
+  // that path from D129 forwarding — D136).
+  if (otpType === "recovery") {
+    const resetUrl = new URL(`${origin}/auth/reset`);
+    url.searchParams.forEach((value, key) => {
+      resetUrl.searchParams.set(key, value);
+    });
+    return NextResponse.redirect(resetUrl);
+  }
+
   if (!code && !(tokenHash && otpType)) {
     console.error("Buyer magic-link callback missing code/token_hash");
     return errorRedirect();

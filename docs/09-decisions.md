@@ -2600,8 +2600,10 @@ falhava → `/entrar?erro=link&next=/sacolinha` (“Não foi possível validar o
 link…”).
 **Decisão**: (1) `shouldForwardAuthParamsToCallback` exclui `/auth/reset`
 (além de `/auth/callback`). (2) `/auth/reset` troca `code`/sessão no client
-antes de `updateUser({ password })`. (3) Se `type=recovery` ainda cair em
-`/auth/callback`, redirecionar de volta a `/auth/reset` preservando query.
+antes de `updateUser({ password })` — com `?code=` **sempre** faz
+`exchangeCodeForSession` (não reutilizar sessão pré-existente de outro
+usuário). (3) Se `type=recovery` ainda cair em `/auth/callback`,
+redirecionar de volta a `/auth/reset` preservando query.
 **Consequência**: D129 permanece para Site URL / paths stray do magic link;
 recovery é dono dos tokens em `/auth/reset`.
 

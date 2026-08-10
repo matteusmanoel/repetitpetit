@@ -45,42 +45,36 @@ export function ResetPasswordForm() {
       }
 
       const supabase = createBrowserSupabaseClient();
+
+      // Always exchange when `?code=` is present. Skipping for an existing
+      // session would let `updateUser({ password })` change the wrong user.
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (cancelled) return;
+        if (error) {
+          setStatus("link_error");
+          setErrorMessage(
+            "Não foi possível validar o link. Solicite um novo em Admin → login.",
+          );
+          return;
+        }
+        setStatus("idle");
+        return;
+      }
+
+      // No query code: accept hash/implicit recovery session if already present.
       const { data: existing, error: sessionError } =
         await supabase.auth.getSession();
-
       if (cancelled) return;
-
       if (existing.session?.user && !sessionError) {
         setStatus("idle");
         return;
       }
 
-      if (!code) {
-        const { data: afterHash } = await supabase.auth.getSession();
-        if (cancelled) return;
-        if (afterHash.session?.user) {
-          setStatus("idle");
-          return;
-        }
-        setStatus("link_error");
-        setErrorMessage(
-          "Link inválido ou expirado. Solicite um novo em Admin → login.",
-        );
-        return;
-      }
-
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (cancelled) return;
-
-      if (error) {
-        setStatus("link_error");
-        setErrorMessage(
-          "Não foi possível validar o link. Solicite um novo em Admin → login.",
-        );
-        return;
-      }
-
-      setStatus("idle");
+      setStatus("link_error");
+      setErrorMessage(
+        "Link inválido ou expirado. Solicite um novo em Admin → login.",
+      );
     }
 
     void establishRecoverySession();

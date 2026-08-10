@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * PROTOTYPE — AI intake UX (cadastro em massa)
- * Three variants switchable via ?variant=
+ * PROTOTYPE — AI intake recording checklist (rev.2)
+ * Question: how should the memory checklist stay visible during Gravando?
  *
- * VERDICT (2026-08-09): C + Preview editável de B
- *   → sessão fullscreen (lobby → camera → record → confirm → preview edit → próxima)
- *   → Cancelar/Finalizar com confirm; shell padrão só fora da sessão
+ * Three layouts (same session shell C + preview edit):
+ * A — Dock + pulse mic no centro da foto (alvo)
+ * B — Split foto/lista
+ * C — Checklist-first (foto → thumbnail)
  *
- * A — Throughput (fila) — descartada para produto
- * B — Ciclo + preview edit — só o preview edit entra no vencedor
- * C — App fullscreen + edit B — alvo de implementação
+ * Rule: checklist does NOT disappear when recording starts.
+ * Default: A
  */
 
 import { Suspense } from "react";
@@ -22,9 +22,14 @@ import {
 } from "@/components/prototype/PrototypeSwitcher";
 
 import { PrototypeStateProvider } from "./prototype-state";
-import { VariantA, VARIANT_A_META } from "./variants/VariantA";
-import { VariantB, VARIANT_B_META } from "./variants/VariantB";
-import { VariantC, VARIANT_C_META } from "./variants/VariantC";
+import {
+  VariantA,
+  VariantB,
+  VariantC,
+  VARIANT_A_META,
+  VARIANT_B_META,
+  VARIANT_C_META,
+} from "./variants/VariantC";
 
 const VARIANTS: PrototypeVariantMeta[] = [
   VARIANT_A_META,
@@ -34,8 +39,8 @@ const VARIANTS: PrototypeVariantMeta[] = [
 
 function PrototypeInner() {
   const searchParams = useSearchParams();
-  const raw = (searchParams.get("variant") ?? "C").toUpperCase();
-  const variant = raw === "A" || raw === "B" ? raw : "C";
+  const raw = (searchParams.get("variant") ?? "A").toUpperCase();
+  const variant = raw === "B" || raw === "C" ? raw : "A";
 
   return (
     <PrototypeStateProvider key={variant}>

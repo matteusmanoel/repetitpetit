@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Cadastro em massa — sessão fullscreen (D137 / #185).
+ * Cadastro em massa — sessão fullscreen (D137).
+ * Layout áudio = protótipo A (dock + pulse): checklist persistente + mic sticky.
  * Fluxo: lobby → câmera → áudio → confirmar IA → preview edit → aprovar → próxima.
  * Finalizar → commit lote → /admin/produtos + toast.
  */
@@ -28,7 +29,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 
-import { VoiceScriptTip } from "@/components/admin/VoiceScriptTip";
+import { VoiceScriptTip, type VoiceScriptChecked } from "@/components/admin/VoiceScriptTip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -121,6 +122,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [scriptChecked, setScriptChecked] = useState<VoiceScriptChecked>({});
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -222,6 +224,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
     setRecording(false);
     setRecMs(0);
     setError(null);
+    setScriptChecked({});
   }
 
   function resetSession() {
@@ -259,6 +262,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
       setPhotoUrl(url);
       setAudioDataUrl(null);
       setDraft(null);
+      setScriptChecked({});
       setMode("record");
       toast.message("Foto ok — grave o áudio da peça");
     } catch (uploadError) {
@@ -508,7 +512,7 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
   // —— Session chrome ——
   return (
     <div className="fixed inset-0 z-[60] flex flex-col overscroll-none bg-zinc-950 text-white">
-      <header className="flex items-center justify-between px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <header className="flex shrink-0 items-center justify-between px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
           type="button"
           className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-sm text-white/80"
@@ -518,7 +522,15 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
           <X className="size-4" />
           Cancelar
         </button>
-        <ModeDots mode={mode} />
+        <div className="flex flex-col items-center gap-1">
+          <ModeDots mode={mode} />
+          {recording ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2.5 py-0.5 text-[10px] font-bold">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+              Gravando {Math.floor(recMs / 1000)}s
+            </span>
+          ) : null}
+        </div>
         <button
           type="button"
           className="inline-flex h-10 items-center gap-1 rounded-xl px-2 text-sm font-medium text-[var(--brand-green)] disabled:opacity-40"
@@ -594,120 +606,161 @@ export function AdminAiIntakeClient({ categories, aiConfigured }: Props) {
       ) : null}
 
       {mode === "record" || mode === "confirm" ? (
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <div
-            className={cn(
-              "relative min-h-0 flex-1",
-              mode === "record" && !recording && "touch-none",
-            )}
-          >
-            {photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={photoUrl}
-                alt=""
-                className={cn(
-                  "h-full w-full object-cover",
-                  recording && "opacity-40",
-                )}
-              />
-            ) : null}
-            {recording ? (
-              <div className="absolute inset-0 flex flex-col bg-red-700/80">
-                <div className="flex items-center justify-center gap-2 px-4 pt-4">
-                  <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
-                  <p className="text-sm font-bold tracking-wide">
+        mode === "confirm" ? (
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <div className="relative min-h-0 flex-1">
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrl}
+                  alt=""
+                  className="h-full w-full object-cover opacity-50"
+                />
+              ) : null}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-6 pb-8 text-center">
+                <p className="text-sm font-semibold">
+                  Áudio pronto · {Math.max(1, Math.floor(recMs / 1000))}s
+                </p>
+                <p className="mt-1 text-xs text-white/70">
+                  Confirme para processar com IA (STT + LLM).
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+              <button
+                type="button"
+                className="h-12 flex-1 rounded-2xl border border-white/30 text-sm font-medium"
+                onClick={() => {
+                  setAudioDataUrl(null);
+                  setRecMs(0);
+                  setMode("record");
+                }}
+              >
+                Regravar
+              </button>
+              <button
+                type="button"
+                className="h-12 flex-[1.4] rounded-2xl bg-[var(--brand-green)] text-sm font-semibold text-white"
+                onClick={confirmSendAudio}
+              >
+                Enviar para IA
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <div className="relative min-h-[28%] flex-1">
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrl}
+                  alt=""
+                  className={cn(
+                    "h-full w-full object-cover",
+                    recording && "opacity-40",
+                  )}
+                />
+              ) : null}
+              {recording ? (
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-red-700/55">
+                  <div className="relative flex size-24 items-center justify-center">
+                    <span className="absolute inset-0 animate-ping rounded-full bg-white/25" />
+                    <span className="absolute inset-2 animate-pulse rounded-full bg-white/15" />
+                    <span className="relative flex size-16 items-center justify-center rounded-full bg-white text-red-600 shadow-lg">
+                      <Mic className="size-8" />
+                    </span>
+                  </div>
+                  <p className="text-base font-bold tracking-wide text-white">
                     Gravando… {Math.floor(recMs / 1000)}s
                   </p>
+                  <div className="flex h-10 items-end gap-1">
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="w-1.5 animate-pulse rounded-full bg-white/90"
+                        style={{
+                          height: `${10 + ((i * 17) % 28)}px`,
+                          animationDelay: `${i * 45}ms`,
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="flex min-h-0 flex-1 touch-pan-y items-start justify-center overflow-y-auto overscroll-contain px-3 py-3">
-                  <VoiceScriptTip recording />
-                </div>
-              </div>
-            ) : null}
-            {mode === "confirm" && !recording ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-end bg-gradient-to-t from-black/85 via-black/35 to-transparent p-6 pb-8">
-                <p className="mb-1 text-sm font-semibold">Áudio pronto</p>
-                <p className="mb-4 text-center text-xs text-white/70">
-                  Confirme para processar com IA (STT + LLM). Evita envios
-                  acidentais.
-                </p>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
 
-          <div className="relative flex shrink-0 flex-col items-center gap-3 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
-            {mode === "record" && !recording ? (
-              <>
-                <p className="text-xs text-white/60">
-                  Peça #{pieceIndex} · Passo 2 · Áudio
-                </p>
-                <button
-                  type="button"
-                  onClick={toggleRecording}
-                  className="flex h-16 w-16 flex-col items-center justify-center rounded-full bg-red-600 shadow-xl"
-                  aria-label="Gravar áudio"
-                >
-                  <Mic className="size-6" />
-                  <span className="text-[9px] font-bold">Gravar</span>
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-white/60 underline"
-                  onClick={skipAudioManual}
-                >
-                  Sem áudio — preencher manual
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-white/50 underline"
-                  onClick={() => {
-                    setPhotoUrl(null);
-                    setMode("camera");
-                  }}
-                >
-                  Trocar foto
-                </button>
-              </>
-            ) : null}
+            <div
+              className={cn(
+                "max-h-[42vh] shrink-0 overflow-y-auto overscroll-contain rounded-t-3xl px-3 pb-2 pt-3 touch-pan-y",
+                recording ? "bg-red-700" : "bg-zinc-100",
+              )}
+            >
+              <div className="mx-auto max-w-sm">
+                <VoiceScriptTip
+                  checked={scriptChecked}
+                  onToggle={(id) =>
+                    setScriptChecked((prev) => ({
+                      ...prev,
+                      [id]: !prev[id],
+                    }))
+                  }
+                  tone={recording ? "dark" : "light"}
+                />
+              </div>
+            </div>
 
-            {recording ? (
+            <div
+              className={cn(
+                "flex flex-col items-center gap-2 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3",
+                recording ? "bg-red-700" : "bg-zinc-950",
+              )}
+            >
               <button
                 type="button"
                 onClick={toggleRecording}
-                className="flex h-16 min-w-16 flex-col items-center justify-center rounded-full bg-white text-zinc-900 shadow-xl"
-                aria-label="Parar gravação"
-                aria-pressed
+                className={cn(
+                  "flex h-[4.25rem] w-[4.25rem] flex-col items-center justify-center rounded-full shadow-xl active:scale-95",
+                  recording
+                    ? "bg-white text-zinc-900"
+                    : "bg-red-600 text-white",
+                )}
+                aria-label={recording ? "Parar gravação" : "Gravar áudio"}
+                aria-pressed={recording}
               >
-                <Square className="size-5 fill-current" />
-                <span className="text-[9px] font-bold">Parar</span>
+                {recording ? (
+                  <Square className="size-6 fill-current" />
+                ) : (
+                  <Mic className="size-7" />
+                )}
+                <span className="text-[11px] font-bold">
+                  {recording ? "Parar" : "Gravar"}
+                </span>
               </button>
-            ) : null}
-
-            {mode === "confirm" ? (
-              <div className="flex w-full max-w-sm gap-2">
-                <button
-                  type="button"
-                  className="h-12 flex-1 rounded-2xl border border-white/30 text-sm font-medium"
-                  onClick={() => {
-                    setAudioDataUrl(null);
-                    setRecMs(0);
-                    setMode("record");
-                  }}
-                >
-                  Regravar
-                </button>
-                <button
-                  type="button"
-                  className="h-12 flex-[1.4] rounded-2xl bg-[var(--brand-green)] text-sm font-semibold text-white"
-                  onClick={confirmSendAudio}
-                >
-                  Enviar para IA
-                </button>
-              </div>
-            ) : null}
+              {!recording ? (
+                <>
+                  <button
+                    type="button"
+                    className="text-xs text-white/60 underline"
+                    onClick={skipAudioManual}
+                  >
+                    Sem áudio — preencher manual
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs text-white/50 underline"
+                    onClick={() => {
+                      setPhotoUrl(null);
+                      setScriptChecked({});
+                      setMode("camera");
+                    }}
+                  >
+                    Trocar foto
+                  </button>
+                </>
+              ) : null}
+            </div>
           </div>
-        </div>
+        )
       ) : null}
 
       {mode === "working" ? (

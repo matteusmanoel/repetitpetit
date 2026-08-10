@@ -2635,3 +2635,24 @@ de produção.
 
 ---
 
+## D138 — Intake áudio: dock checklist + pulse (protótipo A)
+
+**Data**: 2026-08-09
+**Contexto**: HITL pós-D137 — tip/dialog sumia ou cobria a gravação; checklist
+precisa ser auxílio de memória **durante** Gravando. Protótipo rev.2 em
+`/prototype/ai-intake-ux` (layouts A/B/C); veredito **A — Dock + pulse**.
+**Decisão**:
+
+1. No passo áudio: **foto** (área superior) + **dock checklist** (sempre
+   visível antes e durante a gravação) + **mic sticky** Gravar/Parar.
+2. Ao gravar: overlay central com mic em pulse + “Gravando… Ns” + barras;
+   checklist **não some** (tom dark no dock vermelho).
+3. Itens: só rótulo + exemplo curto (ex. `Tamanho (RN/P/M/G)`), ordem
+   narrativa D135; tipografia ~15px / hit ≥48px para mobile.
+4. Sem dialog flutuante pré-gravação.
+
+**Consequência**: `VoiceScriptTip` é checklist controlado (checked/onToggle);
+layouts B/C do protótipo ficam só como referência descartada.
+
+---
+

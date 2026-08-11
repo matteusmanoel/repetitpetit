@@ -124,7 +124,7 @@ export function ImageUploadField({
           />
           <div className="flex flex-wrap gap-2">
             {url ? (
-              <Button type="button" variant="outline" size="sm" onClick={clearImage}>
+              <Button type="button" variant="outline" className="h-12 rounded-xl px-4 text-base" onClick={clearImage}>
                 Remover imagem
               </Button>
             ) : null}

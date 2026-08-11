@@ -154,7 +154,7 @@ export function CategoryForm({
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={isPending} className="w-full sm:w-auto">
+      <Button type="submit" className="h-12 w-full rounded-xl px-4 text-base sm:w-auto" disabled={isPending}>
         {isPending ? "Salvando…" : submitLabel}
       </Button>
     </form>

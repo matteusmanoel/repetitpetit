@@ -50,7 +50,7 @@ export function BannerList({ banners }: { banners: Banner[] }) {
           </div>
 
           <div className="flex shrink-0 gap-2">
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" className="h-12 rounded-xl px-4 text-base">
               <Link href={`/admin/banners/${banner.id}`}>Editar</Link>
             </Button>
             <BannerDeleteButton

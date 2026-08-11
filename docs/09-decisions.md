@@ -2633,6 +2633,20 @@ fullscreen) + preview **editável** da Variant B.
 `/prototype/ai-intake-ux` é fonte primária do veredito (C+edit B), não código
 de produção.
 
+**Revisão 2026-08-09 (preview nativo)**: preview sem scroll (`overflow-hidden`);
+tabs **Essencial** (nome/preço/tamanho) + **Detalhes** (resto); sem cabeçalho
+“Passo 3” nem Regenerar; gate de publicar → toast curto + `border-red` nos
+campos faltantes (volta à tab Essencial).
+
+**Revisão 2026-08-09 (foto nativa)**: passo foto usa `input[capture=environment]`
+(câmera do SO) + placeholder; sem `getUserMedia` de vídeo / permissão no
+browser. Galeria via segundo input sem `capture`. Áudio continua com mic web.
+
+**Revisão 2026-08-09 (checklist lista + preview)**: checklist volta a **lista**
+(hit generoso); Gravando com **faixa de áudio** pulsando; tabs só se overflow
+(altura &lt; ~700px); foto em card `object-contain` + **Refazer foto** mantém
+campos; Select/Tabs com tipografia/hit maiores.
+
 ---
 
 ## D138 — Intake áudio: dock checklist + pulse (protótipo A)
@@ -2654,5 +2668,198 @@ precisa ser auxílio de memória **durante** Gravando. Protótipo rev.2 em
 **Consequência**: `VoiceScriptTip` é checklist controlado (checked/onToggle);
 layouts B/C do protótipo ficam só como referência descartada.
 
+**Revisão 2026-08-09 (HITL overflow)**: dock flutuante overflowava no mobile.
+Passo áudio passa a: **foto fullscreen** + **card checklist fullscreen**
+(branco idle / vermelho ao gravar, com opacidade sobre a captura); botão
+central vira “Gravando… Ns” com pulse (mesmo comportamento de Parar); laterais
+lápis (manual) e shuffle (trocar foto). Select do preview sobe `z-[100]+`
+para não ficar atrás do shell `z-[60]`.
+
 ---
 
+## D139 — Qualidade voice intake: STT prompt + LLM few-shot + merge RN
+
+**Data**: 2026-08-10
+**Contexto**: Caso real — STT perdeu `59,90`; LLM omitiu `category_name`/
+attributes e inferiu `gender=menina`; `mergeAiDraft` forçava `size_group=2_3a`
+quando a IA devolvia null (pior com RN).
+**Decisão**:
+
+1. **STT**: `gpt-4o-mini-transcribe` com `language=pt` + `prompt` de viés
+   (`voiceSttPrompt`: preços `*,90`, RN/P/M/G, marcas, termos infantis).
+   Spike HITL: `docs/slice-t/stt-spike.md`.
+2. **LLM**: system prompt com regras extract-vs-infer + 4 golden examples;
+   proíbe gênero por cor/personagem; `tags` opcionais (derivar de
+   color/attributes). User message recebe contexto compacto: categorias
+   ativas, marcas candidatas, labels de `size_group`.
+3. **Merge**: se `size_label=RN` e `size_group` omitido → `rn_3m` (regra
+   confiável alinhada a `rn_3m` = “RN a 3 meses” no schema + chip
+   `SIZE_CHIP_LABELS.rn_3m = "RN"`); demais omissões de faixa → soft default
+   `2_3a`.
+4. **Gênero**: LLM/`merge` mantêm `null` quando não falado (não coercionar
+   para `unissex` — `unissex` é valor de catálogo, não “desconhecido”).
+   `products.gender` NOT NULL DEFAULT `unissex` aplica-se **só no insert**
+   (`toProductInsert`). Prompt proíbe inferir gênero de cor/personagem/bebê.
+5. **Validador**: RN incompatível com faixas toddler+ (`2_3a`…`13_mais`);
+   conflito bloqueia Publicar, não Finalizar.
+6. **Preview**: `matchCategoryByName` + `normalizeBrandName` ao gerar draft
+   (create de categoria continua só no Finalizar). Match é **nome/slug
+   exato** (case-insensitive) — não remapeia “Body” para outra categoria.
+   Canônico **Tip Top** (não TipTop) em featured/aliases.
+7. Sem vision, sem parser posicional, sem provenance no DB.
+
+**Consequência**: D135 permanece; esta entrada fecha o pass de qualidade
+mínimo do pipeline voz.
+
+---
+
+## D140 — Voice intake refine: cardinalidade, condition null, name seguro
+
+**Data**: 2026-08-10
+**Contexto**: Pós-D139 — LLM às vezes devolvia `items` duplicados (few-shots);
+`condition` era coercionado a `seminovo` no merge; Title Case genérico
+ameaçaria marcas (GAP, Tip Top).
+**Decisão**:
+
+1. **Cardinalidade**: N transcrições usáveis → exatamente N itens LLM, um por
+   `client_id`. Validação estrutural pós-parse (length, presença, unicidade,
+   schema). Sem colapso silencioso por Map. Em mismatch: log
+   `llm_cardinality_mismatch` → **1 retry** → fallback manual + warning.
+2. **condition**: omitido → `null` no draft/preview. Coluna
+   `products.condition NOT NULL DEFAULT 'seminovo'` é **constraint técnica**;
+   `toProductInsert` aplica `?? "seminovo"` só na gravação (espelha gender/
+   unissex). Não é “fato falado”.
+3. **Catálogo no prompt**: candidatos para match; preservar termos falados
+   mesmo ausentes na lista; sem remap semântico (“próxima”).
+4. **name**: composição determinística segura `Categoria + Marca + Cor` com
+   brand já normalizado; capitalização só na cor; sem Title Case global.
+   Description permanece com o LLM.
+
+**Consequência**: D139 permanece; pipeline voice fica mais previsível sem
+NLP extra.
+
+---
+
+## D141 — Voice intake: categoria nova no Preview, marca na description, tags
+
+**Data**: 2026-08-10
+**Contexto**: HITL — LLM devolvia `category_name: Body` com `category_id` null,
+mas o Preview mostrava “Sem categoria”; `brand` canônico (Tip Top) não
+aparecia na `description` (Tiptop); description seca; tags subutilizadas.
+**Decisão**:
+
+1. **Princípio**: a IA pode enriquecer *apresentação/organização* dos fatos
+   falados; **não** inventar fatos (tecido, estado, conforto, gênero) além do
+   dito ou de inferências determinísticas já aprovadas (ex. RN→`rn_3m`,
+   aliases de marca).
+2. **Categoria**: match só nome/slug exato; ao match, espelhar
+   `category_name` canônico do DB. Sem match → preservar termo falado;
+   Preview mostra `{nome} (nova)`; create-on-finalize (D135) inalterado.
+   “Sem categoria” limpa `category_id` **e** `category_name`. Sem remap
+   semântico (Body ↛ Blusas).
+3. **Marca**: `normalizeBrandName` antes do `name`; `alignTextToCanonicalBrand`
+   (mesmo mapa de aliases) alinha a `description`. Marca desconhecida:
+   texto falado preservado.
+4. **Description**: prompt pede 1–2 frases naturais/comerciais de catálogo,
+   só com fatos; sem marketing inventado.
+5. **Tags**: LLM pode sugerir termos de busca só a partir do falado;
+   `buildTagsFromAi` une color + attributes + category_name + tags LLM,
+   normaliza (lowercase), dedupe, cap 12. Sem NLP. Busca storefront
+   (`q`) **não** muda neste patch (description/tags na busca = futuro).
+6. Sem coluna `color`, sem entidade `brands`, sem create de categoria no Preview.
+
+**Consequência**: D135–D140 permanecem; Preview deixa de confundir “nova”
+com “não informada”; catálogo recebe description/tags mais úteis sem
+schema novo.
+
+---
+
+## D142 — Admin touch UI + pencil manual no intake
+
+**Data**: 2026-08-10
+**Contexto**: Ajustes pré-produção de usabilidade no admin (mobile-first).
+**Decisão**:
+1. Padrão touch admin (não storefront): ações `h-12` + `text-base` +
+   `rounded-xl`; campos/search/select `h-12` + `rounded-2xl`; chips `h-11`.
+2. Pencil no record do Em massa abre preview **local** (`openManualPreview`)
+   sem tela “Processando STT + LLM” e sem apagar draft existente; STT+LLM
+   só via “Enviar para IA”.
+3. Toolbar Produtos: `+ Produto` → `/admin/produtos/intake-ia`; “Cadastrar
+   com IA” removido; Importar XLSX desabilitado até homologação.
+4. Toasts admin via `brandToast` / Sonner com tipografia e ícones Lucide
+   maiores.
+**Consequência**: Criação de peça pela listagem passa pelo fluxo Em massa;
+import XLSX permanece na rota mas sem CTA ativo.
+
+---
+
+## D143 — Intake preview: form-first (protótipo A)
+
+**Data**: 2026-08-10
+**Contexto**: HITL em `/prototype/ai-intake-preview` (Variant A rev.3). Tabs +
+foto grande + Select nativo atrapalhavam scan/edit no mobile.
+**Decisão**:
+
+1. Preview do Em massa segue o layout **form-first**: thumb + nome/descrição
+   alinhados; preço | tamanho (chips); sexo | checkbox Novo; marca | categoria
+   (drawer meia-tela ≤50vh); publicar; sem tabs.
+2. Footer sticky: setas `<`/`>` na série da sessão + CTA **Novo item**
+   (upsert na série → câmera). Lista **Série** no header do preview;
+   toque na thumb abre lightbox.
+3. Condição na UI: checkbox Novo ↔ `novo` / demais → `seminovo` (outros
+   valores do enum permanecem no schema até o operador alterar).
+4. Fluxo de captura D137 (1 peça: foto → áudio → preview) permanece; a
+   série no preview só revisa peças já na sessão.
+
+**Consequência**: `SessionDraftForm` extrai o preview; D137/D138 inalterados
+no capture; protótipo `/prototype/ai-intake-preview` vira referência do
+veredito A.
+
+**Revisão 2026-08-10**: **Finalizar** só no preview. Fora do preview, com ≥1
+peça salva na série, o header mostra **Série** (drawer) para voltar ao
+preview sem capturar de novo. Trash + confirm remove item. Drawers de
+marca/categoria: **Criar…** no rodapé (primeiro debaixo → cima).
+
+---
+
+## D144 — Dialog produto = form-first + STT real; páginas legado out
+
+**Data**: 2026-08-11
+**Contexto**: Dialog de editar/criar não espelhava o preview do intake; áudio
+no dialog descartava o blob e mandava `"Áudio capturado (N KB)"` como
+transcript → LLM → “itens inconsistentes”. Páginas `/produtos/novo` e
+`/produtos/[id]` duplicavam o form.
+**Decisão**:
+
+1. **CRUD pontual** só em `AdminProductDialog` (layout form-first compartilhado
+   com o preview: chips, drawers, thumb + nome/desc, footer Cancelar|Salvar
+   lado a lado, sem DialogHeader).
+2. **Multi-imagem**: thumb = capa; gestão (ordem/capa/upload) em dialog interno
+   (`AdminProductImageManager`).
+3. **STT+LLM**: `processProductAudioAction` recebe `audio_data_url` +
+   `domainContext` (categorias/marcas), mesmo pipeline do Em massa.
+4. **Rotas**: `/admin/produtos/novo` → redirect Em massa; `/admin/produtos/[id]`
+   → `/admin/produtos?edit=<id>`; `productEditPath` idem. `AdminProductForm`
+   removido. `+ Produto` permanece Em massa (D142); `?create=1` abre dialog
+   create se necessário.
+
+**Consequência**: um único path de voz com bytes reais; listagem é a casa da
+edição pontual.
+
+---
+
+## D145 — Dialog edit voice: patch com contexto, sem mock wipe
+
+**Contexto**: Em edição, áudio “só muda o preço” falhava (`schema_invalid` /
+`client_id` ausente / preço string) e caía no mock (`Conjunto moletom` R$89),
+apagando a peça.
+**Decisão**:
+
+1. Enviar `editContext` (JSON da peça) + MODO EDIÇÃO no LLM.
+2. Coerce preço BR (`"30,00"`) e injetar `client_id` quando N=1.
+3. `mergeEditPatchDraft` + se transcrição for só preço, aplicar só `price`.
+4. Falha em edit → manter campos atuais (nunca mock wipe).
+
+**Consequência**: create continua com mock fallback; edit é patch seguro.
+
+---

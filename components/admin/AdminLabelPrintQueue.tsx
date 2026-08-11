@@ -109,7 +109,7 @@ export function AdminLabelPrintQueue({ batchId, initialJobs }: Props) {
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          className="h-12 rounded-xl px-4 text-base"
           disabled={running || pending}
           onClick={() => startTransition(() => void runSequential())}
         >
@@ -140,7 +140,7 @@ export function AdminLabelPrintQueue({ batchId, initialJobs }: Props) {
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" className="h-12 rounded-xl px-4 text-base">
                 <Link
                   href={productLabelPrintPath(job.product_id)}
                   target="_blank"
@@ -152,7 +152,7 @@ export function AdminLabelPrintQueue({ batchId, initialJobs }: Props) {
               {(job.status === "failed" || job.status === "printed") && (
                 <Button
                   type="button"
-                  size="sm"
+                  className="h-12 rounded-xl px-4 text-base"
                   variant="secondary"
                   disabled={running || pending}
                   onClick={() => {

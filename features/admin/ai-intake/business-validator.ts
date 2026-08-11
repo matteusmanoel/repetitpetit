@@ -8,8 +8,13 @@ export type IntakeValidationIssue = {
   message: string;
 };
 
-/** RN / baby labels conflicting with older age bands (D135). */
-const OLDER_GROUPS = new Set<SizeGroup>([
+/**
+ * RN incompatible with toddler+ age bands (D135 quality pass).
+ * Baby month bands remain allowed with RN.
+ */
+const RN_INCOMPATIBLE_GROUPS = new Set<SizeGroup>([
+  "2_3a",
+  "4_5a",
   "6_8a",
   "9_12a",
   "13_mais",
@@ -29,7 +34,7 @@ export function validateIntakeDraft(
   const group = draft.size_group;
 
   if (label && isProductSizeLabel(label) && group) {
-    if (label === "RN" && OLDER_GROUPS.has(group)) {
+    if (label === "RN" && RN_INCOMPATIBLE_GROUPS.has(group)) {
       issues.push({
         code: "size_age_conflict",
         message: `Conflito: tamanho RN com faixa ${group}.`,

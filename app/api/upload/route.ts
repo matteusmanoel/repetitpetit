@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdminSession } from "@/features/admin/session";
+import { getAdminSession } from "@/features/admin/session";
 import { UPLOAD_BUCKETS, type UploadBucketKey } from "@/lib/supabase/upload-buckets";
 import { UploadError, uploadImage } from "@/lib/supabase/upload";
 
@@ -21,10 +21,8 @@ const pathPrefixSchema = z
 
 /**
  * `POST /api/upload` — recebe um arquivo via `multipart/form-data` e devolve
- * a URL pública no Supabase Storage. Rota admin-only (docs/03-architecture.md,
- * docs/06-agent-playbook.md regra #3): `requireAdminSession()` redireciona
- * para `/admin/login` quando não há sessão de admin válida, do mesmo jeito
- * que qualquer outra rota/action sob `app/admin/(protected)/`.
+ * a URL pública no Supabase Storage. Admin-only: responde **401 JSON** (não
+ * `redirect`) para o `fetch` do client não cair em “Load failed” no Safari.
  *
  * Campos esperados no `FormData`:
  * - `file`: o arquivo de imagem.
@@ -32,7 +30,13 @@ const pathPrefixSchema = z
  * - `pathPrefix` (opcional): pasta lógica dentro do bucket (ex.: "categories").
  */
 export async function POST(request: Request) {
-  await requireAdminSession();
+  const session = await getAdminSession();
+  if (!session) {
+    return NextResponse.json(
+      { error: "Sessão expirada. Faça login de novo." },
+      { status: 401 },
+    );
+  }
 
   const formData = await request.formData().catch(() => null);
 

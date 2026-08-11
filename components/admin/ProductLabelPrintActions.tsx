@@ -14,14 +14,14 @@ export function ProductLabelPrintActions({ pdfHref }: Props) {
     <div className="flex flex-wrap gap-2">
       <Button
         type="button"
-        size="sm"
+        className="h-12 rounded-xl px-4 text-base"
         onClick={() => {
           window.print();
         }}
       >
         Imprimir
       </Button>
-      <Button type="button" variant="outline" size="sm" asChild>
+      <Button type="button" variant="outline" className="h-12 rounded-xl px-4 text-base" asChild>
         <a href={pdfHref} target="_blank" rel="noopener noreferrer">
           Baixar PDF
         </a>

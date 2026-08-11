@@ -1,10 +1,16 @@
 import {
   buildManualPreviewDrafts,
+  formatVoiceDomainContext,
   isUsefulAudioNote,
   mergeAiDraft,
+  mergeEditPatchDraft,
+  parseAndValidateLlmItems,
   resolveAiApiKey,
   voiceExtractSystemPrompt,
-  aiStructuredItemSchema,
+  voiceSttPrompt,
+  type AiStructuredItem,
+  type VoiceDomainContext,
+  type VoiceEditContext,
 } from "@/features/admin/ai-intake/ai-config";
 import type { GeneratePreviewInput, IntakeDraftItem } from "@/features/admin/ai-intake/schemas";
 import type { Env } from "@/lib/env/load-server";
@@ -15,8 +21,16 @@ export {
   resolveAiApiKey,
   isUsefulAudioNote,
   mergeAiDraft,
+  mergeEditPatchDraft,
   buildTagsFromAi,
   voiceExtractSystemPrompt,
+  voiceSttPrompt,
+  formatVoiceDomainContext,
+  resolveMergedSizeGroup,
+  parseAndValidateLlmItems,
+  composeIntakeProductName,
+  capitalizeColorLabel,
+  isPriceOnlyEditTranscript,
 } from "@/features/admin/ai-intake/ai-config";
 
 const OPENAI_API_BASE = "https://api.openai.com/v1";
@@ -33,21 +47,40 @@ function transcriptionBaseUrl(source: "openai" | "gateway"): string | null {
 }
 
 function parseDataUrl(dataUrl: string): { mime: string; bytes: Uint8Array } | null {
-  const match = /^data:([^;,]+)?(;base64)?,([\s\S]*)$/.exec(dataUrl);
-  if (!match) return null;
-  const mime = match[1] || "application/octet-stream";
-  const isBase64 = Boolean(match[2]);
-  const data = match[3] ?? "";
+  if (!dataUrl.startsWith("data:")) return null;
+  const comma = dataUrl.indexOf(",");
+  if (comma < 0) return null;
+
+  const meta = dataUrl.slice("data:".length, comma);
+  const data = dataUrl.slice(comma + 1);
+  const parts = meta.split(";").map((part) => part.trim()).filter(Boolean);
+  const mime = parts[0] || "application/octet-stream";
+  const isBase64 = parts.some((part) => part.toLowerCase() === "base64");
+
   if (isBase64) {
-    const binary = atob(data);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-      bytes[i] = binary.charCodeAt(i);
+    try {
+      const binary = atob(data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return { mime, bytes };
+    } catch {
+      return null;
     }
-    return { mime, bytes };
   }
-  const decoded = decodeURIComponent(data);
-  return { mime, bytes: new TextEncoder().encode(decoded) };
+
+  try {
+    const decoded = decodeURIComponent(data);
+    return { mime, bytes: new TextEncoder().encode(decoded) };
+  } catch {
+    return null;
+  }
+}
+
+/** Exported for unit tests (codec params in MediaRecorder data URLs). */
+export function parseAudioDataUrlForTest(dataUrl: string) {
+  return parseDataUrl(dataUrl);
 }
 
 function extensionForMime(mime: string): string {
@@ -80,6 +113,7 @@ export async function transcribeAudioDataUrl(params: {
   form.append("file", file);
   form.append("model", "gpt-4o-mini-transcribe");
   form.append("language", "pt");
+  form.append("prompt", voiceSttPrompt());
 
   const fetchImpl = params.fetchImpl ?? fetch;
   const response = await fetchImpl(`${params.baseUrl}/audio/transcriptions`, {
@@ -174,18 +208,83 @@ async function resolveTranscriptForItem(params: {
   };
 }
 
+async function callLlmExtract(params: {
+  apiKey: string;
+  source: "openai" | "gateway";
+  userText: string;
+  fetchImpl: typeof fetch;
+}): Promise<{ raw: string; usage?: unknown }> {
+  const response = await params.fetchImpl(
+    `${chatBaseUrl(params.source)}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${params.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: voiceExtractSystemPrompt() },
+          { role: "user", content: params.userText },
+        ],
+        temperature: 0.2,
+      }),
+      signal: AbortSignal.timeout(60000),
+    },
+  );
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`LLM ${response.status}: ${detail.slice(0, 120)}`);
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: unknown;
+  };
+
+  console.info(
+    JSON.stringify({
+      scope: "ai-intake",
+      event: "llm_usage",
+      usage: payload.usage ?? null,
+    }),
+  );
+
+  return {
+    raw: payload.choices?.[0]?.message?.content ?? "{}",
+    usage: payload.usage,
+  };
+}
+
+function extractItemsArray(raw: string): unknown[] {
+  const parsedJson = JSON.parse(raw) as { items?: unknown };
+  return Array.isArray(parsedJson.items) ? parsedJson.items : [];
+}
+
 /**
- * Voice intake (D135): STT → LLM text extract. Images are NOT sent to the LLM.
- * On any failure, falls back to empty/manual drafts (never blocks intake).
+ * Voice intake (D135/D140): STT → LLM text extract. Images are NOT sent to the LLM.
+ * Cardinality invariant: N usable transcripts → exactly N LLM items (1 per client_id).
+ * On failure, falls back to empty/manual drafts (never blocks intake).
  */
 export async function generateAiPreviewDrafts(params: {
   env: Env;
   input: GeneratePreviewInput;
   fetchImpl?: typeof fetch;
+  domainContext?: VoiceDomainContext;
+  /** Dialog edit: peça atual + instrução de patch parcial. */
+  editContext?: VoiceEditContext;
 }): Promise<{
   drafts: IntakeDraftItem[];
   mode: "ai" | "manual";
   warning?: string;
+  debug?: {
+    transcripts: Array<{ client_id: string; transcript: string | null }>;
+    llm_user_text?: string;
+    llm_raw?: string;
+  };
 }> {
   const resolved = resolveAiApiKey(params.env);
   if (!resolved) {
@@ -226,76 +325,118 @@ export async function generateAiPreviewDrafts(params: {
         warning:
           warnings.join(" ") ||
           "Sem transcrição — preencha o preview manualmente.",
+        debug: { transcripts },
       };
     }
 
+    const expectedClientIds = usable.map((t) => t.client_id);
+    const domainBlock = params.domainContext
+      ? formatVoiceDomainContext(params.domainContext)
+      : null;
+
+    const editBlock = params.editContext
+      ? [
+          "MODO EDIÇÃO: a peça JÁ ESTÁ cadastrada. A transcrição pode pedir só uma alteração (ex. preço).",
+          "Devolva o item completo com client_id; COPIE do JSON atual todo campo que a transcrição NÃO alterar.",
+          "NÃO invente nome/descrição/marca/estado. Sem preço falado → mantenha o price atual.",
+          `Peça atual (JSON): ${JSON.stringify(params.editContext)}`,
+        ].join("\n")
+      : null;
+
     const userText = [
-      `Analise ${usable.length} peça(s) só pelo texto transcrito (sem imagens).`,
+      params.editContext
+        ? `Atualize ${usable.length} peça(s) a partir da transcrição (sem imagens).`
+        : `Analise ${usable.length} peça(s) só pelo texto transcrito (sem imagens).`,
+      `Emita exatamente ${usable.length} item(ns) em "items", um por client_id abaixo — sem duplicar.`,
+      ...(domainBlock ? [domainBlock] : []),
+      ...(editBlock ? [editBlock] : []),
       ...usable.map(
         (t) =>
           `Peça client_id=${t.client_id}. Transcrição: ${t.transcript}`,
       ),
     ].join("\n\n");
 
-    const response = await fetchImpl(
-      `${chatBaseUrl(resolved.source)}/chat/completions`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resolved.key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: voiceExtractSystemPrompt() },
-            { role: "user", content: userText },
-          ],
-          temperature: 0.2,
-        }),
-        signal: AbortSignal.timeout(60000),
-      },
-    );
+    let raw = "";
+    let validated: AiStructuredItem[] | null = null;
 
-    if (!response.ok) {
-      const detail = await response.text().catch(() => "");
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const llm = await callLlmExtract({
+          apiKey: resolved.key,
+          source: resolved.source,
+          userText,
+          fetchImpl,
+        });
+        raw = llm.raw;
+      } catch (error) {
+        if (attempt === 0) continue;
+        return {
+          drafts: buildManualPreviewDrafts(params.input),
+          mode: "manual",
+          warning:
+            error instanceof Error
+              ? `IA indisponível (${error.message}). Preview manual.`
+              : "IA indisponível. Preview manual.",
+          debug: { transcripts, llm_user_text: userText, llm_raw: raw || undefined },
+        };
+      }
+
+      let itemsRaw: unknown[];
+      try {
+        itemsRaw = extractItemsArray(raw);
+      } catch {
+        console.info(
+          JSON.stringify({
+            scope: "ai-intake",
+            event: "llm_cardinality_mismatch",
+            reason: "json_parse",
+            attempt: attempt + 1,
+            expected: expectedClientIds,
+          }),
+        );
+        if (attempt === 0) continue;
+        return {
+          drafts: buildManualPreviewDrafts(params.input),
+          mode: "manual",
+          warning:
+            "IA retornou JSON inválido; preencha o preview manualmente.",
+          debug: { transcripts, llm_user_text: userText, llm_raw: raw },
+        };
+      }
+
+      const check = parseAndValidateLlmItems(itemsRaw, expectedClientIds);
+      if (check.ok) {
+        validated = check.items;
+        break;
+      }
+
+      console.info(
+        JSON.stringify({
+          scope: "ai-intake",
+          event: "llm_cardinality_mismatch",
+          reason: check.reason,
+          attempt: attempt + 1,
+          expected: expectedClientIds,
+          got_count: check.gotCount,
+          got_client_ids: check.gotClientIds,
+          llm_raw_preview: raw.slice(0, 280),
+        }),
+      );
+    }
+
+    if (!validated) {
       return {
         drafts: buildManualPreviewDrafts(params.input),
         mode: "manual",
-        warning: `IA indisponível (${response.status}). Preview manual. ${detail.slice(0, 120)}`,
+        warning:
+          "IA retornou itens inconsistentes; preencha o preview manualmente.",
+        debug: { transcripts, llm_user_text: userText, llm_raw: raw },
       };
     }
 
-    const payload = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-      usage?: unknown;
-    };
-
-    console.info(
-      JSON.stringify({
-        scope: "ai-intake",
-        event: "llm_usage",
-        usage: payload.usage ?? null,
-        items: usable.length,
-      }),
+    const byClient = new Map(
+      validated.map((item) => [item.client_id, item] as const),
     );
-
-    const raw = payload.choices?.[0]?.message?.content ?? "{}";
-    const parsedJson = JSON.parse(raw) as { items?: unknown };
-    const itemsRaw = Array.isArray(parsedJson.items) ? parsedJson.items : [];
-
-    const byClient = new Map<
-      string,
-      ReturnType<typeof aiStructuredItemSchema.parse>
-    >();
-    for (const row of itemsRaw) {
-      const parsed = aiStructuredItemSchema.safeParse(row);
-      if (parsed.success) {
-        byClient.set(parsed.data.client_id, parsed.data);
-      }
-    }
-
     const transcriptByClient = new Map(
       transcripts.map((t) => [t.client_id, t.transcript] as const),
     );
@@ -306,6 +447,14 @@ export async function generateAiPreviewDrafts(params: {
       if (!ai) {
         return buildManualPreviewDrafts({ items: [item] })[0];
       }
+      if (params.editContext) {
+        return mergeEditPatchDraft(
+          item,
+          ai,
+          params.editContext,
+          transcript,
+        );
+      }
       return mergeAiDraft(item, ai, transcript);
     });
 
@@ -313,6 +462,11 @@ export async function generateAiPreviewDrafts(params: {
       drafts,
       mode: "ai",
       warning: warnings.length > 0 ? warnings.join(" ") : undefined,
+      debug: {
+        transcripts,
+        llm_user_text: userText,
+        llm_raw: raw,
+      },
     };
   } catch (error) {
     return {

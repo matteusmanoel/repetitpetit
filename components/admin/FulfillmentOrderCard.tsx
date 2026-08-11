@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { brandToast } from "@/lib/brand-toast";
 
 import { useFulfillmentQueue } from "@/components/admin/FulfillmentQueueProvider";
 import { Button } from "@/components/ui/button";
@@ -74,13 +74,13 @@ export function FulfillmentOrderCard({
     startTransition(async () => {
       const result = await action();
       if (!result.ok) {
-        toast.error(result.error);
+        brandToast.error(result.error);
         return;
       }
       if (result.outcome === "idempotent") {
-        toast.message("Status já atualizado.");
+        brandToast.message("Status já atualizado.");
       } else {
-        toast.success(successMessage);
+        brandToast.success(successMessage);
       }
       applyLocalTransition(order.id, result.status, extras);
       setConfirmCancel(false);

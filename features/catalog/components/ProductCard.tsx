@@ -114,6 +114,30 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               </div>
             ) : null}
           </div>
+
+          {/* Mobile: ATC sempre visível (desktop permanece hover-only acima) */}
+          {showHoverAction ? (
+            <div className="pt-1.5 md:hidden">
+              {isHold ? (
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  className="flex h-11 w-full cursor-not-allowed items-center justify-center rounded-full bg-muted px-3 text-sm font-semibold text-muted-foreground ring-1 ring-border"
+                >
+                  Reservada
+                </button>
+              ) : (
+                <ProductCardQuickAdd
+                  productId={product.id}
+                  name={product.name}
+                  slug={product.slug}
+                  price={product.price}
+                  coverImageUrl={product.cover_image_url}
+                />
+              )}
+            </div>
+          ) : null}
         </div>
       </article>
     </Link>

@@ -40,6 +40,10 @@ type Props = {
   initialQuery: string;
   initialStatus: ProductStatus | "all";
   savedFlash?: "created" | "updated" | null;
+  /** Deep-link D144: abre dialog de edição. */
+  initialEditId?: string | null;
+  /** Deep-link D144: abre dialog create. */
+  initialCreate?: boolean;
 };
 
 function useNow(tickMs = 1000) {
@@ -78,6 +82,8 @@ export function AdminProductsClient({
   initialQuery,
   initialStatus,
   savedFlash = null,
+  initialEditId = null,
+  initialCreate = false,
 }: Props) {
   const router = useRouter();
   const now = useNow();
@@ -106,6 +112,42 @@ export function AdminProductsClient({
     router.replace("/admin/produtos", { scroll: false });
   }, [savedFlash, router]);
 
+  function clearDialogQuery() {
+    router.replace("/admin/produtos", { scroll: false });
+  }
+
+  function openEdit(productId: string) {
+    setDialogMode("edit");
+    setDialogProduct(null);
+    setDialogOpen(true);
+    startEditTransition(async () => {
+      const result = await loadProductForDialogAction(productId);
+      if (!result.ok) {
+        brandToast.error(result.error);
+        setDialogOpen(false);
+        clearDialogQuery();
+        return;
+      }
+      setDialogProduct(result.product);
+    });
+  }
+
+  function openCreate() {
+    setDialogMode("create");
+    setDialogProduct(null);
+    setDialogOpen(true);
+  }
+
+  // Deep-link once from server props (?edit= | ?create=1)
+  useEffect(() => {
+    if (initialEditId) {
+      openEdit(initialEditId);
+      return;
+    }
+    if (initialCreate) openCreate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialEditId, initialCreate]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return products.filter((product) => {
@@ -127,46 +169,37 @@ export function AdminProductsClient({
     safePage * PAGE_SIZE + PAGE_SIZE,
   );
 
-  function openCreate() {
-    setDialogMode("create");
-    setDialogProduct(null);
-    setDialogOpen(true);
-  }
-
-  function openEdit(productId: string) {
-    setDialogMode("edit");
-    setDialogProduct(null);
-    setDialogOpen(true);
-    startEditTransition(async () => {
-      const result = await loadProductForDialogAction(productId);
-      if (!result.ok) {
-        brandToast.error(result.error);
-        setDialogOpen(false);
-        return;
-      }
-      setDialogProduct(result.product);
-    });
-  }
-
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
           <h1 className="text-xl font-semibold text-foreground">Produtos</h1>
           <p className="text-sm text-muted-foreground">
             Holds com timer e override · cadastro em dialog
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/admin/produtos/intake-ia">Cadastrar com IA</Link>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {/* Importação XLSX desabilitada até homologação
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 rounded-xl px-4 text-base"
+            disabled
+            title="Importação XLSX ainda não homologada"
+            aria-disabled="true"
+          >
+            Importar XLSX
           </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/admin/produtos/importar">Importar XLSX</Link>
-          </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus />
-            Produto
+          */}
+          <Button
+            asChild
+            className="h-12 gap-2 rounded-xl px-3 text-base sm:px-4"
+            aria-label="Novo produto"
+          >
+            <Link href="/admin/produtos/intake-ia">
+              <Plus className="size-5" />
+              <span className="hidden sm:inline">Produto</span>
+            </Link>
           </Button>
         </div>
       </div>
@@ -298,10 +331,10 @@ export function AdminProductsClient({
                     <OverrideActionButton
                       productId={product.id}
                       productStatus={product.status}
-                      className="h-11 w-full rounded-xl border-0 bg-[var(--brand-pink,#e85d75)] text-xs font-bold text-white shadow-sm hover:bg-[var(--brand-pink,#e85d75)]/90 hover:text-white"
+                      className="h-12 w-full rounded-xl border-0 bg-[var(--brand-pink,#e85d75)] text-sm font-bold text-white shadow-sm hover:bg-[var(--brand-pink,#e85d75)]/90 hover:text-white"
                     />
                   ) : (
-                    <div className="h-11" aria-hidden />
+                    <div className="h-12" aria-hidden />
                   )}
                 </div>
               </li>
@@ -315,7 +348,7 @@ export function AdminProductsClient({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            className="h-12 rounded-xl px-4 text-base"
             disabled={safePage <= 0}
             onClick={() => setPage((current) => Math.max(0, current - 1))}
           >
@@ -327,7 +360,7 @@ export function AdminProductsClient({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            className="h-12 rounded-xl px-4 text-base"
             disabled={safePage >= pageCount - 1}
             onClick={() =>
               setPage((current) => Math.min(pageCount - 1, current + 1))
@@ -344,7 +377,13 @@ export function AdminProductsClient({
         product={dialogProduct}
         categories={categories}
         onCategoriesChange={setCategories}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setDialogProduct(null);
+            clearDialogQuery();
+          }
+        }}
         loading={loadingEdit && dialogMode === "edit" && !dialogProduct}
       />
     </div>

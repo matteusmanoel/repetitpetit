@@ -140,7 +140,7 @@ export function DeliverySettingsForm({
         o checkout bloqueia a entrega.
       </p>
 
-      <Button type="submit" className="h-11 w-full sm:w-auto" disabled={isPending}>
+      <Button type="submit" className="h-12 w-full rounded-xl px-4 text-base sm:w-auto" disabled={isPending}>
         {isPending ? "Salvando…" : "Salvar frete"}
       </Button>
     </form>

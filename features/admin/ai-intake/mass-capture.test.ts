@@ -7,6 +7,7 @@ import {
   generatePreviewCtaLabel,
   isHoldLockPointer,
   isIntakeDraftReady,
+  micErrorMessagePt,
   resolveHoldLockHint,
   shouldCancelOnRelease,
   shouldLockFromDelta,
@@ -55,6 +56,12 @@ describe("mass-capture helpers", () => {
     expect(cameraErrorMessagePt("unavailable")).toMatch(/upload/);
   });
 
+  it("maps mic failures to actionable PT messages", () => {
+    expect(micErrorMessagePt("insecure_context")).toMatch(/HTTPS|localhost/);
+    expect(micErrorMessagePt("permission_denied")).toMatch(/Permissão/);
+    expect(micErrorMessagePt("not_found")).toMatch(/microfone/i);
+  });
+
   it("labels Gerar preview CTA with piece count and AI mode", () => {
     expect(
       generatePreviewCtaLabel({ aiConfigured: true, capturedCount: 0 }),
@@ -84,6 +91,8 @@ describe("mass-capture helpers", () => {
       slug: "casaco-azul",
       price: 29.9,
       size_label: "M",
+      gender: "unissex" as const,
+      condition: "seminovo" as const,
     };
     expect(isIntakeDraftReady(ready)).toBe(true);
     expect(allIntakeDraftsReady([ready])).toBe(true);

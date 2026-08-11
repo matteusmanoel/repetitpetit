@@ -36,7 +36,7 @@ export function AdminProductStatusFilter({ name, defaultValue }: Props) {
           if (next) setValue(next);
         }}
       >
-        <SelectTrigger size="sm" className="w-full">
+        <SelectTrigger className="h-12 w-full rounded-2xl text-base data-[size=default]:h-12">
           <SelectValue placeholder="Selecione" />
         </SelectTrigger>
         <SelectContent>

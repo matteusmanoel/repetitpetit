@@ -73,7 +73,7 @@ export function BannersAdminClient({ banners }: { banners: Banner[] }) {
             Destaques da home. Banners ativos com ordem menor aparecem primeiro.
           </p>
         </div>
-        <Button type="button" onClick={openCreate}>
+        <Button type="button" className="h-12 rounded-xl px-4 text-base" onClick={openCreate}>
           Novo banner
         </Button>
       </div>
@@ -123,7 +123,7 @@ export function BannersAdminClient({ banners }: { banners: Banner[] }) {
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  className="h-12 rounded-xl px-4 text-base"
                   onClick={() => openEdit(banner)}
                 >
                   Editar
@@ -131,7 +131,7 @@ export function BannersAdminClient({ banners }: { banners: Banner[] }) {
                 <Button
                   type="button"
                   variant="destructive"
-                  size="sm"
+                  className="h-12 rounded-xl px-4 text-base"
                   disabled={isPending && deletingId === banner.id}
                   onClick={() => handleDelete(banner)}
                 >

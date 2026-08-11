@@ -18,6 +18,7 @@ import {
   Check,
   Mic,
   Pencil,
+  Shuffle,
   Sparkles,
   Square,
   X,
@@ -40,7 +41,7 @@ import {
 
 export const VARIANT_A_META = {
   key: "A",
-  label: "Dock + pulse (alvo)",
+  label: "Overlay fullscreen (alvo)",
 } as const;
 export const VARIANT_B_META = {
   key: "B",
@@ -193,8 +194,8 @@ function Lobby({
         <div className="space-y-2">
           <h2 className="text-xl font-semibold">Sessão · checklist áudio</h2>
           <p className="max-w-xs text-sm text-muted-foreground">
-            Layout <strong>{layout}</strong>: checklist permanece visível
-            durante Gravando (memória). Sem textos extras nos itens.
+            Layout <strong>{layout}</strong>: foto fullscreen + card checklist
+            (branco/vermelho) sobre a captura. Sem textos extras nos itens.
           </p>
         </div>
         <button
@@ -301,12 +302,24 @@ function ModeDots({ mode }: { mode: Mode }) {
 function CameraStep({ onSnap }: { onSnap: () => void }) {
   return (
     <div className="relative flex flex-1 flex-col">
-      <div className="relative flex-1 bg-zinc-800">
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/50">
-          <Camera className="size-16" />
-          <p className="text-sm">Aponte para a peça</p>
-        </div>
-        <div className="pointer-events-none absolute inset-8 rounded-[2.5rem] border border-white/35" />
+      <div className="relative flex-1 bg-zinc-900">
+        <button
+          type="button"
+          className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/55"
+          onClick={onSnap}
+          aria-label="Abrir câmera"
+        >
+          <span className="rounded-full bg-white/10 p-5 ring-1 ring-white/20">
+            <Camera className="size-14" />
+          </span>
+          <p className="text-sm font-medium text-white/80">
+            Toque para fotografar
+          </p>
+          <p className="max-w-[16rem] text-center text-xs text-white/45">
+            Abre a câmera do celular — sem permissão no navegador
+          </p>
+        </button>
+        <div className="pointer-events-none absolute inset-8 rounded-[2.5rem] border border-white/20" />
       </div>
       <div className="flex flex-col items-center gap-3 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
         <p className="text-xs text-white/60">Passo 1 · Foto</p>
@@ -314,7 +327,7 @@ function CameraStep({ onSnap }: { onSnap: () => void }) {
           type="button"
           className="h-[4.75rem] w-[4.75rem] rounded-full border-[6px] border-white bg-white/20"
           onClick={onSnap}
-          aria-label="Capturar"
+          aria-label="Fotografar"
         />
       </div>
     </div>
@@ -363,53 +376,62 @@ function PreviewStep({
   onNext: () => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-zinc-100 text-foreground">
-      <div className="flex-1 overflow-y-auto p-4 pb-28">
-        <div className="mx-auto flex max-w-lg flex-col gap-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={draft.photoDataUrl ?? ""}
-            alt=""
-            className="aspect-[4/3] w-full rounded-3xl object-cover"
-          />
-          <label className="block text-sm">
-            <span className="mb-1 block text-xs text-muted-foreground">Nome</span>
-            <input
-              className="h-11 w-full rounded-xl border border-border bg-white px-3"
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            {(
-              [
-                ["category", "Categoria"],
-                ["size", "Tamanho"],
-                ["color", "Cor"],
-                ["price", "Preço"],
-              ] as const
-            ).map(([key, label]) => (
-              <label key={key} className="block text-sm">
-                <span className="mb-1 block text-xs text-muted-foreground">
-                  {label}
-                </span>
-                <input
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3"
-                  value={draft[key]}
-                  onChange={(e) =>
-                    setDraft({ ...draft, [key]: e.target.value })
-                  }
-                />
-              </label>
-            ))}
-          </div>
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Pencil className="size-3.5" />
-            Preview editável (B)
-          </p>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-100 text-foreground">
+      <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col gap-2.5 overflow-hidden px-3 pb-2 pt-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={draft.photoDataUrl ?? ""}
+          alt=""
+          className="h-28 w-full shrink-0 rounded-2xl object-cover"
+        />
+        <div className="grid shrink-0 grid-cols-2 gap-1 rounded-lg bg-muted p-[3px]">
+          <span className="rounded-md bg-background px-2 py-1.5 text-center text-sm font-medium shadow-sm">
+            Essencial
+          </span>
+          <span className="px-2 py-1.5 text-center text-sm text-muted-foreground">
+            Detalhes
+          </span>
         </div>
+        <label className="block shrink-0 text-sm">
+          <span className="mb-1 block text-xs text-muted-foreground">Nome</span>
+          <input
+            className="h-11 w-full rounded-xl border border-border bg-white px-3"
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          />
+        </label>
+        <div className="grid shrink-0 grid-cols-2 gap-2.5">
+          {(
+            [
+              ["price", "Preço"],
+              ["size", "Tamanho"],
+            ] as const
+          ).map(([key, label]) => (
+            <label key={key} className="block text-sm">
+              <span className="mb-1 block text-xs text-muted-foreground">
+                {label}
+              </span>
+              <input
+                className="h-11 w-full rounded-xl border border-border bg-white px-3"
+                value={draft[key]}
+                onChange={(e) =>
+                  setDraft({ ...draft, [key]: e.target.value })
+                }
+              />
+            </label>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="mt-auto flex w-full shrink-0 items-start gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-left"
+        >
+          <span className="mt-0.5 size-5 rounded border border-muted-foreground/40 bg-white" />
+          <span>
+            <span className="block text-sm font-medium">Publicar no catálogo</span>
+          </span>
+        </button>
       </div>
-      <div className="border-t border-black/5 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0 border-t border-black/5 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <button
           type="button"
           className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-green)] text-sm font-semibold text-white"
@@ -423,7 +445,7 @@ function PreviewStep({
   );
 }
 
-/** A — Dock: checklist always above mic; recording only tints + badge */
+/** A — Fullscreen photo + checklist overlay; Gravando no botão */
 function RecordDock(props: ReturnType<typeof useSession>) {
   const {
     current,
@@ -452,7 +474,9 @@ function RecordDock(props: ReturnType<typeof useSession>) {
             />
           ) : null}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-6 pb-8 text-center">
-            <p className="text-sm font-semibold">Áudio pronto · {Math.max(1, Math.floor(recMs / 1000))}s</p>
+            <p className="text-sm font-semibold">
+              Áudio pronto · {Math.max(1, Math.floor(recMs / 1000))}s
+            </p>
           </div>
         </div>
         <div className="flex gap-2 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
@@ -480,76 +504,86 @@ function RecordDock(props: ReturnType<typeof useSession>) {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <div className="relative min-h-[28%] flex-1">
+      <div className="absolute inset-0 bg-zinc-900">
         {current.photoDataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={current.photoDataUrl}
             alt=""
-            className={cn(
-              "h-full w-full object-cover",
-              recording && "opacity-40",
-            )}
+            className="h-full w-full object-cover"
           />
         ) : null}
+      </div>
+      <div
+        className={cn(
+          "absolute inset-0 flex flex-col",
+          recording ? "bg-red-600/88" : "",
+        )}
+      >
         {recording ? (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-red-700/55">
-            <div className="relative flex size-24 items-center justify-center">
-              <span className="absolute inset-0 animate-ping rounded-full bg-white/25" />
-              <span className="absolute inset-2 animate-pulse rounded-full bg-white/15" />
-              <span className="relative flex size-16 items-center justify-center rounded-full bg-white text-red-600 shadow-lg">
-                <Mic className="size-8" />
-              </span>
-            </div>
-            <p className="text-base font-bold tracking-wide text-white">
-              Gravando… {Math.floor(recMs / 1000)}s
-            </p>
-            <div className="flex h-10 items-end gap-1">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <span
-                  key={i}
-                  className="w-1.5 animate-pulse rounded-full bg-white/90"
-                  style={{
-                    height: `${10 + ((i * 17) % 28)}px`,
-                    animationDelay: `${i * 45}ms`,
-                  }}
-                />
-              ))}
-            </div>
+          <div className="flex min-h-0 flex-1 flex-col justify-end overflow-y-auto px-3 pb-2 pt-2">
+            <VoiceChecklist
+              checked={checked}
+              onToggle={toggleItem}
+              tone="dark"
+            />
           </div>
         ) : null}
-      </div>
-      {/* Persistent dock — visible before AND during recording */}
-      <div
-        className={cn(
-          "shrink-0 rounded-t-3xl px-3 pb-2 pt-3",
-          recording ? "bg-red-700" : "bg-zinc-100",
-        )}
-      >
-        <div className="mx-auto max-w-sm">
-          <VoiceChecklist
-            checked={checked}
-            onToggle={toggleItem}
-            tone={recording ? "dark" : "light"}
-          />
+        <div
+          className={cn(
+            "flex shrink-0 items-center justify-center gap-5 px-4 pb-24 pt-2",
+            !recording &&
+              "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16",
+          )}
+        >
+          {!recording ? (
+            <>
+              <button
+                type="button"
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/25"
+                aria-label="Manual"
+              >
+                <Pencil className="size-5" />
+              </button>
+              <MicBar recording={false} onStart={startRec} onStop={stopRec} />
+              <button
+                type="button"
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/25"
+                onClick={() => setMode("camera")}
+                aria-label="Trocar foto"
+              >
+                <Shuffle className="size-5" />
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={stopRec}
+              className="relative mx-3 flex h-16 w-full flex-col items-center justify-center gap-1 rounded-2xl bg-white text-red-600 shadow-xl"
+              aria-label="Parar"
+            >
+              <span className="absolute inset-0 animate-ping rounded-2xl bg-white/30" />
+              <span className="relative flex items-center gap-2">
+                <Mic className="size-5 animate-pulse" />
+                <span className="text-sm font-bold">
+                  Gravando… {Math.floor(recMs / 1000)}s
+                </span>
+              </span>
+              <span className="relative flex h-7 items-end gap-1" aria-hidden>
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="w-1.5 animate-pulse rounded-full bg-red-500/90"
+                    style={{
+                      height: `${10 + ((i * 17) % 28)}px`,
+                      animationDelay: `${i * 45}ms`,
+                    }}
+                  />
+                ))}
+              </span>
+            </button>
+          )}
         </div>
-      </div>
-      <div
-        className={cn(
-          "flex flex-col items-center gap-2 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3",
-          recording ? "bg-red-700" : "bg-zinc-950",
-        )}
-      >
-        <MicBar recording={recording} onStart={startRec} onStop={stopRec} />
-        {!recording ? (
-          <button
-            type="button"
-            className="text-xs text-white/50 underline"
-            onClick={() => setMode("camera")}
-          >
-            Trocar foto
-          </button>
-        ) : null}
       </div>
     </div>
   );

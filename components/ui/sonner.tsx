@@ -20,18 +20,18 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       icons={{
         success: (
-          <CheckCircle2 className="size-5 text-[var(--brand-green)]" />
+          <CheckCircle2 className="size-6 text-[var(--brand-green)]" />
         ),
-        info: <Info className="size-5 text-[var(--brand-blue)]" />,
-        warning: <TriangleAlert className="size-5 text-amber-600" />,
-        error: <XCircle className="size-5 text-[var(--brand-pink)]" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />,
+        info: <Info className="size-6 text-[var(--brand-blue)]" />,
+        warning: <TriangleAlert className="size-6 text-amber-600" />,
+        error: <XCircle className="size-6 text-[var(--brand-pink)]" />,
+        loading: <Loader2Icon className="size-5 animate-spin" />,
       }}
       toastOptions={{
         classNames: {
           toast:
-            "group toast !rounded-2xl !border !bg-white !font-sans !text-sm !text-foreground !shadow-lg !px-4 !py-3",
-          description: "!text-muted-foreground !font-sans",
+            "group toast !rounded-2xl !border !bg-white !font-sans !text-base !text-foreground !shadow-lg !px-4 !py-4 min-h-14",
+          description: "!text-muted-foreground !font-sans !text-sm",
           success: "!border-[var(--brand-green)]/35",
           error: "!border-[var(--brand-pink)]/40",
           info: "!border-black/10",

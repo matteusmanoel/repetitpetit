@@ -2,12 +2,12 @@
 
 import { Check } from "lucide-react";
 import { useTransition } from "react";
-import { toast } from "sonner";
 
 import { useFulfillmentQueue } from "@/components/admin/FulfillmentQueueProvider";
 import { toggleOrderItemPackedAction } from "@/features/admin/fulfillment/actions";
 import type { FulfillmentQueueItem } from "@/features/admin/fulfillment/types";
 import { formatPrice } from "@/features/catalog/format-price";
+import { brandToast } from "@/lib/brand-toast";
 import { cn } from "@/lib/utils";
 
 /**
@@ -35,7 +35,7 @@ export function SeparacaoPieceCard({
     startTransition(async () => {
       const result = await toggleOrderItemPackedAction(item.id);
       if (!result.ok) {
-        toast.error(result.error);
+        brandToast.error(result.error);
         return;
       }
       applyLocalPackedAtChange(
@@ -43,12 +43,12 @@ export function SeparacaoPieceCard({
         result.orderItemId,
         result.packedAt,
       );
-      toast.message("Check de separação atualizado");
+      brandToast.message("Check de separação atualizado");
     });
   };
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <article className="flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="relative aspect-[3/4] bg-zinc-100">
         {item.coverImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- snapshot URL may be external storage
@@ -75,21 +75,6 @@ export function SeparacaoPieceCard({
             URGENTE
           </span>
         ) : null}
-        <button
-          type="button"
-          onClick={onCheck}
-          disabled={isPending}
-          className={cn(
-            "absolute bottom-3 right-3 flex h-12 w-12 cursor-pointer items-center justify-center rounded-full shadow-md disabled:opacity-60",
-            checked
-              ? "bg-[var(--brand-green)] text-white"
-              : "bg-white text-foreground",
-          )}
-          aria-label={checked ? "Desmarcar separado" : "Marcar separado"}
-          aria-pressed={checked}
-        >
-          <Check className="size-5" />
-        </button>
       </div>
       <div className="space-y-1 p-3">
         <p className="line-clamp-2 text-sm font-semibold leading-snug">
@@ -99,6 +84,24 @@ export function SeparacaoPieceCard({
         <p className="text-lg font-bold text-[var(--brand-green)]">
           {formatPrice(item.unitPrice)}
         </p>
+      </div>
+      <div className="mt-auto border-t border-border bg-card p-2">
+        <button
+          type="button"
+          onClick={onCheck}
+          disabled={isPending}
+          className={cn(
+            "flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-bold shadow-sm transition disabled:opacity-60",
+            checked
+              ? "bg-[var(--brand-green)] text-white"
+              : "border border-border bg-white text-foreground hover:bg-muted/60",
+          )}
+          aria-label={checked ? "Desmarcar separado" : "Marcar separado"}
+          aria-pressed={checked}
+        >
+          <Check className="size-5" />
+          {checked ? "Separado" : "Marcar"}
+        </button>
       </div>
     </article>
   );

@@ -15,7 +15,7 @@ export function BannerDeleteButton({ id, title }: { id: string; title: string })
     <Button
       type="button"
       variant="destructive"
-      size="sm"
+      className="h-12 rounded-xl px-4 text-base"
       disabled={isPending}
       onClick={() => {
         if (!window.confirm(`Excluir o banner “${title}”?`)) {

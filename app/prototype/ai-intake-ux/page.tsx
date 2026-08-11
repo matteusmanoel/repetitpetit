@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * PROTOTYPE — AI intake recording checklist (rev.2)
+ * PROTOTYPE — AI intake recording checklist (rev.3)
  * Question: how should the memory checklist stay visible during Gravando?
  *
  * Three layouts (same session shell C + preview edit):
- * A — Dock + pulse mic no centro da foto (alvo)
+ * A — Fullscreen photo + white/red checklist overlay (alvo)
  * B — Split foto/lista
  * C — Checklist-first (foto → thumbnail)
  *

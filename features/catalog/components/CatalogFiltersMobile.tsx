@@ -1,7 +1,7 @@
 "use client";
 
 import { SlidersHorizontalIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { CatalogFilters } from "@/features/catalog/components/CatalogFilters";
 import {
   EMPTY_CATALOG_FILTERS,
   getActiveFilterChips,
+  type CatalogFilters as CatalogFiltersType,
 } from "@/features/catalog/filters";
 import { useCatalogFilters } from "@/features/catalog/use-catalog-filters";
 
@@ -26,14 +27,21 @@ type CatalogFiltersMobileProps = {
 
 /**
  * Drawer inferior de filtros para mobile/tablet (docs/05-ux-direction.md).
- * Footer sticky com “Ver resultados”. Oculta o trigger quando não há acervo
- * e nenhum filtro ativo (empty state sem controles mortos).
+ * Seleções ficam em draft local; URL só atualiza em “Ver resultados”.
  */
 export function CatalogFiltersMobile({ brands }: CatalogFiltersMobileProps) {
   const [open, setOpen] = useState(false);
   const { filters, replaceFilters } = useCatalogFilters();
+  const [draft, setDraft] = useState<CatalogFiltersType>(filters);
+  const draftCount = getActiveFilterChips(draft).length;
   const activeCount = getActiveFilterChips(filters).length;
   const hideTrigger = brands.length === 0 && activeCount === 0;
+
+  useEffect(() => {
+    if (open) {
+      setDraft(filters);
+    }
+  }, [open, filters]);
 
   if (hideTrigger) {
     return null;
@@ -65,16 +73,20 @@ export function CatalogFiltersMobile({ brands }: CatalogFiltersMobileProps) {
         </SheetHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          <CatalogFilters brands={brands} />
+          <CatalogFilters
+            brands={brands}
+            value={draft}
+            onChange={setDraft}
+          />
         </div>
 
         <SheetFooter className="shrink-0 gap-2 border-t border-border bg-background sm:flex-col">
-          {activeCount > 0 ? (
+          {draftCount > 0 ? (
             <Button
               type="button"
               variant="ghost"
               className="h-11 w-full rounded-full"
-              onClick={() => replaceFilters(EMPTY_CATALOG_FILTERS)}
+              onClick={() => setDraft(EMPTY_CATALOG_FILTERS)}
             >
               Limpar filtros
             </Button>
@@ -83,7 +95,10 @@ export function CatalogFiltersMobile({ brands }: CatalogFiltersMobileProps) {
             type="button"
             size="lg"
             className="h-12 w-full rounded-full text-base font-medium"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              replaceFilters(draft);
+              setOpen(false);
+            }}
           >
             Ver resultados
           </Button>

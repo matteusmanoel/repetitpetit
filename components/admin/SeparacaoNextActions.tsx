@@ -2,7 +2,7 @@
 
 import { MessageCircle, Store, Truck } from "lucide-react";
 import { useTransition } from "react";
-import { toast } from "sonner";
+import { brandToast } from "@/lib/brand-toast";
 
 import { useFulfillmentQueue } from "@/components/admin/FulfillmentQueueProvider";
 import {
@@ -23,7 +23,7 @@ type NextActionKind = "motoboy" | "envio" | "retirada" | "whatsapp";
 
 function openWhatsApp(phoneDigits: string | null | undefined, message: string) {
   if (!phoneDigits) {
-    toast.error("Telefone não disponível.");
+    brandToast.error("Telefone não disponível.");
     return;
   }
   window.open(
@@ -44,13 +44,13 @@ function handleTransitionResult(
   extras?: { trackingCode?: string | null },
 ): boolean {
   if (!result.ok) {
-    toast.error(result.error);
+    brandToast.error(result.error);
     return false;
   }
   if (result.outcome === "idempotent") {
-    toast.message("Status já atualizado.");
+    brandToast.message("Status já atualizado.");
   } else {
-    toast.success(successMessage);
+    brandToast.success(successMessage);
   }
   applyLocalTransition(result.orderId, result.status, extras);
   return true;
@@ -83,7 +83,7 @@ export function SeparacaoNextActions({
       case "motoboy": {
         const storePhone = publicEnv.NEXT_PUBLIC_STORE_WHATSAPP;
         if (!storePhone) {
-          toast.message(
+          brandToast.message(
             "Configure NEXT_PUBLIC_STORE_WHATSAPP para avisar o motoboy.",
           );
           return;
@@ -106,7 +106,7 @@ export function SeparacaoNextActions({
           if (order.status === "paid") {
             const confirmed = await confirmOrderAction(order.id);
             if (!confirmed.ok) {
-              toast.error(confirmed.error);
+              brandToast.error(confirmed.error);
               return;
             }
             applyLocalTransition(confirmed.orderId, confirmed.status);
@@ -125,7 +125,7 @@ export function SeparacaoNextActions({
           if (order.status === "paid") {
             const confirmed = await confirmOrderAction(order.id);
             if (!confirmed.ok) {
-              toast.error(confirmed.error);
+              brandToast.error(confirmed.error);
               return;
             }
             applyLocalTransition(confirmed.orderId, confirmed.status);
@@ -148,7 +148,7 @@ export function SeparacaoNextActions({
           if (tracking === null) return;
           const code = tracking.trim();
           if (!code) {
-            toast.error("Informe o código de rastreio.");
+            brandToast.error("Informe o código de rastreio.");
             return;
           }
           const result = await markShippedAction(order.id, code);
@@ -226,7 +226,7 @@ export function SeparacaoNextActions({
   }
 
   const barBtn =
-    "inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold disabled:opacity-50";
+    "inline-flex h-12 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 text-base font-semibold disabled:opacity-50";
 
   return (
     <div className="hidden shrink-0 items-center gap-2 lg:flex">

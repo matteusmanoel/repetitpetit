@@ -11,6 +11,20 @@ const supabaseHostname = (() => {
 const nextConfig: NextConfig = {
   // xlsx + QR/PDF stay on the server (SN-10) — avoid bloating the client bundle.
   serverExternalPackages: ["xlsx", "qrcode", "@react-pdf/renderer"],
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // Garante getUserMedia no admin (intake áudio) em browsers que herdam policy restritiva.
+          {
+            key: "Permissions-Policy",
+            value: "microphone=(self), camera=(self)",
+          },
+        ],
+      },
+    ];
+  },
   images: {
     // Seed usa placehold.co (SVG). Fotos reais do Storage serão JPEG/PNG/WEBP.
     dangerouslyAllowSVG: true,

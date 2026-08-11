@@ -66,7 +66,7 @@ export function CategoriesAdminClient({
             primeiro.
           </p>
         </div>
-        <Button type="button" onClick={openCreate}>
+        <Button type="button" className="h-12 rounded-xl px-4 text-base" onClick={openCreate}>
           Nova categoria
         </Button>
       </div>
@@ -123,7 +123,7 @@ export function CategoriesAdminClient({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  className="h-12 rounded-xl px-4 text-base"
                   onClick={() => openEdit(category)}
                 >
                   Editar
@@ -131,7 +131,7 @@ export function CategoriesAdminClient({
                 <Button
                   type="button"
                   variant="destructive"
-                  size="sm"
+                  className="h-12 rounded-xl px-4 text-base"
                   disabled={isPending && deletingId === category.id}
                   onClick={() => handleDelete(category)}
                 >

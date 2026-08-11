@@ -91,7 +91,7 @@ export function SeparacaoSplitHub() {
                 type="button"
                 onClick={() => setFilter(f.id)}
                 className={cn(
-                  "h-11 shrink-0 cursor-pointer rounded-2xl px-4 text-sm font-medium",
+                  "h-11 shrink-0 cursor-pointer rounded-xl px-4 text-sm font-medium",
                   filter === f.id
                     ? "bg-foreground text-background"
                     : "bg-white text-muted-foreground shadow-sm ring-1 ring-black/5",

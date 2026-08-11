@@ -35,7 +35,7 @@ export const FEATURED_BRANDS = [
   "Carter's",
   "Paraiso",
   "Aconchego do Bebê",
-  "TipTop",
+  "Tip Top",
   "Milon",
   "GAP",
   "Tommy Hilfiger",

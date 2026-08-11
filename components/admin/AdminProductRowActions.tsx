@@ -26,6 +26,7 @@ import {
 } from "@/features/admin/product-actions";
 import { brandToast } from "@/lib/brand-toast";
 import {
+  productEditPath,
   productLabelPdfPath,
   productLabelPrintPath,
 } from "@/lib/qr/passport-url";
@@ -90,7 +91,7 @@ export function AdminProductRowActions({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            className="h-12 rounded-xl px-4 text-base"
             disabled={isActivating}
             onClick={() => void handleActivate()}
           >
@@ -111,7 +112,7 @@ export function AdminProductRowActions({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href={`/admin/produtos/${productId}`}>Editar</Link>
+              <Link href={productEditPath(productId)}>Editar</Link>
             </DropdownMenuItem>
             {staffCode ? (
               <>
@@ -159,7 +160,7 @@ export function AdminProductRowActions({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              className="h-12 rounded-xl px-4 text-base"
               disabled={isDeactivating}
               onClick={() => setConfirmOpen(false)}
             >
@@ -168,7 +169,7 @@ export function AdminProductRowActions({
             <Button
               type="button"
               variant="destructive"
-              size="sm"
+              className="h-12 rounded-xl px-4 text-base"
               disabled={isDeactivating}
               onClick={() => void handleDeactivate()}
             >

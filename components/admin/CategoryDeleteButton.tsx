@@ -12,7 +12,7 @@ export function CategoryDeleteButton({ id, name }: { id: string; name: string })
     <Button
       type="button"
       variant="destructive"
-      size="sm"
+      className="h-12 rounded-xl px-4 text-base"
       disabled={isPending}
       onClick={() => {
         if (

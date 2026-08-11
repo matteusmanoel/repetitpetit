@@ -3,6 +3,7 @@
 import {
   useEffect,
   useState,
+  useTransition,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -129,6 +130,7 @@ function AccountFooter({
   const collapse = tone === "rail";
   const initials = adminInitials(admin.full_name, admin.email);
   const displayName = admin.full_name?.trim() || "Admin";
+  const [signingOut, startSignOut] = useTransition();
 
   return (
     <div
@@ -168,23 +170,28 @@ function AccountFooter({
           <Settings className="size-5" />
         </Link>
       </div>
-      <form action={signOutAction}>
-        <button
-          type="submit"
-          title="Sair"
-          className="flex h-11 w-full cursor-pointer items-center gap-3 overflow-hidden rounded-2xl px-3 text-sm font-semibold text-white/90 hover:bg-white/15"
+      {/* Botão (não <form action>) evita mismatch de hydration do bound Server Action no Client Component. */}
+      <button
+        type="button"
+        title="Sair"
+        disabled={signingOut}
+        onClick={() => {
+          startSignOut(() => {
+            void signOutAction();
+          });
+        }}
+        className="flex h-11 w-full cursor-pointer items-center gap-3 overflow-hidden rounded-2xl px-3 text-sm font-semibold text-white/90 hover:bg-white/15 disabled:opacity-60"
+      >
+        <LogOut className="size-5 shrink-0" />
+        <span
+          className={cn(
+            collapse &&
+              "translate-x-2 whitespace-nowrap opacity-0 transition-all duration-300 group-hover/rail:translate-x-0 group-hover/rail:opacity-100",
+          )}
         >
-          <LogOut className="size-5 shrink-0" />
-          <span
-            className={cn(
-              collapse &&
-                "translate-x-2 whitespace-nowrap opacity-0 transition-all duration-300 group-hover/rail:translate-x-0 group-hover/rail:opacity-100",
-            )}
-          >
-            Sair
-          </span>
-        </button>
-      </form>
+          {signingOut ? "Saindo…" : "Sair"}
+        </span>
+      </button>
     </div>
   );
 }

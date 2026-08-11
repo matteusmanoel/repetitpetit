@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { brandToast } from "@/lib/brand-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -58,7 +58,7 @@ export function OverrideActionButton({
 
   function handleConfirm() {
     if (!reasonOk) {
-      toast.error("Informe o motivo com pelo menos 10 caracteres.");
+      brandToast.error("Informe o motivo com pelo menos 10 caracteres.");
       return;
     }
 
@@ -70,14 +70,14 @@ export function OverrideActionButton({
 
       if (!result.ok) {
         if (result.reason === "already_paid") {
-          toast.error("Peça já paga — override não permitido.");
+          brandToast.error("Peça já paga — override não permitido.");
         } else {
-          toast.error(result.error);
+          brandToast.error(result.error);
         }
         return;
       }
 
-      toast.success(
+      brandToast.success(
         result.outcome === "noop"
           ? "Nada a cancelar — peça já disponível."
           : "Override confirmado. Peça liberada para venda no balcão.",
@@ -132,6 +132,7 @@ export function OverrideActionButton({
             <Button
               type="button"
               variant="outline"
+              className="h-12 rounded-xl px-4 text-base"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >
@@ -139,6 +140,7 @@ export function OverrideActionButton({
             </Button>
             <Button
               type="button"
+              className="h-12 rounded-xl px-4 text-base"
               onClick={handleConfirm}
               disabled={!reasonOk || isPending}
             >

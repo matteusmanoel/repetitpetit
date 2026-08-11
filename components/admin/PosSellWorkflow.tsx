@@ -9,7 +9,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { toast } from "sonner";
+import { brandToast } from "@/lib/brand-toast";
 
 import { OverrideActionButton } from "@/components/admin/OverrideActionButton";
 import { PassportHoldCountdown } from "@/components/admin/PassportHoldCountdown";
@@ -98,7 +98,7 @@ export function PosSellWorkflow({
 
       if (!result.ok) {
         setError(result.error);
-        toast.error(result.error);
+        brandToast.error(result.error);
         return;
       }
 
@@ -106,7 +106,7 @@ export function PosSellWorkflow({
         publicCode: result.publicCode,
         productName: lookup.product.name,
       });
-      toast.success("Venda confirmada no balcão.");
+      brandToast.success("Venda confirmada no balcão.");
       router.refresh();
     });
   }
@@ -154,12 +154,12 @@ export function PosSellWorkflow({
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}
-            className="h-11 min-h-11 flex-1 text-base"
+            className="h-12 min-h-12 flex-1 text-base"
             disabled={isLookingUp || isSelling}
           />
           <Button
             type="submit"
-            className="h-11 min-h-11 min-w-24 px-4"
+            className="h-12 min-h-12 min-w-24 px-4"
             disabled={isLookingUp || isSelling || !query.trim()}
           >
             {isLookingUp ? "…" : "Buscar"}
@@ -186,7 +186,7 @@ export function PosSellWorkflow({
         />
       ) : null}
 
-      <Button asChild variant="outline" className="h-11 w-full min-h-11">
+      <Button asChild variant="outline" className="h-12 w-full min-h-12">
         <Link href="/admin/produtos">Voltar para produtos</Link>
       </Button>
     </div>
@@ -315,7 +315,7 @@ function ProductPanel({
           productId={product.id}
           productStatus={product.status}
           hasPendingOnlineOrder={hasPendingOnlineOrder}
-          className="h-11 w-full min-h-11"
+          className="h-12 w-full min-h-12"
         />
       ) : null}
 
@@ -337,7 +337,7 @@ function ProductPanel({
                     onClick={() => onPaymentMethodChange(option.value)}
                     disabled={isSelling}
                     className={cn(
-                      "inline-flex h-11 min-h-11 items-center justify-center rounded-lg border px-2 text-sm font-medium transition-colors",
+                      "inline-flex h-12 min-h-12 items-center justify-center rounded-lg border px-2 text-sm font-medium transition-colors",
                       selected
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-background text-foreground hover:bg-muted",
@@ -362,7 +362,7 @@ function ProductPanel({
         </div>
       ) : null}
 
-      <Button asChild variant="secondary" className="h-11 w-full min-h-11">
+      <Button asChild variant="secondary" className="h-12 w-full min-h-12">
         <Link href={productEditPath(product.id)}>Ver peça no admin</Link>
       </Button>
     </section>
@@ -427,12 +427,12 @@ function SuccessCard({
 
       <Button
         type="button"
-        className="h-11 w-full min-h-11"
+        className="h-12 w-full min-h-12"
         onClick={onNewSale}
       >
         Nova venda
       </Button>
-      <Button asChild variant="outline" className="h-11 w-full min-h-11">
+      <Button asChild variant="outline" className="h-12 w-full min-h-12">
         <Link href="/admin/produtos">Voltar para produtos</Link>
       </Button>
     </section>

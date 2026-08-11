@@ -44,7 +44,7 @@ describe("product label paths", () => {
   it("builds Passport follow-on deep links (SN-11 stubs)", () => {
     expect(posSellPath("abc-123")).toBe("/admin/pos?product=abc-123");
     expect(overridePath("abc-123")).toBe("/admin/override?product=abc-123");
-    expect(productEditPath("abc-123")).toBe("/admin/produtos/abc-123");
+    expect(productEditPath("abc-123")).toBe("/admin/produtos?edit=abc-123");
   });
 });
 

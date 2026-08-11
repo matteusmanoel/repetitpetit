@@ -14,6 +14,9 @@ export type ProductAudioFieldSuggestion = {
   size_group: SizeGroup;
   gender: ProductGender;
   condition: ProductCondition;
+  category_id?: string | null;
+  category_name?: string | null;
+  tags?: string[];
 };
 
 /**
@@ -24,6 +27,12 @@ export function buildMockAudioFieldSuggestions(
   audioNote?: string | null,
 ): ProductAudioFieldSuggestion {
   const note = audioNote?.trim();
+  const isPlaceholder =
+    !note ||
+    note.toLowerCase() === "[áudio gravado]" ||
+    note.toLowerCase() === "[audio gravado]" ||
+    /^áudio capturado/i.test(note);
+
   return {
     name: "Conjunto moletom infantil",
     price: 89,
@@ -32,8 +41,11 @@ export function buildMockAudioFieldSuggestions(
     size_group: "4_5a",
     gender: "unissex",
     condition: "seminovo",
-    description: note
+    description: !isPlaceholder
       ? `Peça em ótimo estado. Nota: ${note}`
       : "Peça em ótimo estado. Tecido macio, sem manchas. Gerado a partir do áudio (fallback).",
+    category_id: null,
+    category_name: null,
+    tags: [],
   };
 }

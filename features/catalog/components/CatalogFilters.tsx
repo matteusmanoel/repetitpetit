@@ -26,6 +26,7 @@ import {
   SIZE_GROUPS,
   toggleInList,
   type AgeBand,
+  type CatalogFilters as CatalogFiltersType,
   type ProductCondition,
   type ProductGender,
   type SizeGroup,
@@ -44,6 +45,12 @@ const PRICE_SLIDER_MARKS = [
 
 type CatalogFiltersProps = {
   brands: string[];
+  /**
+   * Modo controlado (drawer mobile): altera só o draft local.
+   * Sem `value`/`onChange`, aplica direto na URL (sidebar desktop).
+   */
+  value?: CatalogFiltersType;
+  onChange?: (next: CatalogFiltersType) => void;
 };
 
 const CONDITION_ICONS: Record<ProductCondition, LucideIcon> = {
@@ -241,41 +248,49 @@ function PriceMaxSlider({
  * Painel de filtros Option A (D132): chips + checkbox + slider max-only,
  * marca multiselect, sem “Mais filtros”, labels mínimas.
  */
-export function CatalogFilters({ brands }: CatalogFiltersProps) {
-  const { filters, replaceFilters, isPending } = useCatalogFilters();
+export function CatalogFilters({
+  brands,
+  value,
+  onChange,
+}: CatalogFiltersProps) {
+  const urlState = useCatalogFilters();
+  const controlled = value != null && onChange != null;
+  const filters = controlled ? value : urlState.filters;
+  const commit = controlled ? onChange : urlState.replaceFilters;
+  const isPending = controlled ? false : urlState.isPending;
 
   const sliderValue = priceFromFilters(filters.precoMax);
 
   function setTamanho(size: SizeGroup) {
-    replaceFilters({
+    commit({
       ...filters,
       tamanho: toggleInList(filters.tamanho, size),
     });
   }
 
   function setGenero(gender: ProductGender | null) {
-    replaceFilters({
+    commit({
       ...filters,
       genero: gender,
     });
   }
 
   function setFaixa(band: AgeBand) {
-    replaceFilters({
+    commit({
       ...filters,
       faixa: filters.faixa === band ? null : band,
     });
   }
 
   function setConservacao(condition: ProductCondition) {
-    replaceFilters({
+    commit({
       ...filters,
       conservacao: toggleInList(filters.conservacao, condition),
     });
   }
 
   function setPrecoMax(value: number) {
-    replaceFilters({
+    commit({
       ...filters,
       precoMax: value >= PRICE_SLIDER_CEILING ? null : value,
     });
@@ -296,7 +311,7 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
             className="size-5 shrink-0 rounded border-border accent-primary"
             checked={filters.soDisponiveis}
             onChange={() =>
-              replaceFilters({
+              commit({
                 ...filters,
                 soDisponiveis: !filters.soDisponiveis,
               })
@@ -329,8 +344,8 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
         <ToggleGroup
           type="single"
           value={filters.genero ?? ""}
-          onValueChange={(value) =>
-            setGenero((value || null) as ProductGender | null)
+          onValueChange={(next) =>
+            setGenero((next || null) as ProductGender | null)
           }
           className="w-full gap-1 rounded-full bg-muted p-1"
           aria-label="Filtrar por sexo"
@@ -371,7 +386,7 @@ export function CatalogFilters({ brands }: CatalogFiltersProps) {
         <BrandMultiSelect
           brands={brands}
           selected={filters.marca}
-          onChange={(marca) => replaceFilters({ ...filters, marca })}
+          onChange={(marca) => commit({ ...filters, marca })}
           disabled={isPending}
         />
       </FilterSection>

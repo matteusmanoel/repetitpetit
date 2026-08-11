@@ -62,7 +62,7 @@ describe("passport deep-link helpers", () => {
   it("builds POS / override / edit / reprint paths", () => {
     expect(posSellPath("abc")).toBe("/admin/pos?product=abc");
     expect(overridePath("abc")).toBe("/admin/override?product=abc");
-    expect(productEditPath("abc")).toBe("/admin/produtos/abc");
+    expect(productEditPath("abc")).toBe("/admin/produtos?edit=abc");
     expect(productLabelPdfPath("abc")).toBe("/admin/produto/abc/label.pdf");
   });
 });

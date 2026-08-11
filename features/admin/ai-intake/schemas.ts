@@ -90,8 +90,10 @@ export const intakeDraftItemSchema = z.object({
   brand: z.string().nullable().default(null),
   size_label: z.string().default(""),
   size_group: z.enum(SIZE_GROUPS).default("2_3a"),
-  gender: z.enum(PRODUCT_GENDERS).default("unissex"),
-  condition: z.enum(PRODUCT_CONDITIONS).default("seminovo"),
+  /** null = not spoken / not chosen; persist DEFAULT unissex only on Finalizar. */
+  gender: z.enum(PRODUCT_GENDERS).nullable().default(null),
+  /** null until spoken/chosen; DB NOT NULL DEFAULT seminovo applies on insert. */
+  condition: z.enum(PRODUCT_CONDITIONS).nullable().default(null),
   tags: z.array(z.string()).default([]),
   category_id: z.string().nullable().default(null),
   /** Suggested category label from voice LLM — matched/created on Finalizar (D135). */
@@ -133,8 +135,10 @@ export const intakeFinalizeItemSchema = z.object({
   brand: z.preprocess(emptyToNull, z.string().max(80).nullable()).optional(),
   size_label: z.string().default(""),
   size_group: z.enum(SIZE_GROUPS).default("2_3a"),
-  gender: z.enum(PRODUCT_GENDERS).default("unissex"),
-  condition: z.enum(PRODUCT_CONDITIONS).default("seminovo"),
+  /** null until staff chooses; toProductInsert applies DB default unissex. */
+  gender: z.enum(PRODUCT_GENDERS).nullable().default(null),
+  /** null until chosen; toProductInsert applies DB default seminovo. */
+  condition: z.enum(PRODUCT_CONDITIONS).nullable().default(null),
   tags: tagsSchema,
   category_id: optionalUuid,
   category_name: z.preprocess(emptyToNull, z.string().max(120).nullable()).optional(),
@@ -184,8 +188,8 @@ export function emptyIntakeDraft(params: {
     brand: null,
     size_label: "",
     size_group: "2_3a",
-    gender: "unissex",
-    condition: "seminovo",
+    gender: null,
+    condition: null,
     tags: [],
     category_id: null,
     category_name: null,

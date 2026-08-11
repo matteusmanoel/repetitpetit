@@ -49,6 +49,68 @@ pnpm dev
 
 O app sobe em `http://localhost:3000`.
 
+## HTTPS local (iPhone / mic / câmera na LAN)
+
+`getUserMedia` exige secure context. `http://macteus.local:3000` **não** serve
+para microfone no Safari iOS — use HTTPS na LAN.
+
+### Uma vez no Mac
+
+```bash
+brew install mkcert
+mkcert -install          # pede senha admin — confia o CA no Keychain
+pnpm certs:local         # gera .certs/ para localhost + <hostname>.local
+```
+
+### Confiar o CA no iPhone (passo a passo)
+
+O Safari só deixa de reclamar do certificado se o **CA do mkcert** estiver
+instalado e marcado como confiável. Faça **uma vez**:
+
+1. No Mac, localize o arquivo:
+   - `.certs/rootCA.pem` (na pasta do projeto), ou
+   - `$(mkcert -CAROOT)/rootCA.pem`
+2. **AirDrop** esse arquivo para o iPhone (ou envie por Arquivos/iCloud).
+3. No iPhone, toque no arquivo → **Permitir** / **Instalar perfil**.
+4. Abra **Ajustes → Geral → VPN e gerenciamento de dispositivo** (ou
+   **Perfil baixado**) → toque no perfil **mkcert …** → **Instalar** (digite o
+   código do iPhone).
+5. Ainda em **Ajustes → Geral → Sobre → Certificados de Confiança** (no fim da
+   lista) → ative o interruptor do **mkcert** → Confiar.
+6. Feche o Safari por completo e abra de novo:
+   `https://macteus.local:3000/...`
+
+Se a página carregar com cadeado / sem aviso vermelho, o HTTPS está ok. Sem o
+passo 5 o site pode abrir em alguns casos, mas uploads/`fetch` falham com
+**“Load failed”**.
+
+### Rodar o app
+
+```bash
+pnpm dev:https
+```
+
+No iPhone (mesmo Wi‑Fi):
+
+```text
+https://macteus.local:3000/admin/produtos/intake-ia
+```
+
+Substitua `macteus` pelo `LocalHostName` do Mac se for outro
+(`scutil --get LocalHostName`).
+
+Opcional durante o teste (auth redirects / site URL):
+
+```bash
+# em .env.local
+NEXT_PUBLIC_SITE_URL=https://macteus.local:3000
+```
+
+Se o Supabase Auth rejeitar o redirect, adicione a mesma URL em
+Authentication → URL Configuration (Redirect URLs) no dashboard.
+
+`.certs/` está no `.gitignore` (não versionar chaves).
+
 ## Variáveis de ambiente obrigatórias
 
 Ver `.env.example` para a lista completa com comentários.

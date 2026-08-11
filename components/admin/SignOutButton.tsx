@@ -8,7 +8,7 @@ import { signOutAction } from "@/features/admin/sign-out-action";
 export function SignOutButton() {
   return (
     <form action={signOutAction}>
-      <Button type="submit" variant="outline" size="sm">
+      <Button type="submit" variant="outline" className="h-12 rounded-xl px-4 text-base">
         Sair
       </Button>
     </form>

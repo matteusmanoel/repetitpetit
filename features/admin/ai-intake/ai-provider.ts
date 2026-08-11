@@ -6,6 +6,8 @@ export {
   resolveAiApiKey,
   isUsefulAudioNote,
   mergeAiDraft,
+  mergeEditPatchDraft,
+  isPriceOnlyEditTranscript,
   buildTagsFromAi,
   voiceExtractSystemPrompt,
   generateAiPreviewDrafts,

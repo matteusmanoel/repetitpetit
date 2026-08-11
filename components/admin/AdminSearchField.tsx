@@ -11,7 +11,7 @@ type AdminSearchFieldProps = {
 };
 
 /**
- * Padrão visual da busca Separação (SS-8) — h-14 rounded-2xl.
+ * Busca admin — h-12 / text-base / rounded-2xl (padrão touch admin D142).
  */
 export function AdminSearchField({
   value,
@@ -27,7 +27,8 @@ export function AdminSearchField({
       placeholder={placeholder}
       aria-label={ariaLabel}
       className={cn(
-        "h-14 w-full rounded-2xl border border-black/10 bg-white px-4 text-base shadow-sm",
+        "box-border h-12 min-h-12 w-full rounded-2xl border border-black/10 bg-white px-4 py-0 text-base leading-normal shadow-sm outline-none",
+        "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
         className,
       )}
     />

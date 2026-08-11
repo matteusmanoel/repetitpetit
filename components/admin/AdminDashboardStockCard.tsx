@@ -37,7 +37,7 @@ export function AdminDashboardStockCard({
             Peças
           </span>
           <Switch
-            size="sm"
+            className="h-12 rounded-xl px-4 text-base"
             checked={showValue}
             onCheckedChange={setShowValue}
             aria-label={

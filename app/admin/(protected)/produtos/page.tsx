@@ -18,6 +18,8 @@ type SearchParams = Promise<{
   q?: string;
   status?: string;
   saved?: string;
+  edit?: string;
+  create?: string;
 }>;
 
 function resolveStatusFilter(raw?: string): ProductStatus | "all" {
@@ -39,6 +41,9 @@ export default async function AdminProductsPage({
     params.saved === "created" || params.saved === "updated"
       ? params.saved
       : null;
+  const editId = params.edit?.trim() || null;
+  const create =
+    params.create === "1" || params.create === "true";
   const [products, categories] = await Promise.all([
     listAdminProductsWithHolds({ q, status }),
     listActiveCategories(),
@@ -51,6 +56,8 @@ export default async function AdminProductsPage({
       initialQuery={q}
       initialStatus={status}
       savedFlash={saved}
+      initialEditId={editId}
+      initialCreate={create}
     />
   );
 }

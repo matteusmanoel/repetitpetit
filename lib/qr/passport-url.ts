@@ -30,7 +30,7 @@ export function overridePath(productId: string): string {
   return `/admin/override?product=${encodeURIComponent(productId)}`;
 }
 
-/** Admin product edit path (existing form). */
+/** Admin product edit deep-link (opens dialog on list via ?edit=). */
 export function productEditPath(productId: string): string {
-  return `/admin/produtos/${productId}`;
+  return `/admin/produtos?edit=${encodeURIComponent(productId)}`;
 }

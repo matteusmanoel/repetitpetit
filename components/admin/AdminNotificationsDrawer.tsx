@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Bell, X } from "lucide-react";
-import { toast } from "sonner";
+import { brandToast } from "@/lib/brand-toast";
 
 import { useFulfillmentQueue } from "@/components/admin/FulfillmentQueueProvider";
 import { BrandEmptyState } from "@/components/shared/BrandEmptyState";
@@ -110,7 +110,7 @@ export function AdminNotificationsHost({ className }: { className?: string }) {
   async function handleClearAll() {
     if (clearing || notifications.length === 0) return;
     setClearing(true);
-    toast.message("Limpando notificações…");
+    brandToast.message("Limpando notificações…");
     for (let i = 0; i < notifications.length; i++) {
       const id = notifications[i]!.id;
       setExiting((prev) => new Set(prev).add(id));
@@ -119,7 +119,7 @@ export function AdminNotificationsHost({ className }: { className?: string }) {
     await new Promise((r) => setTimeout(r, 280));
     const next = dismissNotificationIds(notifications.map((n) => n.id));
     setDismissedIds(next);
-    toast.success("Tudo limpo");
+    brandToast.success("Tudo limpo");
     setClearing(false);
   }
 

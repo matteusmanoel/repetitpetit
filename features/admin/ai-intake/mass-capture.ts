@@ -75,6 +75,19 @@ export function cameraErrorMessagePt(kind: CameraErrorKind): string {
   }
 }
 
+export function micErrorMessagePt(kind: CameraErrorKind): string {
+  switch (kind) {
+    case "insecure_context":
+      return "O microfone só funciona em HTTPS ou localhost. Abra o admin nesse endereço.";
+    case "permission_denied":
+      return "Permissão de microfone negada. Libere o acesso nas configurações do navegador e tente de novo.";
+    case "not_found":
+      return "Nenhum microfone encontrado neste dispositivo.";
+    default:
+      return "Microfone indisponível neste navegador.";
+  }
+}
+
 /** Primary capture CTA — ends series and opens editable preview (D123). */
 export function generatePreviewCtaLabel(options: {
   aiConfigured: boolean;

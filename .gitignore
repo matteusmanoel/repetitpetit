@@ -28,3 +28,6 @@ next-env.d.ts
 .vscode/
 supabase/.branches/
 .env.local.broken-vercel-pull.bak
+
+# HTTPS local (mkcert) — nunca commitar chaves/certificados de dev
+.certs/

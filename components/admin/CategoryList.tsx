@@ -53,7 +53,7 @@ export function CategoryList({ categories }: { categories: Category[] }) {
           </div>
 
           <div className="flex shrink-0 gap-2">
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" className="h-12 rounded-xl px-4 text-base">
               <Link href={`/admin/categorias/${category.id}`}>Editar</Link>
             </Button>
             <CategoryDeleteButton id={category.id} name={category.name} />

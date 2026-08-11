@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
+import { brandToast } from "@/lib/brand-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -60,10 +60,10 @@ export function PassportQuickActions({
     try {
       const result = await activateProductAction(productId);
       if (!result.ok) {
-        toast.error(result.error);
+        brandToast.error(result.error);
         return;
       }
-      toast.success(`Peça reativada: ${result.staffCode}`);
+      brandToast.success(`Peça reativada: ${result.staffCode}`);
       router.refresh();
     } finally {
       setBusy(null);
@@ -194,7 +194,7 @@ export function PassportQuickActions({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              className="h-12 rounded-xl px-4 text-base"
               disabled={busy !== null}
               onClick={() => setArchiveOpen(false)}
             >
@@ -203,7 +203,7 @@ export function PassportQuickActions({
             <Button
               type="button"
               variant="destructive"
-              size="sm"
+              className="h-12 rounded-xl px-4 text-base"
               disabled={busy !== null}
               onClick={() => void handleArchive()}
             >

@@ -21,11 +21,14 @@ import { createCategoryInlineAction } from "@/features/admin/product-dialog-acti
 import { requireAdminSession } from "@/features/admin/session";
 import { emitProductStatusEvent } from "@/features/passport/emit-status-event";
 import {
+  applyCategoryMatchToDraft,
+  listBrandCandidates,
   matchCategoryByName,
   normalizeBrandName,
   evaluatePublishGate,
 } from "@/features/admin/ai-intake/category-match";
 import { draftHasValidationConflicts } from "@/features/admin/ai-intake/business-validator";
+import { listActiveCategories } from "@/features/admin/product-queries";
 import { applyPrintAttempt } from "@/features/print/queue";
 import { resolveThermalPrintBridge } from "@/features/print/bridge";
 import { env } from "@/lib/env";
@@ -43,6 +46,11 @@ export type GeneratePreviewResult =
       mode: "ai" | "manual";
       aiConfigured: boolean;
       warning?: string;
+      debug?: {
+        transcripts: Array<{ client_id: string; transcript: string | null }>;
+        llm_user_text?: string;
+        llm_raw?: string;
+      };
     }
   | { ok: false; error: string };
 
@@ -83,8 +91,10 @@ function toProductInsert(
     brand: normalizeBrandName(item.brand),
     size_label: sizeLabel,
     size_group: item.size_group,
-    gender: item.gender,
-    condition: item.condition,
+    // Catalog column is NOT NULL DEFAULT 'unissex' — apply only at write.
+    gender: item.gender ?? "unissex",
+    // Catalog column is NOT NULL DEFAULT 'seminovo' — technical fallback only at write (D140).
+    condition: item.condition ?? "seminovo",
     status,
     quantity: 1,
     is_featured: false,
@@ -190,18 +200,44 @@ export async function generateIntakePreviewAction(
     };
   }
 
+  const categories = await listActiveCategories();
+  const categoryNames = categories
+    .filter((c) => c.slug !== "teste" && normalizeKeyName(c.name) !== "teste")
+    .map((c) => c.name);
+
   const result = await generateAiPreviewDrafts({
     env,
     input: parsed.data,
+    domainContext: {
+      categoryNames,
+      brandNames: listBrandCandidates(),
+    },
+  });
+
+  const drafts = result.drafts.map((draft) => {
+    const withBrand = {
+      ...draft,
+      brand: normalizeBrandName(draft.brand),
+    };
+    return applyCategoryMatchToDraft(withBrand, categories);
   });
 
   return {
     ok: true,
-    drafts: result.drafts,
+    drafts,
     mode: result.mode,
     aiConfigured: isAiIntakeConfigured(env),
     warning: result.warning,
+    debug: result.debug,
   };
+}
+
+function normalizeKeyName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 /**

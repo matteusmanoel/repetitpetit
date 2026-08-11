@@ -43,7 +43,7 @@ export function CurrencyInput({
       {name ? <input type="hidden" name={name} value={decimal} /> : null}
       {showPrefix ? (
         <span
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
+          className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-foreground"
           aria-hidden
         >
           R$
